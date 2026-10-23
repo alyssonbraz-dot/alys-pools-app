@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0b2332">
+  <meta name="description" content="ALYS Pool Manager — gestão de clientes, rotas e manutenção de piscinas">
+  <title>ALYS Pool Manager · Painel</title>
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="icon" href="./assets/logo.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar" id="sidebar">
+      <div class="brand"><div class="brand-symbol">≋</div><div><strong>ALYS<span>POOLS</span></strong><small>POOL MANAGER</small></div></div>
+      <div class="workspace"><span class="workspace-avatar">AP</span><div><strong>ALYS Pool Services</strong><span>Espaço de trabalho</span></div><span class="caret">⌄</span></div>
+      <div class="nav-title">PRINCIPAL</div>
+      <nav class="nav-menu" aria-label="Navegação principal">
+        <button class="nav-item active" data-page="dashboard"><span class="nav-icon">▦</span> Visão geral</button>
+        <button class="nav-item" data-page="route"><span class="nav-icon">⌖</span> Rotas & agenda <span class="nav-count" id="nav-todo"></span></button>
+        <button class="nav-item" data-page="clients"><span class="nav-icon">♧</span> Clientes</button>
+        <button class="nav-item" data-page="history"><span class="nav-icon">▤</span> Histórico de serviços</button>
+        <button class="nav-item" data-page="finance"><span class="nav-icon">＄</span> Financeiro</button>
+      </nav>
+      <div class="sidebar-bottom">
+        <div class="demo-side"><div class="demo-pulse"></div><div><strong>Modo demonstração</strong><small>Dados de exemplo, salvos neste navegador</small></div></div>
+        <button class="nav-item" data-page="settings"><span class="nav-icon">⚙</span> Configurações</button>
+        <div class="support"><div class="support-avatar">AB</div><div><strong>Administrador</strong><small>ALYS Pool Services</small></div><span>⋯</span></div>
+      </div>
+    </aside>
+    <div class="sidebar-shade" id="sidebarShade"></div>
+    <div class="main-area">
+      <header class="topbar"><div class="topbar-left"><button class="menu-toggle icon-button" id="menuToggle" aria-label="Abrir menu">☰</button><div class="breadcrumb"><span>ALYS Pools</span><span class="slash">/</span><strong id="breadcrumbPage">Visão geral</strong></div></div><div class="topbar-right"><span class="today-label" id="todayLabel"></span><span class="top-divider"></span><span class="top-avatar">AB</span></div></header>
+      <main class="content" id="content" aria-live="polite"></main>
+    </div>
+  </div>
+  <div id="modal-root"></div>
+  <div id="toast-root" aria-live="polite"></div>
+  <script defer src="./app.js"></script>
+</body>
+</html>
