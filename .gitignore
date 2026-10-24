@@ -7,3 +7,9 @@ build/
 .env.*.local
 .DS_Store
 *.log
+*.tsbuildinfo
+supabase/.temp/
+supabase/.branches/
+coverage/
+playwright-report/
+test-results/

@@ -1,0 +1,23 @@
+import { floridaDay, type Dosage, type ReadingValues } from './types';
+export type ChemistryEntry = {visit_id:string;completed_at:string;readings:ReadingValues;dosages:Dosage[]};
+export type ChemistryRow = ChemistryEntry & {pool_id:string};
+// Thirty service calendar days including the selected route day; DST never changes the day count.
+export function chemistryPeriod(day:string) {
+ const start=new Date(`${day}T12:00:00Z`);
+ start.setUTCDate(start.getUTCDate()-29);
+ return {from:start.toISOString().slice(0,10),through:day};
+}
+export function groupChemistry(rows:ChemistryRow[],day:string):Record<string,ChemistryEntry[]> {
+ const {from,through}=chemistryPeriod(day);
+ const grouped:Record<string,ChemistryEntry[]>={};
+ const seen=new Set<string>();
+ for(const row of [...rows].sort((a,b)=>b.completed_at.localeCompare(a.completed_at)||a.visit_id.localeCompare(b.visit_id))){
+  const serviceDay=floridaDay(new Date(row.completed_at));
+  const key=`${row.visit_id}:${row.pool_id}`;
+  if(serviceDay<from||serviceDay>through||seen.has(key))continue;
+  seen.add(key);
+  if(!Object.values(row.readings).some(value=>typeof value==='number')&&!row.dosages.length)continue;
+  (grouped[row.pool_id]??=[]).push({visit_id:row.visit_id,completed_at:row.completed_at,readings:row.readings,dosages:row.dosages});
+ }
+ return grouped;
+}

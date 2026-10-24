@@ -1,0 +1,16 @@
+import { z } from 'zod';
+export const daySchema=z.iso.date();
+const optionalNumber=(max:number)=>z.number().finite().min(0).max(max).optional();
+export const readingSchema=z.object({fc:optionalNumber(30),ph:optionalNumber(14),ta:optionalNumber(500),cya:optionalNumber(1000),ch:optionalNumber(5000),salt:optionalNumber(10000),cc:optionalNumber(30)}).strict();
+export const dosageSchema=z.object({product:z.string().trim().min(1).max(100),quantity:z.number().finite().positive().max(10000),unit:z.string().trim().min(1).max(20)}).strict();
+export const completionSchema=z.object({
+ id:z.uuid(),stop_id:z.uuid(),started_at:z.iso.datetime({offset:true}).optional(),completed_at:z.iso.datetime({offset:true}).optional(),
+ pools:z.array(z.object({pool_id:z.uuid(),tasks:z.array(z.string().min(1).max(100)).max(30),readings:readingSchema,dosages:z.array(dosageSchema).max(30)}).strict()).min(1).max(20),
+ notes:z.string().max(2000),photo_paths:z.array(z.string().max(200).regex(/^[a-f0-9-]{36}\/[a-f0-9-]{36}\/[a-f0-9-]{36}\.jpg$/)).max(3)
+}).strict();
+export const stopMutationSchema=z.discriminatedUnion('action',[
+ z.object({action:z.literal('start'),stop_id:z.uuid()}),
+ z.object({action:z.literal('skip'),stop_id:z.uuid()}),
+ z.object({action:z.literal('reorder'),stop_ids:z.array(z.uuid()).min(1).max(300)}),
+ z.object({action:z.literal('add'),property_id:z.uuid(),technician_id:z.uuid().optional(),date:daySchema})
+]);
