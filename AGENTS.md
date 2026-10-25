@@ -5,8 +5,8 @@ Você é o engenheiro principal do projeto ALYS Pool Manager. O produto é um ap
 ## Visão do produto
 
 - Usuário principal: proprietário e técnicos, operando no celular à beira da piscina.
-- Interface atual Fast Route: inglês (pedido mais recente do usuário); documentação pode permanecer em português.
-- Escopo atual: Route → Checklist → Readings → Dosages → Photo → Complete & Next → Email → History. Não desenvolver dashboard financeiro, pagamentos, inventário, portal ou marketing nesta versão.
+- Interface atual Fast Route: inglês por padrão, com seletor português/espanhol; documentação pode permanecer em português.
+- Escopo atual: Route → Checklist → Readings → Dosages → Photo → Complete & Next → Email → History. Escopo expandido autorizado: gestão de clientes, calendário, mapas e otimização viária. Não desenvolver dashboard financeiro, pagamentos, inventário, páginas de portal ou marketing nesta versão.
 - Domínio: piscinas residenciais e comerciais, capacidades em galões, testes em ppm, moeda USD, timezone `America/New_York`.
 - A empresa pode ter **clientes próprios** (mensalidade) e **rotas subcontratadas** (repasse por visita ou por contrato). Esses modelos **não devem ser somados indiscriminadamente como MRR**.
 - Número de visitas por semana configurável (1, 2, 3 ou mais), com dias da semana, exceções e histórico de remarcações.
@@ -26,7 +26,7 @@ Você é o engenheiro principal do projeto ALYS Pool Manager. O produto é um ap
 
 - Propor arquitetura, migrations e fases antes de realizar mudanças disruptivas.
 - Preferir TypeScript estrito, componentes acessíveis e responsivos, fluxo offline-first quando viável, especialmente para técnicos em campo.
-- Paleta atual solicitada: azul-marinho claro, fundos azulados e cartões leves, layout mobile-first.
+- Paleta atual solicitada: azul-escuro, fundos azulados e cartões leves, layout mobile-first.
 - Preservar funções úteis do protótipo e explicar limitações; não alegar que integrações inexistentes funcionam.
 - Criar testes de validação de cálculos de receita, recorrência, permissões e registro de visitas.
 - Não realizar deploy, enviar mensagens nem configurar serviços pagos sem confirmação explícita.

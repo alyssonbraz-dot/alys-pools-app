@@ -1,4 +1,5 @@
 "use client";
+import {T} from '@/components/i18n';
 import { useState } from 'react';
 import { logout } from '@/app/actions';
 import { clearDeviceData,getLocalWorkCount } from '@/lib/offline/store';
@@ -14,5 +15,5 @@ export function LogoutButton() {
   }catch{setBusy(false);setError('Unable to clear local data. Please try again before signing out.');return;}
   await logout();
  }
- return <><button type="button" className="nav-item" disabled={busy} onClick={signOut}>{busy?'Signing out…':'Sign out'}</button>{error&&<p role="alert">{error}</p>}</>;
+ return <><button type="button" className="nav-item" disabled={busy} onClick={signOut}>{busy?<T text={'Signing out…'}/>:<T text={'Sign out'}/>}</button>{error&&<p role="alert"><T text={error}/></p>}</>;
 }

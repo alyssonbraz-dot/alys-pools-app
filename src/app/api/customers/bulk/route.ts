@@ -1,0 +1,13 @@
+import {createClient} from '@supabase/supabase-js';
+import {z} from 'zod';
+import {getOperator} from '@/lib/auth';
+import {sameOrigin,boundedJson,json,apiError} from '@/lib/http';
+const schema=z.object({ids:z.array(z.uuid()).min(1).max(200),action:z.enum(['status','add_tag','remove_tag','assign','archive','invite']),value:z.string().max(100).default('')});
+export async function POST(request:Request){if(!sameOrigin(request))return json({error:'Invalid request origin.'},403);try{const op=await getOperator();if(!op)return json({error:'Please sign in.'},401);if(!['owner','admin'].includes(op.profile.role))return json({error:'Manager access required.'},403);const payload=schema.parse(await boundedJson(request,18000));if(payload.action!=='invite'){const {data,error}=await op.db.rpc('bulk_customers',{p_ids:payload.ids,p_action:payload.action,p_value:payload.value});if(error)throw error;return json({updated:data});}
+const key=process.env.SUPABASE_SERVICE_ROLE_KEY,url=process.env.NEXT_PUBLIC_SUPABASE_URL,portal=process.env.CUSTOMER_PORTAL_URL;
+if(process.env.CUSTOMER_INVITES_ENABLED!=='true'||!key||!url||!portal||new URL(portal).protocol!=='https:')return json({error:'Portal invitations are disabled. Configure a portal URL and Supabase SMTP before enabling invitations. No email was sent.'},503);
+const {data:owned,error:ownedError}=await op.db.from('customers').select('id,email').in('id',[...new Set(payload.ids)]).is('archived_at',null);if(ownedError||owned?.length!==new Set(payload.ids).size)return json({error:'Customer access denied.'},403);if(owned.some(c=>!z.email().safeParse(c.email).success))return json({error:'Every selected customer needs a valid email before inviting.'},422);
+const admin=createClient(url,key,{auth:{persistSession:false,autoRefreshToken:false}});let requested=0,unchanged=0;
+// Claims are durable: retries cannot silently send the same invitation twice, including uncertain responses.
+for(const id of [...new Set(payload.ids)]){const {data:job,error}=await op.db.rpc('claim_customer_invitation',{p_customer_id:id});if(error)throw error;if(!job.claimed){unchanged++;continue;}try{const result=await admin.auth.admin.inviteUserByEmail(job.email,{redirectTo:portal,data:{customer_id:id,organization_id:op.profile.organization_id}});if(result.error){await admin.from('customer_invitations').update({state:'failed',error:'auth_invitation_rejected'}).eq('id',job.id);}else{await admin.from('customer_invitations').update({state:'sent',sent_at:new Date().toISOString()}).eq('id',job.id);requested++;}}catch{/* Pending means acknowledgement uncertain. Reconcile with SMTP before another invitation. */}}
+return json({requested,unchanged});}catch(e){return apiError(e);}}

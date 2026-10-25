@@ -1,6 +1,6 @@
 # ALYS Fast Route — demonstração local
 
-Esta é a demonstração **do fluxo atual**, em inglês, azul-marinho claro, com dados fictícios. Não precisa instalar Node, Docker ou Supabase.
+Esta é a demonstração **do fluxo atual**, em inglês, azul-escuro, com dados fictícios. Não precisa instalar Node, Docker ou Supabase.
 
 Cloro livre possui atalhos de **1, 3 e 5 ppm**; pH tem **7.0, 7.2, 7.4, 7.6, 7.8 e 8.0**. Também é possível digitar valores diferentes. São leituras da água; produtos aplicados continuam registrados separadamente com quantidade e unidade.
 
@@ -56,3 +56,5 @@ npx playwright test --config=playwright.demo.config.ts
 ## Validação realizada
 
 Testes automatizados em Chromium com viewport mobile verificam ausência de dependências externas, persistência de foto/rascunho após recarregar, conclusão/avanço sem copiar leituras, histórico e relatório fiel, cadastro/configuração de piscinas e escape de texto digitado. Neste ambiente gerenciado, a política do browser bloqueou `file://`; os testes foram executados por HTTP estático local. A abertura direta por duplo clique não foi validada aqui, e a alternativa Python acima está documentada. A câmera física do celular e impressão/PDF manual não foram testadas.
+
+O idioma inicial é inglês. Use o seletor no cabeçalho para português ou espanhol; a escolha fica salva neste navegador. As leituras e notas são preservadas ao trocar o idioma. O tema padrão é azul-escuro. Inclui calendário semanal e cadastro local, mas não mapa online, roteamento viário ou convites. Os detalhes internos da visita aparecem no histórico e ficam fora da prévia do relatório do cliente.

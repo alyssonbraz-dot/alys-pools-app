@@ -1,6 +1,7 @@
 import 'server-only';
 import type { getOperator } from '@/lib/auth';
 import type { RouteData,RouteStop,PoolConfig,VisitHistory,VisitSnapshot } from './types';
+import {routeFingerprint} from '@/lib/routing';
 import {chemistryPeriod,groupChemistry,type ChemistryRow} from './chemistry';
 type Operator=NonNullable<Awaited<ReturnType<typeof getOperator>>>;
 export async function loadRoute(operator:Operator,date:string):Promise<RouteData> {
@@ -8,8 +9,8 @@ export async function loadRoute(operator:Operator,date:string):Promise<RouteData
  const {error:generateError}=await db.rpc('generate_route',{p_date:date});
  if(generateError)throw new Error('Route generation failed');
  const [{data:stops,error},{data:properties,error:propertyError},{data:pools,error:poolError},{data:customers,error:customerError},{data:profiles,error:profileError}]=await Promise.all([
-  db.from('route_stops').select('id,property_id,technician_id,service_date,position,status').eq('service_date',date).order('position').order('id').limit(1000),
-  db.from('properties').select('id,customer_id,name,address,gate_notes').limit(1000),
+  db.from('route_stops').select('id,property_id,technician_id,service_date,position,status,estimated_service_minutes,service_type').eq('service_date',date).order('position').order('id').limit(1000),
+  db.from('properties').select('id,customer_id,name,address,gate_notes,latitude,longitude').limit(1000),
   db.from('pools').select('id,property_id,name,gallons,checklist,required_readings,photo_required').eq('status','active').limit(1000),
   db.from('customers').select('id,name').limit(1000),
   db.from('profiles').select('id,display_name,role').limit(1000)
@@ -38,30 +39,28 @@ export async function loadRoute(operator:Operator,date:string):Promise<RouteData
     const recent=poolHistory[pool.id].find(entry=>Object.keys(entry.readings).length>0);
     if(recent)last[pool.id]={recorded_at:recent.completed_at,readings:recent.readings};
    }
-   return {...s,property:{id:property.id,name:property.name,address:property.address,gate_notes:property.gate_notes},customer,pools:stopPools,last_readings:last,chemistry_history:poolHistory};
+   return {...s,property:{id:property.id,name:property.name,address:property.address,gate_notes:property.gate_notes,latitude:property.latitude,longitude:property.longitude},customer,pools:stopPools,last_readings:last,chemistry_history:poolHistory};
  });
- return {userId:user.id,orgId:profile.organization_id,displayName:profile.display_name,role:profile.role,date,stops:mapped,
+ const {data:plans,error:plansError}=await db.from('route_plans').select('technician_id,start_latitude,start_longitude,start_time,calculation,fingerprint').eq('service_date',date);
+ if(plansError)throw new Error('Unable to load route plans');
+ return {route_plans:Object.fromEntries((plans??[]).map(p=>{const open=mapped.filter(s=>s.technician_id===p.technician_id&&['pending','in_progress'].includes(s.status));const geo=open.filter(s=>s.property.latitude!=null&&s.property.longitude!=null).map(s=>({id:s.id,latitude:s.property.latitude!,longitude:s.property.longitude!,service_minutes:s.estimated_service_minutes??20}));return [p.technician_id,{...p,calculation:geo.length===open.length&&p.fingerprint===routeFingerprint(geo)?p.calculation:null}];})),userId:user.id,orgId:profile.organization_id,displayName:profile.display_name,role:profile.role,date,stops:mapped,
   properties:properties?.map(({id,name,address})=>({id,name,address})),technicians:profiles?.filter(p=>['owner','admin','technician'].includes(p.role)).map(({id,display_name})=>({id,display_name}))};
 }
 export async function loadHistory(operator:Operator,customerId?:string):Promise<VisitHistory[]> {
  const {db}=operator;
- const {data:visits,error}=await db.from('visits').select('id,route_stop_id,completed_at,snapshot,technician_id').order('completed_at',{ascending:false}).limit(200);
+ let query=db.from('visits').select('id,route_stop_id,completed_at,snapshot,technician_id,route_stops!inner(properties!inner(customer_id))');
+ if(customerId)query=query.eq('route_stops.properties.customer_id',customerId);
+ const {data:visits,error}=await query.order('completed_at',{ascending:false}).limit(200);
  if(error)throw new Error('History query failed');
- let allowed=visits??[];
- if(customerId){
-  const {data:properties,error:pe}=await db.from('properties').select('id').eq('customer_id',customerId);
-  if(pe)throw new Error('History property query failed');
-  const {data:stops,error:se}=await db.from('route_stops').select('id').in('property_id',(properties??[]).map(p=>p.id));
-  if(se)throw new Error('History stop query failed');
-  allowed=allowed.filter(v=>stops?.some(s=>s.id===v.route_stop_id));
- }
+ const allowed=visits??[];
  if(!allowed.length)return [];
  const ids=allowed.map(v=>v.id);
- const [{data:photos,error:photoError},{data:emails,error:emailError},{data:corrections,error:correctionError}]=await Promise.all([
+ const [{data:photos,error:photoError},{data:emails,error:emailError},{data:corrections,error:correctionError},{data:details,error:detailError}]=await Promise.all([
   db.from('visit_photos').select('visit_id,storage_path').in('visit_id',ids),
   db.from('email_delivery_logs').select('id,visit_id,status,error,sent_at').in('visit_id',ids),
-  db.from('visit_corrections').select('id,visit_id,note,created_at,actor_id').in('visit_id',ids).order('created_at')
+  db.from('visit_corrections').select('id,visit_id,note,created_at,actor_id').in('visit_id',ids).order('created_at'),
+  db.from('visit_service_details').select('visit_id,technician_notes,equipment_problems,filter_cleaning,repairs_performed').in('visit_id',ids)
  ]);
- if(photoError||emailError||correctionError)throw new Error('History detail query failed');
- return allowed.map(v=>({id:v.id,route_stop_id:v.route_stop_id,completed_at:v.completed_at,snapshot:v.snapshot as VisitSnapshot,photos:(photos??[]).filter(p=>p.visit_id===v.id).map(p=>({storage_path:p.storage_path})),email:emails?.find(e=>e.visit_id===v.id),corrections:(corrections??[]).filter(c=>c.visit_id===v.id)}));
+ if(photoError||emailError||correctionError||detailError)throw new Error('History detail query failed');
+ return allowed.map(v=>({id:v.id,route_stop_id:v.route_stop_id,completed_at:v.completed_at,snapshot:v.snapshot as VisitSnapshot,service_details:details?.find(d=>d.visit_id===v.id),photos:(photos??[]).filter(p=>p.visit_id===v.id).map(p=>({storage_path:p.storage_path})),email:emails?.find(e=>e.visit_id===v.id),corrections:(corrections??[]).filter(c=>c.visit_id===v.id)}));
 }

@@ -1,10 +1,10 @@
 # ALYS Pool Manager — Fast Route
 
-Aplicação mobile-first em inglês para ALYS Pool Services LLC, Flórida. Next.js + TypeScript + Tailwind, Supabase Auth/PostgreSQL/Storage e PWA. Galões, ppm e timezone America/New_York. Interface em azul-marinho claro.
+Aplicação mobile-first em inglês por padrão, com português e espanhol para ALYS Pool Services LLC, Flórida. Next.js + TypeScript + Tailwind, Supabase Auth/PostgreSQL/Storage e PWA. Galões, ppm e timezone America/New_York. Interface em azul-escuro.
 
 Fluxo: **Route → Checklist → Readings → Dosages → Photo → Complete & Next → Email → History**.
 
-Não há financeiro, cobrança, inventário, marketing, portal ou otimização automática de rotas nesta versão. As tabelas financeiras da fundação foram preservadas para não apagar dados, mas não aparecem na navegação.
+Não há financeiro, cobrança, inventário, marketing ou portal de cliente nesta versão. A expansão inclui gestão de clientes, mapas e otimização por tempo de condução com provedor configurado. As tabelas financeiras da fundação foram preservadas para não apagar dados, mas não aparecem na navegação.
 
 ## Teste fácil no navegador — sem instalar nada
 
@@ -16,7 +16,7 @@ Para conhecer o fluxo sem configurar o projeto completo:
 4. Clique em **Start service**, consulte o histórico químico de 30 dias, preencha FC/pH, produtos e foto e toque em **Complete & Next**.
 5. Use **History → Preview customer report** para visualizar o relatório. Nenhum e-mail é enviado.
 
-O arquivo `demo/index.html` é independente: pode ser copiado sozinho para outra pasta. A interface é em inglês. Dados fictícios, rascunhos e fotos ficam apenas no navegador por IndexedDB; não são sincronizados. Quando o browser não permite armazenamento, a tela avisa que a sessão é temporária. Não use dados reais de clientes.
+O arquivo `demo/index.html` é independente: pode ser copiado sozinho para outra pasta. A interface inicia em inglês; o seletor permite português e espanhol. Dados fictícios, rascunhos e fotos ficam apenas no navegador por IndexedDB; não são sincronizados. Quando o browser não permite armazenamento, a tela avisa que a sessão é temporária. Não use dados reais de clientes.
 
 A demonstração inclui cadastro de clientes, múltiplas piscinas, dias recorrentes, checklist personalizado, foto opcional/obrigatória e reordenação manual da rota. O arquivo `index.html` **na raiz** ainda é o protótipo antigo; para o protótipo atual use **demo/index.html**.
 
@@ -86,10 +86,10 @@ npm run build
 `test:db` requer Docker e descarta somente o container criado pelo próprio teste. Para testar o fluxo mobile e offline, pare o `npm run dev` com Ctrl+C e inicie o build de produção:
 
 ```bash
-npm start
+ROUTING_API_URL=http://127.0.0.1:8131 GEOCODING_API_URL=http://127.0.0.1:8131/search npm start
 ```
 
-Mantenha esse terminal aberto. Em outro terminal, crie uma **fixture nova**, valide o backend e rode os testes de navegador nesta ordem:
+Para a suíte de integração, mantenha também `node tests/integration/routing-stub.mjs` em outro terminal. Ele fornece respostas fictícias locais de mapas/endereços; use os overrides acima somente nos testes. Mantenha os terminais abertos. Em outro terminal, crie uma **fixture nova**, valide o backend e rode os testes de navegador nesta ordem:
 
 ```bash
 node tests/integration/setup.mjs
@@ -97,6 +97,8 @@ node tests/integration/backend.mjs
 npx playwright install chromium
 npx playwright test
 ```
+
+Os testes de rotas e endereço exigem o stub local na porta8131 e o Next iniciado com os overrides descritos acima. Não use essas estimativas fictícias em operação.
 
 O teste de backend espera a fixture ainda sem visitas concluídas. Cada execução de setup cria uma nova conta fictícia; para repetir a sequência, execute setup novamente. O Playwright usa Chromium do sistema quando disponível ou o browser instalado por ele; `PLAYWRIGHT_CHROMIUM_EXECUTABLE` permite indicar outro executável.
 
@@ -230,4 +232,29 @@ Resultados e limitações em [VALIDATION](docs/VALIDATION.md). Esquema, permiss�
 
 ## Histórico anterior
 
-index.html, app.js e styles.css continuam na raiz como referência; Next não os expõe em public/. A demo usa localStorage e não deve receber dados reais. Não registrar seu worker antigo no novo app. O worker da PWA nova remove o cache antigo ALYS ao ativar.
+index.html, app.js e styles.css continuam na raiz como referência; Next não os expõe em public/. O protótipo antigo usa localStorage; a demonstração atual usa IndexedDB. Nenhum deles deve receber dados reais. Não registrar seu worker antigo no novo app. O worker da PWA nova remove o cache antigo ALYS ao ativar.
+
+## Expansão: clientes, idiomas e rotas
+
+O seletor **Language** troca EN/PT/ES sem apagar formulário ou leituras e guarda a preferência neste navegador. Inglês continua padrão. Nomes, endereços e notas digitados não são traduzidos; os snapshots de relatório mantêm seus valores originais.
+
+**Clients** oferece busca, filtro por status/tags, ordenação, seleção múltipla, CSV, cadastro/edição/consulta, tags, técnico, frequência, endereço de cobrança e mensalidade em USD. Ações em lote e exclusão exigem confirmação na interface. Delete arquiva o cliente, preservando propriedades e histórico. Dados de cobrança/notas administrativas ficam em tabela acessível apenas a gestores. O preço cadastrado não representa receita recebida, MRR calculado ou lucro; não soma carteira própria com subcontratos. Atribuição/frequência no perfil do cliente não remanejam stops existentes: configure a agenda em Settings.
+
+**Route** inclui calendário semanal, mapa recolhível no celular e lista/mapa lado a lado em telas maiores. Marcadores numerados exibem o stop escolhido e permitem iniciar a visita/navegar. Há reordenação por arraste no desktop e botões no celular. Configure coordenadas em Clients, local/horário inicial no mapa e calcule ou otimize o percurso. A otimização usa matriz de tempo viário, até50 stops abertos, com heurística de melhoria; não garante ótimo global. Stops concluídos/ignorados mantêm suas posições. Alterar ordem/status invalida estimativas antigas.
+
+Configurações opcionais no servidor (reinicie o Next após alterar):
+
+```dotenv
+# Serviço compatível com OSRM table/v1 e route/v1; use uma instância autorizada.
+ROUTING_API_URL=
+# Endpoint /search compatível com Nominatim; consulta explícita, nunca automática em massa.
+GEOCODING_API_URL=
+# Tiles públicos; esta variável é incorporada no build.
+NEXT_PUBLIC_MAP_TILE_URL=https://tile.openstreetmap.org/{z}/{x}/{y}.png
+```
+
+Tiles requerem internet e atribuição OpenStreetMap. Coordenadas são enviadas ao provedor viário quando você calcula/otimiza; endereço é enviado ao geocodificador apenas ao tocar **Locate service address**. Avalie termos, capacidade e privacidade do provedor escolhido antes de operar com dados reais. Sem geocodificador, digite coordenadas; sem roteador, a lista/manual funciona e a aplicação informa que não calculou distâncias. Tiles e cálculos viários não são garantidos offline. Nesta cloud, a tentativa real de OSRM foi bloqueada pelo proxy403; testes de contrato usam um serviço local simulado.
+
+**Convites:** `CUSTOMER_INVITES_ENABLED=false` por padrão. Para habilitar, é necessário um portal HTTPS existente em `CUSTOMER_PORTAL_URL`, redirect permitido no Supabase Auth, SMTP configurado e chave administrativa somente no servidor. O app implementa pedido de convite via Auth Admin, não as páginas de portal. Claims persistentes evitam reenvio automático duplicado; pending/failed exigem reconciliação administrativa. Aceitação pelo serviço de e-mail não comprova entrega. Metadata do convite não concede acesso às tabelas. Nenhum convite externo foi enviado nesta validação.
+
+Leituras opcionais incluem cloro total (ppm) e temperatura (°F). Detalhes internos da visita registram observações do técnico, equipamentos, limpeza de filtro e reparos, com histórico imutável; esses campos não entram no relatório do cliente. Migrations006–009 acrescentam estes recursos sem resetar o banco. Execute `migration up --local` antes do app atualizado. A demonstração estática oferece idiomas, cadastro e calendário, mas não autenticação real, mapas online, otimização viária ou convites.

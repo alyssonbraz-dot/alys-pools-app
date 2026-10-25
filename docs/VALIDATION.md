@@ -2,7 +2,7 @@
 
 Executado no ambiente cloud com Node24.19.0, npm11.9.0, Next16.4.2, Supabase local e Chromium mobile emulado. Somente dados fictícios e recursos locais foram usados.
 
-## Checks aprovados
+## Validação anterior (antes da expansão)
 
 - `npm run lint`: sem erros/warnings.
 - `npm run typecheck`: TypeScript estrito aprovado.
@@ -37,4 +37,18 @@ Histórico geral limita200 visitas recentes e listas de cadastro1000; paginaçã
 
 ## Tema e entrada rápida de leituras
 
-App e demo usam azul-marinho claro. FC oferece1/3/5ppm e pH7.0/7.2/7.4/7.6/7.8/8.0 em botões grandes, com entrada manual livre e indicação da opção selecionada. A demonstração foi testada no Chromium mobile usando todos os atalhos, entrada manual fora dos presets e persistência após reload. O app Next foi testado pelo shell offline com escolha de FC/pH, alteração manual e retomada após fechar a aba. Lint, typecheck,39 testes unitários e build passaram. Estes valores são medições da água, não recomendações de dosagem.
+O tema anterior era azul-marinho claro; a entrega atual usa azul-escuro. FC oferece1/3/5ppm e pH7.0/7.2/7.4/7.6/7.8/8.0 em botões grandes, com entrada manual livre e indicação da opção selecionada. A demonstração foi testada no Chromium mobile usando todos os atalhos, entrada manual fora dos presets e persistência após reload. O app Next foi testado pelo shell offline com escolha de FC/pH, alteração manual e retomada após fechar a aba. Lint, typecheck,39 testes unitários e build passaram. Estes valores são medições da água, não recomendações de dosagem.
+
+
+## Expansão de clientes, idiomas e rotas — 25/10/2026
+
+- Lint sem erros/warnings, typecheck e build de produção aprovados.
+- 48 testes unitários em9 arquivos aprovados, incluindo i18n, CSV contra formula injection, coordenadas e matriz/contrato OSRM com respostas simuladas.
+- 6 suites SQL aprovadas com migrations001–009: clientes, tags, transações em lote/tenant inválido, cobrança privada negada ao técnico, rota atribuída, convite único, arquivo preservando propriedades; TC/temperatura e detalhes internos transacionais, imutáveis e ausentes do snapshot público.
+- Backend Supabase real local aprovado: Auth/REST/Storage e negativas de permissão.
+- 6 testes Playwright mobile aprovados: calendário, mapa/marcadores, otimização persistida, reordenação manual e invalidação de métricas, idioma persistido e formulário preservado, shell offline, visita/foto/snapshot/sync, acesso negado e tabela de clientes com busca/criação/edição/status/tag/arquivo. Convite desabilitado retorna503 sem criar jobs. API de endereço/roteamento usa stub local8131; não comprova precisão geográfica ou disponibilidade externa.
+- 3 testes da demonstração passaram, incluindo idiomas, persistência, entrada manual, foto/avanço, escape de texto e exclusão de notas privadas do relatório. HTTP estático; file:// continua bloqueado pela política do browser deste ambiente.
+
+Um teste inicial encontrou o checkbox da tabela sobreposto em viewport mobile; a lista virou cartões no celular, mantendo tabela no desktop, e o fluxo de toque passou. Downloads de arquivo são restringidos pelo Chromium gerenciado; a validação do CSV lê o Blob realmente gerado e o nome do link, sem comprovar gravação no disco pelo navegador.
+
+OSRM real retornou403 CONNECT bloqueado pelo proxy. Tiles/geocodificador reais não foram validados. As dependências/domínios foram registrados no rascunho do ambiente; salvar não aplica configuração nem publica o app. SMTP/portal estão ausentes e convites permanecem desabilitados; nenhum e-mail externo foi enviado. Notas internas ficam fora dos relatórios. Não houve deploy ou compra. Testes continuam sem validar câmera física, instalação real no celular ou restauração em outra tarefa cloud.

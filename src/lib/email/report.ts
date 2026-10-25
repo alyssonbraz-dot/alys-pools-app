@@ -1,5 +1,5 @@
 import { z } from 'zod';
-const readingSchema = z.object({ fc: z.number().optional(), ph: z.number().optional(), ta: z.number().optional(), cya: z.number().optional(), ch: z.number().optional(), salt: z.number().optional(), cc: z.number().optional() });
+const readingSchema = z.object({ fc: z.number().optional(), ph: z.number().optional(), ta: z.number().optional(), cya: z.number().optional(), ch: z.number().optional(), salt: z.number().optional(), cc: z.number().optional(), tc: z.number().optional(), temperature_f: z.number().optional() });
 export const reportSnapshotSchema = z.object({
   property_name: z.string(), customer_name: z.string(), notes: z.string().optional().default(''),
   pools: z.array(z.object({ pool_id: z.string(), pool_name: z.string(), tasks: z.array(z.string()), readings: readingSchema, dosages: z.array(z.object({ product: z.string(), quantity: z.number().nonnegative(), unit: z.string() })) }))
@@ -8,7 +8,7 @@ export type ReportSnapshot = z.infer<typeof reportSnapshotSchema>;
 export type ReportPhoto = { content: string; filename: string };
 export type ProviderPayload = { from: string; to: string[]; subject: string; html: string; text: string; attachments: { content: string; filename: string; content_type: string; content_id: string }[] };
 export const escapeHtml = (value: unknown) => String(value ?? '').replace(/[&<>"']/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[character]!);
-const readings: [keyof z.infer<typeof readingSchema>, string, string][] = [['fc','Free Chlorine',' ppm'],['ph','pH',''],['ta','Alkalinity',' ppm'],['cya','Cyanuric Acid',' ppm'],['ch','Calcium Hardness',' ppm'],['salt','Salt',' ppm'],['cc','Combined Chlorine',' ppm']];
+const readings: [keyof z.infer<typeof readingSchema>, string, string][] = [['fc','Free Chlorine',' ppm'],['ph','pH',''],['ta','Alkalinity',' ppm'],['cya','Cyanuric Acid',' ppm'],['ch','Calcium Hardness',' ppm'],['salt','Salt',' ppm'],['cc','Combined Chlorine',' ppm'],['tc','Total Chlorine',' ppm'],['temperature_f','Water temperature',' °F']];
 
 export function createServiceReport(input: { snapshot: unknown; completedAt: string; recipient: string; from: string; photos?: ReportPhoto[] }): ProviderPayload {
   const snapshot = reportSnapshotSchema.parse(input.snapshot);

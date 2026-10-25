@@ -53,7 +53,7 @@ do $$ declare payload jsonb; result jsonb; begin
   perform public.set_stop_status('96000000-0000-4000-8000-000000000001','completed');raise exception 'Status RPC completion bypass';
  exception when invalid_parameter_value then null;end;
  perform public.set_stop_status('96000000-0000-4000-8000-000000000001','in_progress');
- payload:='{"id":"98000000-0000-4000-8000-000000000001","stop_id":"96000000-0000-4000-8000-000000000001","notes":"Public visit note","photo_paths":[],"pools":[{"pool_id":"95000000-0000-4000-8000-000000000001","tasks":["Skim Surface","Test Water"],"readings":{"fc":3,"ph":7.4},"dosages":[{"product":"Liquid Chlorine","quantity":1,"unit":"gal"},{"product":"Muriatic Acid","quantity":12,"unit":"fl oz"}]},{"pool_id":"95000000-0000-4000-8000-000000000002","tasks":[],"readings":{"fc":2,"ph":7.3},"dosages":[]}]}';
+ payload:='{"id":"98000000-0000-4000-8000-000000000001","stop_id":"96000000-0000-4000-8000-000000000001","notes":"Public visit note","service_details":{"technician_notes":"SECRET STAFF ONLY","equipment_problems":"Fictional pump issue","filter_cleaning":"Fictional filter cleaned","repairs_performed":"No actual repairs"},"photo_paths":[],"pools":[{"pool_id":"95000000-0000-4000-8000-000000000001","tasks":["Skim Surface","Test Water"],"readings":{"fc":3,"ph":7.4,"tc":3.2,"temperature_f":82},"dosages":[{"product":"Liquid Chlorine","quantity":1,"unit":"gal"},{"product":"Muriatic Acid","quantity":12,"unit":"fl oz"}]},{"pool_id":"95000000-0000-4000-8000-000000000002","tasks":[],"readings":{"fc":2,"ph":7.3},"dosages":[]}]}';
  begin perform public.complete_visit(payload);raise exception 'Mandatory photo bypass';exception when invalid_parameter_value then null;end;
  payload:=jsonb_set(payload,'{photo_paths}','["92000000-0000-4000-8000-000000000001/96000000-0000-4000-8000-000000000001/97000000-0000-4000-8000-000000000001.jpg"]');
  begin perform public.complete_visit(jsonb_set(payload,'{pools,0,readings,fc}','-1'));raise exception 'Negative reading bypass';exception when invalid_parameter_value then null;end;
@@ -68,6 +68,9 @@ do $$ declare payload jsonb; result jsonb; begin
  if not (result->>'already_completed')::boolean then raise exception 'Idempotent retry failed';end if;
  if not exists(select 1 from public.visits where completed_at=now()-interval '2 days' and received_at>completed_at) then raise exception 'Offline service time replaced by sync receipt';end if;
  if (select count(*) from public.visits)<>1 or (select count(*) from public.chemical_readings)<>2 or (select count(*) from public.chemical_dosages)<>2 or (select count(*) from public.visit_checklist_items)<>2 then raise exception 'Normalized persistence mismatch';end if;
+ if not exists(select 1 from public.chemical_readings where tc=3.2 and temperature_f=82) then raise exception 'Extended chemistry missing';end if;
+ if not exists(select 1 from public.visit_service_details where technician_notes='SECRET STAFF ONLY') then raise exception 'Private service history missing';end if;
+ if exists(select 1 from public.visits where snapshot::text like '%SECRET STAFF ONLY%') then raise exception 'Internal service detail leaked into report';end if;
  if (select count(*) from public.email_delivery_logs)<>1 then raise exception 'Email queue missing or duplicated';end if;
  if (select count(*) from public.visit_photos)<>1 then raise exception 'Photo association missing';end if;
  if exists(select 1 from public.visits where snapshot::text like '%SECRET%' or snapshot::text like '%nobody@example%') then raise exception 'Private note/contact leaked into report';end if;

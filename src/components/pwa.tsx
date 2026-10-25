@@ -1,5 +1,6 @@
 'use client';
 
+import {T} from '@/components/i18n';
 import { useEffect, useState } from 'react';
 
 export function Pwa() {
@@ -21,5 +22,5 @@ export function Pwa() {
     // IDB blobs survive reloads; persistent storage is best effort and never claimed as a backup.
     navigator.storage?.persist?.().catch(() => false);
   }, []);
-  return message ? <p role="status" className="notice">{message}</p> : null;
+  return message ? <p role="status" className="notice"><T text={message}/></p> : null;
 }

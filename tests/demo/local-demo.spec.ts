@@ -40,6 +40,8 @@ test('standalone HTML has no external dependencies, saves photo and draft, compl
  await page.getByLabel('Liquid Chlorine amount',{exact:true}).fill('0.5');
  await page.getByRole('combobox',{name:'Add chemical for Main pool'}).selectOption('Muriatic Acid');
  await page.getByLabel('Muriatic Acid amount',{exact:true}).fill('12');
+ await page.getByText('Internal service details',{exact:true}).click();
+ await page.getByLabel('Technician notes',{exact:true}).fill('PRIVATE TEST NOTE');
  await page.locator('#photo-input').setInputFiles(photo);
  await expect(page.getByAltText('Captured service photo 1')).toBeVisible();
  await expect(page.getByRole('status')).toHaveText('Saved locally · no cloud sync');
@@ -57,6 +59,7 @@ test('standalone HTML has no external dependencies, saves photo and draft, compl
  await page.getByRole('link',{name:'History',exact:true}).click();
  const current=page.locator('.history-record').first();
  await current.locator('summary').click();
+ await expect(current).toContainText('PRIVATE TEST NOTE');
  await expect(current).toContainText('Free Chlorine: 3 ppm');
  await expect(current).toContainText('Muriatic Acid: 12 fl oz');
  await current.getByRole('button',{name:'Preview customer report',exact:true}).click();
@@ -64,6 +67,7 @@ test('standalone HTML has no external dependencies, saves photo and draft, compl
  await expect(dialog).toContainText('No email has been sent.');
  await expect(dialog.locator('.report')).toContainText('Liquid Chlorine: 0.5 gal');
  await expect(dialog.locator('.report')).not.toContainText('Fictional access note');
+ await expect(dialog.locator('.report')).not.toContainText('PRIVATE TEST NOTE');
  await expect(dialog.getByAltText('Service photo 1')).toBeVisible();
  expect(network).toEqual([]);expect(errors).toEqual([]);
 });
@@ -72,7 +76,7 @@ test('client and pool settings persist and input renders safely as text',async({
  await page.goto(url);
  await expect(page.getByRole('heading',{name:'Today’s Route'})).toBeVisible();
  await page.getByRole('link',{name:'Clients',exact:true}).click();
- await page.getByRole('button',{name:'＋ Add demo client'}).click();
+ await page.getByRole('button',{name:'Add Customer'}).click();
  const dialog=page.getByRole('dialog');
  await dialog.getByLabel('Client name',{exact:true}).fill('Fictional <script>client</script>');
  await dialog.getByLabel('Property name',{exact:true}).fill('Fictional Test Property');
@@ -90,4 +94,29 @@ test('client and pool settings persist and input renders safely as text',async({
  await expect(page.getByRole('heading',{name:'Fictional <script>client</script>',exact:true})).toBeVisible();
  await expect(page.getByText('Demo Test Pool',{exact:true})).toBeVisible();
  expect(await page.locator('main script').count()).toBe(0);
+});
+
+test('language selection persists and never replaces measurements or entered notes',async({page})=>{
+ await page.goto(url);
+ await expect(page.getByRole('heading',{name:'Today’s Route',exact:true})).toBeVisible();
+ await page.getByRole('combobox',{name:'Language',exact:true}).selectOption('pt');
+ await expect(page.getByRole('heading',{name:'Rota de hoje',exact:true})).toBeVisible();
+ await page.getByRole('button',{name:'Iniciar atendimento →',exact:true}).first().click();
+ await expect(page.getByRole('heading',{name:'Demo Residence 01',exact:true})).toBeVisible();
+ await page.getByRole('spinbutton',{name:'Main pool Cloro livre',exact:true}).fill('3.5');
+ await page.getByRole('spinbutton',{name:'Main pool pH',exact:true}).fill('7.3');
+ await page.locator('#visit-notes').fill('Keep this original note, 3.5 and 7.3.');
+ await page.getByRole('combobox',{name:'Idioma',exact:true}).selectOption('es');
+ await expect(page.getByRole('spinbutton',{name:'Main pool Cloro libre',exact:true})).toHaveValue('3.5');
+ await expect(page.getByRole('spinbutton',{name:'Main pool pH',exact:true})).toHaveValue('7.3');
+ await expect(page.locator('#visit-notes')).toHaveValue('Keep this original note, 3.5 and 7.3.');
+ await expect(page.getByRole('button',{name:'COMPLETAR Y SIGUIENTE →',exact:true})).toBeVisible();
+ await expect(page.getByRole('status')).toHaveText('Guardado localmente · sin nube');
+ await page.reload();
+ await expect(page.getByRole('combobox',{name:'Idioma',exact:true})).toHaveValue('es');
+ await expect(page.locator('html')).toHaveAttribute('lang','es-US');
+ await expect(page.getByRole('spinbutton',{name:'Main pool Cloro libre',exact:true})).toHaveValue('3.5');
+ await page.getByRole('combobox',{name:'Idioma',exact:true}).selectOption('en');
+ await expect(page.getByRole('spinbutton',{name:'Main pool Free Chlorine',exact:true})).toHaveValue('3.5');
+ await expect(page.locator('#visit-notes')).toHaveValue('Keep this original note, 3.5 and 7.3.');
 });

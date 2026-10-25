@@ -61,3 +61,14 @@ Outbox não depende do processo web permanecer vivo. after() tenta envio imediat
 ## Limites explícitos
 
 RLS não protege contra service_role/proprietário do banco; mantenha acesso administrativo seguro. IndexedDB é armazenamento local sensível, não cofre nem backup. Listas limitam cadastros a1000/consulta e histórico a200 visitas recentes; paginação é evolução necessária para carteiras maiores. Atalhos customizados de dose são por sessão de edição, não um receituário; persistência de preferências pode evoluir sem alterar registros. Correções atuais são notas auditáveis, não substituição de medições/novos relatórios. Recuperação de senha, MFA e backups/restauração precisam configuração de produção. Hardware iPhone/Android e entrega real de e-mail ainda exigem testes próprios antes de uso operacional.
+
+
+## Expansão de clientes e rotas (migrations006–009)
+
+`customers` mantém identidade/status/técnico/frequência e arquivo lógico; `customer_tags` organiza a carteira. `customer_details` separa cobrança, mensalidade e notas administrativas com SELECT exclusivo de owner/admin, para não expor esses dados ao técnico que consulta um cliente atribuído. RPCs `save_customer_profile` e `bulk_customers` validam organização/técnico/IDs e alteram o conjunto atomicamente. Nenhuma mensalidade é contabilizada como MRR/lucro automaticamente. `customer_invitations` guarda claim único por cliente/destinatário; somente servidor privilegiado registra resposta do Auth. Não há autorização baseada em user_metadata nem portal implementado.
+
+`properties` ganha coordenadas opcionais pareadas. `route_plans` guarda início e cálculo por organização/técnico/data; RLS permite gestores e próprio técnico, com FK composta para impedir vínculo cruzado. Fingerprint da ordem/coordenadas/tempo de serviço invalida cálculos antigos. Rotas OSRM usam matriz e geometria viárias reais; sem provedor não há estimativa. Heurística até50 stops, sem garantia de ótimo global. Finalizados mantêm posição. UI mantém reordenação manual e consulta de lista offline.
+
+`chemical_readings` acrescenta TC/temperatura. `visit_service_details` guarda detalhes internos imutáveis numa transação com a conclusão, acessíveis ao técnico responsável/gestor. Os campos não entram no snapshot público nem no payload de e-mail. A consulta de histórico por cliente filtra antes do limite200.
+
+Idiomas são dicionários EN/PT/ES no cliente com fallback inglês; preferência em localStorage, isolada do banco. Nenhuma alteração nos valores canônicos persistidos ou no texto digitado. O shell offline permanece público/estático. O mapa Leaflet carrega apenas ao expandir; desktop abre por padrão, celular recolhe. Tiles externos não fazem parte do cache privado/PWA.
