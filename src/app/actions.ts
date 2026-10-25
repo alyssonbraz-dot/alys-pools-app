@@ -56,6 +56,7 @@ export async function saveSchedule(form:FormData) {
  if(!parsed.success||(id&&!idSchema.safeParse(id).success))redirect('/settings?message=invalid');
  const row={...parsed.data,end_on:parsed.data.end_on||null,organization_id:profile.organization_id};
  const result=id?await db.from('recurring_schedules').update(row).eq('id',id).select('id'):await db.from('recurring_schedules').insert(row).select('id');
+ if(result.error?.code==='22023')redirect('/settings?message=inprogress');
  if(result.error||!result.data?.length)redirect('/settings?message=failed');
  revalidatePath('/');revalidatePath('/settings');redirect('/settings?message=saved');
 }

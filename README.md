@@ -258,3 +258,33 @@ Tiles requerem internet e atribuição OpenStreetMap. Coordenadas são enviadas 
 **Convites:** `CUSTOMER_INVITES_ENABLED=false` por padrão. Para habilitar, é necessário um portal HTTPS existente em `CUSTOMER_PORTAL_URL`, redirect permitido no Supabase Auth, SMTP configurado e chave administrativa somente no servidor. O app implementa pedido de convite via Auth Admin, não as páginas de portal. Claims persistentes evitam reenvio automático duplicado; pending/failed exigem reconciliação administrativa. Aceitação pelo serviço de e-mail não comprova entrega. Metadata do convite não concede acesso às tabelas. Nenhum convite externo foi enviado nesta validação.
 
 Leituras opcionais incluem cloro total (ppm) e temperatura (°F). Detalhes internos da visita registram observações do técnico, equipamentos, limpeza de filtro e reparos, com histórico imutável; esses campos não entram no relatório do cliente. Migrations006–009 acrescentam estes recursos sem resetar o banco. Execute `migration up --local` antes do app atualizado. A demonstração estática oferece idiomas, cadastro e calendário, mas não autenticação real, mapas online, otimização viária ou convites.
+
+## Correções da revisão e tela mobile de stops
+
+Acesse **Stops** na barra inferior ou `/stops`: lista compacta do dia atual na Flórida, filtros Remaining/Completed/All, início de visita e navegação. O app instalado abre essa tela. **Route** mantém planejamento semanal, mapa e reordenação. Settings agora oferece **Sign out** no celular; a saída avisa sobre pendências, limpa o IndexedDB e redireciona outras abas.
+
+Atualize o banco sem reset antes de iniciar esta versão:
+
+```bash
+npx --yes supabase@2.121.0 migration up --local
+```
+
+Migrations010–012 corrigem a reconciliação de agendas e permissões, adicionam pesquisa/paginação histórica, salvamento transacional de planos e orçamento de uploads. Mudança de técnico/dias reconcilia stops automáticos futuros ainda não iniciados, mantendo o ID. Concluídos e skips manuais são preservados. Agenda com atendimento em andamento exige concluir/pular esse atendimento antes de mudar. Arquivar/inativar cliente cancela os stops futuros abertos; isso também vale para os manuais. Não exclui histórico. Verifique a agenda após atualizar um banco que já contenha atendimentos antigos conflitantes.
+
+Um técnico consulta o cadastro/instruções atuais quando tem atendimento aberto entre ontem e os próximos7 dias, ou atendimento concluído ou pulado manualmente hoje. Atribuição antiga não concede códigos novos de acesso. O histórico autorizado usa snapshots e pode ser pesquisado/paginado sem depender da linha atual do imóvel. A rota carrega relacionamentos completos em páginas, sem cortes independentes de1000 registros.
+
+A CSP usa nonce por resposta e restringe scripts em produção; estilos inline continuam permitidos para Leaflet. O shell offline é HTML genérico renderizado por requisição, com seus próprios nonce/CSP preservados no cache, sem dados de sessão. HTTPS e proteção do aparelho continuam necessários. Mudanças de permissão no servidor não apagam instantaneamente informações já baixadas num aparelho offline; use dispositivo protegido e encerre a sessão ao trocar de operador.
+
+Limites de upload:12 reservas por stop,120 novas por hora por empresa e2000 acumuladas por empresa. Repetir o mesmo photo_id não consome outra reserva. Uma visita continua com até3 fotos. O limite considera tentativas/reservas, inclusive algumas falhas, para conter consumo; mensagens429 preservam a foto local. A liberação de orçamento é administrativa. Limpeza de órfãos é **dry run por padrão**, somente em stops fechados há mais de14 dias e sem foto vinculada a uma visita:
+
+```bash
+node scripts/cleanup-photos.mjs --organization=<UUID-da-organizacao>
+# Somente após revisar a simulação e autorizar a remoção dos órfãos:
+node scripts/cleanup-photos.mjs --organization=<UUID-da-organizacao> --apply
+```
+
+A manutenção precisa da chave administrativa no servidor. Não a execute com `--apply` sem revisar escopo e backup. Esta entrega não executou remoção real de arquivos. Geocodificação agora usa uma janela global persistida no banco, compartilhada entre instâncias. Convites informam aceitos/falhos/incertos/já solicitados; falhas/incertezas exigem reconciliação administrativa e não geram reenvio automático.
+
+O workflow `.github/workflows/checks.yml` executa lint, tipos, testes unitários/SQL, build e demonstração em push/PR. Os fluxos Supabase/Playwright completos continuam reproduzíveis com o procedimento local e stub descritos acima. O workflow foi adicionado; a execução no GitHub deve ser conferida em Actions após o push. Resultados e decisões: [correções da revisão](docs/CORRECOES-REVISAO.md).
+
+Ao reativar um cliente inativo, seus stops automáticos futuros cancelados por inatividade voltam à agenda. Stops manuais cancelados precisam de restauração explícita. Stops pulados podem ser restaurados pela ação Restore stop enquanto o cliente estiver ativo.

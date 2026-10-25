@@ -11,6 +11,7 @@ export const completionSchema=z.object({
 export const stopMutationSchema=z.discriminatedUnion('action',[
  z.object({action:z.literal('start'),stop_id:z.uuid()}),
  z.object({action:z.literal('skip'),stop_id:z.uuid()}),
+ z.object({action:z.literal('restore'),stop_id:z.uuid()}),
  z.object({action:z.literal('reorder'),stop_ids:z.array(z.uuid()).min(1).max(300)}),
  z.object({action:z.literal('add'),property_id:z.uuid(),technician_id:z.uuid().optional(),date:daySchema})
 ]);

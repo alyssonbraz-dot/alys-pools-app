@@ -120,3 +120,8 @@ test('language selection persists and never replaces measurements or entered not
  await expect(page.getByRole('spinbutton',{name:'Main pool Free Chlorine',exact:true})).toHaveValue('3.5');
  await expect(page.locator('#visit-notes')).toHaveValue('Keep this original note, 3.5 and 7.3.');
 });
+
+
+test('mobile daily stops screen shows current-day actions and filters',async({page})=>{
+ await page.goto(url);await page.getByRole('link',{name:'Stops',exact:true}).click();await expect(page.getByRole('heading',{name:'Today’s Stops',exact:true})).toBeVisible();await expect(page.getByRole('button',{name:'Start service →',exact:true}).first()).toBeVisible();await expect(page.locator('#route-date')).toHaveCount(0);await page.getByRole('button',{name:'Completed',exact:true}).click();await expect(page.locator('article.card:visible')).toHaveCount(0);await page.getByRole('button',{name:'All stops',exact:true}).click();await expect(page.locator('article.card:visible')).toHaveCount(4);
+});

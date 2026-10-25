@@ -3,7 +3,7 @@ export type Language='en'|'pt'|'es';
 export const LANGUAGE_STORAGE_KEY='alys-ui-language';
 export const languageTag=(language:Language)=>({en:'en-US',pt:'pt-BR',es:'es-US'})[language];
 export function normalizeLanguage(value:unknown):Language {return value==='pt'||value==='pt-BR'?'pt':value==='es'||value==='es-US'?'es':'en';}
-const catalogs=messages as Record<'pt'|'es',Record<string,string>>;
+const catalogs=Object.fromEntries(Object.entries(messages).map(([language,entries])=>[language,Object.fromEntries(Object.entries(entries).sort(([a],[b])=>Number(a===a.trim())-Number(b===b.trim())).map(([key,value])=>[key.trim(),value.trim()]))])) as Record<'pt'|'es',Record<string,string>>;
 const escapeRegex=(value:string)=>value.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
 const patterns=new Map<string,{regex:RegExp;names:string[];translation:string}[]>();
 export function translate(text:string,language:Language):string {

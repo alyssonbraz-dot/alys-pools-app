@@ -44,12 +44,14 @@ export async function POST(request: Request) {
   const { db, profile } = operator;
   const { data: stop, error: stopError } = await db.from('route_stops').select('id,status').eq('id', stopId.data).eq('organization_id', profile.organization_id).single();
   if (stopError || !stop) return json({ error: 'Stop not found or access denied.' }, 404);
-  const path = `${profile.organization_id}/${stop.id}/${photoId.data}.jpg`;
+  const path = `${profile.organization_id}/${stop.id}/${photoId.data.toLowerCase()}.jpg`;
   // Deterministic IDs make retries recoverable after an upload response is lost.
   const bucket = db.storage.from('visit-photos');
   const existing = await bucket.download(path);
   if (!existing.error && existing.data) return json({ path });
   if (stop.status === 'completed' || stop.status === 'skipped') return json({ error: 'Photos cannot be changed after the stop is closed.' }, 409);
+  const {data:reserved,error:quotaError}=await db.rpc('reserve_photo_upload',{p_stop:stop.id,p_photo:photoId.data});
+  if(quotaError||!reserved)return json({error:'Photo upload budget reached. Keep your local photo and contact the administrator.'},429);
   let image: Buffer;
   try {
     const bytes = Buffer.from(await file.arrayBuffer());

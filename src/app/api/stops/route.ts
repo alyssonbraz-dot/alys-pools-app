@@ -12,7 +12,7 @@ export async function POST(request:Request) {
   if(!['owner','admin'].includes(profile.role))return json({error:'Manager access required.'},403);
   result=await db.rpc('add_route_stop',{p_property_id:data.property_id,p_technician_id:data.technician_id??user.id,p_date:data.date});
  }else if(data.action==='reorder')result=await db.rpc('reorder_route',{p_stop_ids:data.stop_ids});
- else result=await db.rpc('set_stop_status',{p_stop_id:data.stop_id,p_status:data.action==='start'?'in_progress':'skipped'});
+ else result=await db.rpc('set_stop_status',{p_stop_id:data.stop_id,p_status:data.action==='start'?'in_progress':data.action==='restore'?'pending':'skipped'});
  if(result.error)throw new Error('Stop mutation failed');
  return json({ok:true,id:result.data});
  }catch(error){return apiError(error);}

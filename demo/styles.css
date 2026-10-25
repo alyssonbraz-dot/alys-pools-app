@@ -6,3 +6,5 @@
 
 .week-days{display:grid;grid-template-columns:repeat(7,1fr);gap:5px;margin:10px 0 17px}.week-days button{display:flex;flex-direction:column;align-items:center;justify-content:center;border:1px solid #cbd9e7;background:white;border-radius:8px;min-height:60px;color:#34506a}.week-days button span{font-size:11px}.week-days .selected{background:#163e62;color:white}.demo-table-wrap{overflow:auto;background:white;border:1px solid #dce7eb;border-radius:12px}.demo-table{width:100%;border-collapse:collapse;min-width:900px;font-size:12px}.demo-table th,.demo-table td{padding:12px;text-align:left;vertical-align:top;border-bottom:1px solid #e3eaf1}.demo-table th{background:#f0f4f9;color:#49627b}.demo-table h2{font-size:15px}.demo-table small{display:block;color:#5d7488}.demo-table .button{min-height:36px;padding:7px 9px;font-size:11px}.demo-table .quiet{font-size:11px}.topbar{background:#0b2332}
 @media(max-width:600px){.topbar{flex-wrap:wrap;gap:6px 12px}.topbar .device-state{display:block;width:100%;max-width:none;flex-basis:100%;text-align:right;font-size:10px}}
+
+nav{grid-template-columns:repeat(5,minmax(0,1fr))}[hidden]{display:none!important}

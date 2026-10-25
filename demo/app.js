@@ -15,6 +15,7 @@
  const button=(action,label,extra='',secondary=false)=>`<button type="button" class="button ${secondary?'secondary':''}" data-action="${action}" ${extra}>${label}</button>`;
  const field=(name,label,value='',type='text',extra='')=>`<label class="field">${label}<input name="${name}" type="${type}" value="${esc(value)}" ${extra}></label>`;
  let db,storage=null,saveTimer,saveChain=Promise.resolve(),photoBusy=false,saveSequence=0;
+ let dailyFilter='remaining';
  let customerSearch='',customerStatus='all',customerTag='',customerSort='name',selectedCustomers=[];
  const dictionaries=window.ALYS_DEMO_MESSAGES;
  const language=()=>db?.language==='pt'?'pt':db?.language==='es'?'es':'en';
@@ -48,7 +49,7 @@
   document.documentElement.lang=languageTag();const select=document.querySelector('#language-select');select.value=language();select.setAttribute('aria-label',tr('Language'));select.previousElementSibling.textContent=tr('Language');
   const banner=document.querySelector('.demo-banner');banner.textContent=tr('Demo only · Fictional data · Saved in this browser · No login, cloud sync or email sending');
   document.querySelector('#close-modal').setAttribute('aria-label',tr('Close dialog'));
-  for(const a of document.querySelectorAll('#nav a')){const original={route:'Route',clients:'Clients',history:'History',settings:'Settings'}[a.hash.slice(1)];a.querySelector('span').textContent=tr(original);a.setAttribute('aria-label',tr(original));}
+  for(const a of document.querySelectorAll('#nav a')){const original={stops:'Stops',route:'Route',clients:'Clients',history:'History',settings:'Settings'}[a.hash.slice(1)];a.querySelector('span').textContent=tr(original);a.setAttribute('aria-label',tr(original));}
   if(savedLabel.dataset.message)setSaveStatus(savedLabel.dataset.message);
  }
  function toast(text){const el=document.querySelector('#toast');el.textContent=tr(text);el.hidden=false;clearTimeout(toast.timer);toast.timer=setTimeout(()=>{el.hidden=true;},4000);}
@@ -98,6 +99,16 @@
   const current=list.find(s=>!['completed','skipped'].includes(s.status));
   return `<div class="heading between"><div><div class="kicker">FAST ROUTE</div><h1>Today’s Route</h1><p class="sub">${new Intl.DateTimeFormat(languageTag(),{weekday:'long',month:'long',day:'numeric',timeZone:'America/New_York'}).format(new Date(db.date+'T12:00:00Z'))} · ${list.length} stops</p></div><label class="field">Service date<input type="date" class="date" id="route-date" value="${db.date}"></label></div><div class="hero"><span class="kicker" style="color:#deebfa">YOUR ROUTE, MADE SIMPLE</span><h2>Less tapping. More pool time.</h2><p>Try a visit with fictional data. Everything stays in this browser.</p></div>${weekCalendar()}<div class="progress" role="progressbar" aria-label="Completed stops" aria-valuemin="0" aria-valuemax="${list.length||1}" aria-valuenow="${done}"><span style="width:${list.length?done/list.length*100:0}%"></span></div><div class="stats"><strong>${done} / ${list.length} completed</strong><span>${left} remaining · local demo</span></div>${list.length?list.map((s,i)=>{const c=client(s.client_id);return `<article class="card ${s.id===current?.id?'current':''}"><div class="row"><span class="number">${i+1}</span><div class="grow"><h2 class="stop-title"><span data-original>${esc(c.property_name||c.name)}</span></h2><p class="muted"><span data-original>${esc(c.address)}</span></p><span class="tiny">${c.pools.length} pool${c.pools.length===1?'':'s'}</span></div><span class="badge ${s.status}">${({pending:'Pending',in_progress:'In progress',completed:'Completed',skipped:'Skipped'})[s.status]}</span></div><div class="actions">${s.status==='completed'?button('history','View service history','',true):s.status==='skipped'?button('unskip','Restore stop',`data-id="${s.id}"`,true):`<button class="button grow" data-action="start" data-id="${s.id}">${s.status==='in_progress'?'Continue service →':'Start service →'}</button>${button('skip','Skip stop',`data-id="${s.id}"`,true)}`}<button class="quiet" data-action="up" data-id="${s.id}" aria-label="Move ${esc(c.property_name)} up" ${i===0?'disabled':''}>↑</button><button class="quiet" data-action="down" data-id="${s.id}" aria-label="Move ${esc(c.property_name)} down" ${i===list.length-1?'disabled':''}>↓</button></div></article>`;}).join(''):'<div class="card empty">No service days match this date. Add a client or choose another day.</div>'}`;
  }
+ function dailyPage(){
+  db.date=today();ensureDay();
+  const template=document.createElement('template');template.innerHTML=routePage();
+  template.content.querySelector('h1').textContent='Today’s Stops';
+  template.content.querySelectorAll('.hero,.route-calendar,.heading label,[data-action="up"],[data-action="down"]').forEach(node=>node.remove());
+  template.content.querySelectorAll('article.card').forEach(card=>{const completed=card.querySelector('.badge').classList.contains('completed'),skipped=card.querySelector('.badge').classList.contains('skipped');card.hidden=dailyFilter==='completed'?!completed:dailyFilter==='remaining'?(completed||skipped):false;});
+  const filters=document.createElement('div');filters.className='actions section';filters.innerHTML=['remaining','completed','all'].map(value=>button('daily-filter',value==='remaining'?'Remaining':value==='completed'?'Completed':'All stops',`data-value="${value}" aria-pressed="${dailyFilter===value}"`,dailyFilter!==value)).join('');
+  template.content.querySelector('.stats').after(filters);
+  return template.innerHTML;
+ }
  function chemistry(p){
   const from=dayPlus(db.date,-29);
   const rows=db.visits.filter(v=>{const d=new Intl.DateTimeFormat('en-CA',{timeZone:'America/New_York',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(v.completed_at));return d>=from&&d<=db.date&&v.pools.some(x=>x.pool_id===p.id);}).sort((a,b)=>b.completed_at.localeCompare(a.completed_at));
@@ -129,7 +140,7 @@
  function render(){
   const path=currentPath();
   document.querySelectorAll('#nav a').forEach(a=>{const section=path.startsWith('visit/')?'route':path;a.classList.toggle('active',a.hash==='#'+section);if(a.classList.contains('active'))a.setAttribute('aria-current','page');else a.removeAttribute('aria-current');});
-  app.innerHTML=localizeHTML(path.startsWith('visit/')?visitPage(path.slice(6)):path==='clients'?clientsPage():path==='history'?historyPage():path==='settings'?settingsPage():routePage());
+  app.innerHTML=localizeHTML(path.startsWith('visit/')?visitPage(path.slice(6)):path==='stops'?dailyPage():path==='clients'?clientsPage():path==='history'?historyPage():path==='settings'?settingsPage():routePage());
  }
  function activeDraft(){const id=currentPath().startsWith('visit/')?currentPath().slice(6):null;return id?db.drafts[id]:null;}
  function showModal(title,body){document.querySelector('#modal-title').textContent=tr(title);document.querySelector('#modal-content').innerHTML=localizeHTML(body);modal.showModal();}
@@ -181,7 +192,8 @@
  document.addEventListener('click',async event=>{
   const el=event.target.closest('[data-action]');if(!el||el.disabled)return;
   const action=el.dataset.action,id=el.dataset.id,d=activeDraft();
-  if(['route','clients','history','settings'].includes(action))return navigate(action);
+  if(action==='daily-filter'){dailyFilter=el.dataset.value;render();return;}
+  if(['route','stops','clients','history','settings'].includes(action))return navigate(action);
   if(['week-back','week-next','date-today','pick-day'].includes(action)){db.date=action==='date-today'?today():action==='pick-day'?el.dataset.value:dayPlus(db.date,action==='week-back'?-7:7);ensureDay();render();await saveNow();}
   if(action==='view-client'){clientModal(client(id));document.querySelectorAll('#modal-content input,#modal-content select,#modal-content textarea,#modal-content button').forEach(el=>el.disabled=true);}
   if(action==='archive-client'){if(!window.confirm(tr('Archive selected customers? Their service history will be preserved.')))return;const c=client(id);c.archived=true;c.active=false;c.status='inactive';await saveNow();render();}

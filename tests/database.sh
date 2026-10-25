@@ -5,10 +5,12 @@ name="alys-rls-${RANDOM}-${RANDOM}"
 trap 'docker rm -f "$name" >/dev/null 2>&1 || true' EXIT
 # Disposable local container: no ports, volumes or real customer data.
 docker run -d --name "$name" -e POSTGRES_HOST_AUTH_METHOD=trust postgres:17-alpine >/dev/null
+ready=false
 for attempt in {1..60}; do
-  if docker exec "$name" pg_isready -U postgres >/dev/null 2>&1; then break; fi
+  if docker exec "$name" pg_isready -h 127.0.0.1 -U postgres >/dev/null 2>&1; then ready=true;break; fi
   sleep 1
 done
+if [[ "$ready" != true ]]; then echo 'Disposable PostgreSQL did not become ready' >&2; exit 1; fi
 docker exec -i "$name" psql -v ON_ERROR_STOP=1 -U postgres <<'SQL'
 create role anon nologin;
 create role authenticated nologin;

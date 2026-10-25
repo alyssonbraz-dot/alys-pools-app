@@ -52,3 +52,18 @@ O tema anterior era azul-marinho claro; a entrega atual usa azul-escuro. FC ofer
 Um teste inicial encontrou o checkbox da tabela sobreposto em viewport mobile; a lista virou cartões no celular, mantendo tabela no desktop, e o fluxo de toque passou. Downloads de arquivo são restringidos pelo Chromium gerenciado; a validação do CSV lê o Blob realmente gerado e o nome do link, sem comprovar gravação no disco pelo navegador.
 
 OSRM real retornou403 CONNECT bloqueado pelo proxy. Tiles/geocodificador reais não foram validados. As dependências/domínios foram registrados no rascunho do ambiente; salvar não aplica configuração nem publica o app. SMTP/portal estão ausentes e convites permanecem desabilitados; nenhum e-mail externo foi enviado. Notas internas ficam fora dos relatórios. Não houve deploy ou compra. Testes continuam sem validar câmera física, instalação real no celular ou restauração em outra tarefa cloud.
+
+## Correções da revisão e Stops mobile — 25/10/2026
+
+- Lint sem erros/warnings, typecheck,50 testes unitários em10 arquivos e build de produção aprovados.
+- 7 suítes SQL com migrations001–012 aprovadas. Nova suíte verifica reatribuição estável sem duplicação, desativação/reativação, skip manual preservado, bloqueio de alteração com visita iniciada, arquivo cancelando futuros abertos, negativa de acesso a gate notes atuais por técnico histórico, paginação/pesquisa com260 visitas, plano inválido/obsoleto rejeitado, cota de uploads, throttle persistido e permissões de manutenção.
+- Backend Supabase real local passou novamente. Migrações010–012 aplicadas no banco local sem reset. Nenhum banco hospedado foi alterado.
+- 9 testes de integração passaram juntos em produção local: rotas/mapa/otimização com stub, idiomas, offline, visita/foto/snapshot/sync, negativas de acesso e CRUD. Após ajustes finais de navegação, os4 testes relacionados a Stops/offline/revisão passaram novamente, incluindo visita aberta a partir de Stops, reload, retorno à mesma tela e saída em duas abas.
+- 4 testes da demonstração passaram: fluxo completo, cadastros, idiomas e nova aba Stops com filtros. Nenhuma dependência externa carregada pela demo. Abertura file:// permanece sem validação por restrição do browser gerenciado.
+- CSP de scripts foi exercitada com HTML contendo script sem nonce, que não executou. A injeção direta via DevTools não é um teste adequado da política; a reprodução final usa conteúdo de documento, preservando os headers reais.
+- O teste de exportação CSV passou lendo o Blob gerado, sem fetch(blob:) e sem relaxar connect-src. Gravação no disco continua sujeita à política do browser.
+- O shell offline com nonce/CSP preservados reabriu a rota, o rascunho e `/stops` sem rede. A tela de stops foi inspecionada em screenshot mobile emulado.
+
+A manutenção de fotos foi executada somente em simulação local, sem remoção de arquivos. CI foi adicionado, mas não se presume resultado remoto. Provedores de e-mail/portal/roteamento externos, backups hospedados e aparelhos físicos continuam sem validação nesta entrega. Nenhum deploy, envio externo ou serviço pago foi ativado. Detalhes das correções em CORRECOES-REVISAO.md.
+
+A espera do PostgreSQL descartável passou a conferir TCP, evitando confundir o servidor temporário de inicialização com a instância final. A última execução de todas as7 suítes foi concluída sem erros.

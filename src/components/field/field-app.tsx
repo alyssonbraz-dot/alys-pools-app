@@ -4,7 +4,7 @@ import {DateText,T,LocaleInput,LocaleSelect,LocaleTextarea} from '@/components/i
 import Image from 'next/image';
 import {WeekCalendar,RoutePlanner,Arrival} from '@/components/route-planner';
 import Link from 'next/link';
-import { useCallback, useEffect, useEffectEvent, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useEffectEvent, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import type { CompletionPayload, Dosage, PoolConfig, PoolVisit, ReadingKey, RouteData, RouteStop } from '@/lib/field/types';
 import { floridaDay, READING_LABELS } from '@/lib/field/types';
 import { compressPhoto } from '@/lib/field/photos';
@@ -24,9 +24,17 @@ const messageOf=(error:unknown)=>error instanceof Error?error.message:'Something
 const statusLabel:Record<string,string>={pending:'Pending',in_progress:'In progress',completed:'Completed',skipped:'Skipped',queued:'Saved on device',failed:'Needs attention'};
 function scopeOf(route:RouteData):OfflineScope{return {userId:route.userId,organizationId:route.orgId};}
 
-export function FieldApp({initialStopId,initialDate,initialRoute,offline=false,expectedScope}:{initialStopId?:string;initialDate?:string;initialRoute?:RouteData;offline?:boolean;expectedScope?:OfflineScope}) {
+const subscribePath=()=>()=>{};
+export function FieldApp({initialStopId,initialDate,initialRoute,offline=false,expectedScope,daily=false}:{initialStopId?:string;initialDate?:string;initialRoute?:RouteData;offline?:boolean;expectedScope?:OfflineScope;daily?:boolean}) {
   const [highlightedStop,setHighlightedStop]=useState<string|null>(null);
-  const [date,setDate]=useState(initialDate??initialRoute?.date??floridaDay());
+  const [stopFilter,setStopFilter]=useState('remaining');
+  const latestRequest=useRef(0);
+  const routeAbort=useRef<AbortController|null>(null);
+  const dailyPath=useSyncExternalStore(subscribePath,()=>window.location.pathname==='/stops'||new URLSearchParams(window.location.search).get('view')==='stops',()=>false);
+  const isDaily=daily||(offline&&dailyPath);
+  const [date,setDateState]=useState(initialDate??initialRoute?.date??floridaDay());
+  const selectedDay=useRef(date);
+  const setDate=useCallback((day:string)=>{selectedDay.current=day;routeAbort.current?.abort();setDateState(day);},[]);
   const [route,setRoute]=useState<RouteData|null>(initialRoute??null);
   const [scope,setScope]=useState<OfflineScope|null>(expectedScope??(initialRoute?scopeOf(initialRoute):null));
   const [activeStopId,setActiveStopId]=useState<string|null>(initialStopId??null);
@@ -44,23 +52,31 @@ export function FieldApp({initialStopId,initialDate,initialRoute,offline=false,e
     const items=await getQueue(currentScope);setQueue(items);return items;
   },[]);
   const loadRoute=useCallback(async(day:string,currentScope?:OfflineScope|null)=>{
+    if(day!==selectedDay.current)return null;
+    const version=++latestRequest.current;
+    routeAbort.current?.abort();
+    const controller=new AbortController();routeAbort.current=controller;
     try {
       const epoch=await getDeviceEpoch();
-      const data=await request<RouteData>('/api/route?date='+encodeURIComponent(day));
+      const data=await request<RouteData>('/api/route?date='+encodeURIComponent(day),{signal:controller.signal});
+      if(version!==latestRequest.current||controller.signal.aborted||day!==selectedDay.current)return null;
       const identity=scopeOf(data);
       if(expectedScope&&(identity.userId!==expectedScope.userId||identity.organizationId!==expectedScope.organizationId))throw new Error('The signed-in account changed. Reload this page before continuing.');
       await cacheRoute(identity,data,epoch);
+      if(version!==latestRequest.current||controller.signal.aborted||day!==selectedDay.current)return null;
       setScope(identity);setRoute(data);setCached(false);setError('');
       await refreshQueue(identity);
       return data;
     } catch(cause) {
+      if(version!==latestRequest.current||controller.signal.aborted||day!==selectedDay.current)return null;
       if(cause instanceof Error&&cause.message.startsWith('The signed-in account changed')){setRoute(null);setError(cause.message);return null;}
       const identity=expectedScope??currentScope??await getActiveScope();
       const saved=identity?await getCachedRoute(identity,day):null;
+      if(version!==latestRequest.current||controller.signal.aborted||day!==selectedDay.current)return null;
       if(saved&&identity){setScope(identity);setRoute(saved);setCached(true);await refreshQueue(identity);}
       else setRoute(null);
       setError(messageOf(cause));return null;
-    } finally {setLoading(false);}
+    } finally {if(version===latestRequest.current)setLoading(false);}
   },[refreshQueue,expectedScope]);
 
   const flush=useCallback(async(currentScope:OfflineScope)=>{
@@ -89,7 +105,7 @@ export function FieldApp({initialStopId,initialDate,initialRoute,offline=false,e
         if(cancelled)return;
         offlineBootstrapped.current=true;
         const queryDate=new URLSearchParams(window.location.search).get('date');
-        const selected=queryDate&&/^\d{4}-\d{2}-\d{2}$/.test(queryDate)?queryDate:latest?.date;
+        const selected=window.location.pathname==='/stops'?floridaDay():queryDate&&/^\d{4}-\d{2}-\d{2}$/.test(queryDate)?queryDate:latest?.date;
         const pathStop=window.location.pathname.match(/^\/visit\/([a-f0-9-]+)$/i)?.[1];
         if(pathStop)setActiveStopId(pathStop);
         if(selected&&selected!==date){setDate(selected);return;}
@@ -97,8 +113,8 @@ export function FieldApp({initialStopId,initialDate,initialRoute,offline=false,e
       await loadRoute(date,identity);
     }
     void init();
-    return()=>{cancelled=true;};
-  },[date,initialRoute,loadRoute,expectedScope,offline,initialDate]);
+    return()=>{cancelled=true;routeAbort.current?.abort();};
+  },[date,initialRoute,loadRoute,expectedScope,offline,initialDate,setDate]);
 
   useEffect(()=>{
     const update=()=>setOnline(navigator.onLine);
@@ -114,7 +130,7 @@ export function FieldApp({initialStopId,initialDate,initialRoute,offline=false,e
 
   function openStop(id:string|null){
     setActiveStopId(id);setError('');
-    const path=id?`/visit/${id}?date=${date}`:`/?date=${date}`;
+    const path=id?`/visit/${id}?date=${date}${isDaily?'&view=stops':''}`:`${isDaily?'/stops':'/'}?date=${date}`;
     if(!offline)window.history.replaceState(null,'',path);
     window.scrollTo({top:0,behavior:'instant'});
   }
@@ -165,7 +181,7 @@ export function FieldApp({initialStopId,initialDate,initialRoute,offline=false,e
     if(online)void flush(scope);
   }
 
-  return <div className="field-app">
+  return <div className={`field-app ${isDaily?'daily-mode':''}`}>
     <div className="field-row-between"><span className="field-kicker"><T text="FAST ROUTE"/></span><span className="field-tiny"><span className={`field-network-dot ${online?'':'field-network-dot-offline'}`}/> {online?<T text={'Online'}/>:<T text={'Offline'}/>}{syncing?<T text={' · Syncing…'}/>:''}</span></div>
     {notice&&<div className="field-alert" role="status"><T text={notice}/><button className="field-button field-button-quiet field-button-small" onClick={()=>setNotice('')} aria-label="Dismiss notification">×</button></div>}
     {error&&<div className="field-alert field-alert-warning" role="alert"><T text={error}/>{error.toLowerCase().includes('sign in')&&<Link className="field-auth-link" href="/login"><T text="Sign in"/></Link>}</div>}
@@ -175,15 +191,17 @@ export function FieldApp({initialStopId,initialDate,initialRoute,offline=false,e
     {!loading&&!route?<div className="field-empty"><h1 className="field-heading"><T text="Your route is unavailable"/></h1><p><T text="Connect and sign in to save today’s route for field use."/></p><Link className="field-button" href="/login"><T text="Sign in"/></Link><button className="field-button field-button-secondary" onClick={()=>void loadRoute(date,scope)}><T text="Try again"/></button></div>:null}
     {route&&scope&&(stop?<VisitEditor key={stop.id} stop={stop} index={serviceStops.indexOf(stop)+1} total={serviceStops.length} scope={scope} queued={queuedIds.has(stop.id)} onBack={()=>openStop(null)} onComplete={completed}/>:<>
       {activeStopId&&!stop&&<p className="field-alert field-alert-warning"><T text="This stop is not in the selected route or is no longer assigned to you."/></p>}
-      <header className="field-top"><div><h1 className="field-heading"><T text="Today’s Route"/></h1><p className="field-subtitle"><DateText value={date} options={{weekday:'long',month:'short',day:'numeric'}}/> · {displayStops.length} <T text="stop"/>{displayStops.length===1?'':<T text={'s'}/>}</p></div><label className="field-input-label"><T text="Service date"/><LocaleInput className="field-date" type="date" value={date} onChange={event=>{if(event.target.value){setDate(event.target.value);setActiveStopId(null);setLoading(true);setRoute(null);}}}/></label></header>
+      <header className="field-top"><div><h1 className="field-heading"><T text={isDaily?"Today’s Stops":"Today’s Route"}/></h1><p className="field-subtitle"><DateText value={date} options={{weekday:'long',month:'short',day:'numeric'}}/> · {displayStops.length} <T text="stop"/>{displayStops.length===1?'':<T text={'s'}/>}</p></div>{!isDaily&&<label className="field-input-label"><T text="Service date"/><LocaleInput className="field-date" type="date" value={date} onChange={event=>{if(event.target.value){setDate(event.target.value);setActiveStopId(null);setLoading(true);setRoute(null);}}}/></label>}</header>
       <div className="field-row">{route.role!=='technician'&&<label className="field-input-label field-grow"><T text="Route for"/><LocaleSelect value={selectedTechnician??route.userId} onChange={event=>setTechnician(event.target.value)}><option value="all"><T text="All technicians"/></option>{route.technicians?.map(person=><option key={person.id} value={person.id}>{person.display_name}{person.id===route.userId?<T text={' (my route)'}/>:''}</option>)}</LocaleSelect></label>}</div>
-      <WeekCalendar date={date} onChange={day=>{setDate(day);setActiveStopId(null);}}/><div className="field-progress" role="progressbar" aria-label="Completed visits" aria-valuemin={0} aria-valuemax={displayStops.length||1} aria-valuenow={completeCount}><span style={{width:`${displayStops.length?completeCount/displayStops.length*100:0}%`}}/></div><div className="field-progress-copy"><strong>{completeCount} / {displayStops.length} <T text="completed · synced"/></strong><span>{remaining} <T text="remaining"/>{selectedQueuedCount?` · ${selectedQueuedCount} on device`:''}</span></div>
-      <div className="route-workspace"><div>{!displayStops.length?<div className="field-empty"><h2><T text="A clear route, ready to plan."/></h2><p><T text="Add a stop below, or configure recurring service days in Clients."/></p></div>:<ol className="field-route-list">{displayStops.map((item,index)=>{
+      {!isDaily&&<WeekCalendar date={date} onChange={day=>{setDate(day);setActiveStopId(null);}}/>}<div className="field-progress" role="progressbar" aria-label="Completed visits" aria-valuemin={0} aria-valuemax={displayStops.length||1} aria-valuenow={completeCount}><span style={{width:`${displayStops.length?completeCount/displayStops.length*100:0}%`}}/></div><div className="field-progress-copy"><strong>{completeCount} / {displayStops.length} <T text="completed · synced"/></strong><span>{remaining} <T text="remaining"/>{selectedQueuedCount?` · ${selectedQueuedCount} on device`:''}</span></div>
+      {isDaily&&<><div className="field-tabs" role="group" aria-label="Stop status">{['remaining','completed','all'].map(value=><button key={value} className={`field-button ${stopFilter===value?'':'field-button-secondary'}`} aria-pressed={stopFilter===value} onClick={()=>setStopFilter(value)}><T text={value==='remaining'?'Remaining':value==='completed'?'Completed':'All stops'}/></button>)}</div><Link className="field-back" href="/"><T text="Open weekly planner"/></Link></>}
+      <div className={isDaily?'daily-stops':'route-workspace'}><div>{!displayStops.length?<div className="field-empty"><h2><T text="A clear route, ready to plan."/></h2><p><T text="Add a stop below, or configure recurring service days in Clients."/></p></div>:<ol className="field-route-list">{displayStops.filter(item=>!isDaily||stopFilter==='all'||(stopFilter==='completed'?item.status==='completed'||queuedIds.has(item.id):!['completed','skipped'].includes(item.status)&&!queuedIds.has(item.id))).map((item,index)=>{
         const queued=queuedIds.has(item.id),status=queued?'queued':item.status;
         const siblings=route.stops.filter(s=>s.technician_id===item.technician_id),siblingIndex=siblings.findIndex(s=>s.id===item.id);
-        return <li className={`field-stop ${item.id===current?.id?'field-stop-current':''} ${item.id===highlightedStop?'field-stop-selected':''}`} key={item.id} draggable={online&&!queued} onDragStart={event=>event.dataTransfer.setData('text/plain',item.id)} onDragOver={event=>event.preventDefault()} onDrop={event=>dropStop(event,item)}><div className="field-stop-header"><span className="field-stop-number">{index+1}</span><div className="field-stop-copy"><h2 className="field-stop-title"><button className="route-stop-select" onClick={()=>setHighlightedStop(item.id)}>{item.property.name||item.customer.name}</button></h2><p className="field-stop-address">{item.property.address}</p><p className="field-tiny"><T text={item.service_type??'Pool maintenance'}/></p>{route.route_plans?.[item.technician_id]?.calculation&&<Arrival plan={route.route_plans[item.technician_id].calculation!} stopId={item.id}/>}{route.role!=='technician'&&route.technicians&&<p className="field-tiny">{route.technicians.find(t=>t.id===item.technician_id)?.display_name??'Assigned technician'}</p>}</div><span className={`field-badge field-badge-${status}`}><T text={statusLabel[status]}/></span></div><div className="field-stop-actions">{!['completed','skipped'].includes(item.status)?<button className="field-button field-grow" onClick={()=>startStop(item)}>{queued?<T text={'Review saved visit'}/>:item.status==='in_progress'?<T text={'Continue service →'}/>:<T text={'Start service →'}/>}</button>:<Link className="field-button field-button-secondary field-grow" href="/history"><T text="View history"/></Link>}<a className="field-button field-button-secondary" href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(item.property.address)}`} target="_blank" rel="noopener noreferrer" aria-label={`Navigate to ${item.property.name||item.customer.name}`}><T text="Navigate ↗"/></a><a className="field-button field-button-quiet field-button-small" href={`https://maps.apple.com/?daddr=${encodeURIComponent(item.property.address)}`} target="_blank" rel="noopener noreferrer"><T text="Apple Maps"/></a>{!['completed','skipped'].includes(item.status)&&!queued&&<button className="field-button field-button-quiet field-button-small" disabled={!online} onClick={()=>void mutateStop({action:'skip',stop_id:item.id})}><T text="Skip stop"/></button>}<div className="field-order"><button aria-label={`Move ${item.property.name||item.customer.name} up`} disabled={!online||siblingIndex===0} onClick={()=>reorder(item,-1)}>↑</button><button aria-label={`Move ${item.property.name||item.customer.name} down`} disabled={!online||siblingIndex===siblings.length-1} onClick={()=>reorder(item,1)}>↓</button></div></div></li>;
+        return <li className={`field-stop ${item.id===current?.id?'field-stop-current':''} ${item.id===highlightedStop?'field-stop-selected':''}`} key={item.id} draggable={online&&!queued} onDragStart={event=>event.dataTransfer.setData('text/plain',item.id)} onDragOver={event=>event.preventDefault()} onDrop={event=>dropStop(event,item)}><div className="field-stop-header"><span className="field-stop-number">{index+1}</span><div className="field-stop-copy"><h2 className="field-stop-title"><button className="route-stop-select" onClick={()=>setHighlightedStop(item.id)}>{item.property.name||item.customer.name}</button></h2><p className="field-stop-address">{item.property.address}</p><p className="field-tiny"><T text={item.service_type??'Pool maintenance'}/></p>{route.route_plans?.[item.technician_id]?.calculation&&<Arrival plan={route.route_plans[item.technician_id].calculation!} stopId={item.id}/>}{route.role!=='technician'&&route.technicians&&<p className="field-tiny">{route.technicians.find(t=>t.id===item.technician_id)?.display_name??'Assigned technician'}</p>}</div><span className={`field-badge field-badge-${status}`}><T text={statusLabel[status]}/></span></div><div className="field-stop-actions">{!['completed','skipped'].includes(item.status)?<button className="field-button field-grow" onClick={()=>startStop(item)}>{queued?<T text={'Review saved visit'}/>:item.status==='in_progress'?<T text={'Continue service →'}/>:<T text={'Start service →'}/>}</button>:item.status==='skipped'?<button className="field-button field-button-secondary field-grow" disabled={!online} onClick={()=>void mutateStop({action:'restore',stop_id:item.id})}><T text="Restore stop"/></button>:<Link className="field-button field-button-secondary field-grow" href="/history"><T text="View history"/></Link>}<a className="field-button field-button-secondary" href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(item.property.address)}`} target="_blank" rel="noopener noreferrer" aria-label={`Navigate to ${item.property.name||item.customer.name}`}><T text="Navigate ↗"/></a><a className="field-button field-button-quiet field-button-small" href={`https://maps.apple.com/?daddr=${encodeURIComponent(item.property.address)}`} target="_blank" rel="noopener noreferrer"><T text="Apple Maps"/></a>{!['completed','skipped'].includes(item.status)&&!queued&&<button className="field-button field-button-quiet field-button-small" disabled={!online} onClick={()=>void mutateStop({action:'skip',stop_id:item.id})}><T text="Skip stop"/></button>}<div className="field-order"><button aria-label={`Move ${item.property.name||item.customer.name} up`} disabled={!online||siblingIndex===0} onClick={()=>reorder(item,-1)}>↑</button><button aria-label={`Move ${item.property.name||item.customer.name} down`} disabled={!online||siblingIndex===siblings.length-1} onClick={()=>reorder(item,1)}>↓</button></div></div></li>;
       })}</ol>}
-      {route.role!=='technician'&&route.properties&&<AddStop key={selectedTechnician} route={route} technicianId={selectedTechnician==='all'?route.userId:selectedTechnician} online={online} onAdd={mutateStop}/>}</div><RoutePlanner key={`${date}:${selectedTechnician}`} route={route} stops={displayStops} selected={highlightedStop} onHighlight={setHighlightedStop} technicianId={selectedTechnician??route.userId} onSelect={startStop} onRefresh={()=>loadRoute(date,scope)}/></div>
+      {isDaily&&stopFilter==='remaining'&&remaining===0&&<p className="field-empty"><T text="No remaining stops. Check Completed or All stops."/></p>}
+      {!isDaily&&route.role!=='technician'&&route.properties&&<AddStop key={selectedTechnician} route={route} technicianId={selectedTechnician==='all'?route.userId:selectedTechnician} online={online} onAdd={mutateStop}/>}</div>{!isDaily&&<RoutePlanner key={`${date}:${selectedTechnician}`} route={route} stops={displayStops} selected={highlightedStop} onHighlight={setHighlightedStop} technicianId={selectedTechnician??route.userId} onSelect={startStop} onRefresh={()=>loadRoute(date,scope)}/>}</div>
     </>)}
   </div>;
 }
@@ -270,7 +288,7 @@ function VisitEditor({stop,index,total,scope,queued,onBack,onComplete}:{stop:Rou
     <section className="field-section"><p className="field-section-letter"><T text="D · SERVICE PHOTO"/></p><div className="field-section-title"><h2><T text="Show the finished service"/></h2><span className="field-tiny">{photos.length} / 3</span></div>{photos.length<3&&!queued&&<label className="field-photo-control">{photoBusy?<T text={'Preparing photo…'}/>:<T text={'▧ TAKE PHOTO'}/>}<small>{stop.pools.some(p=>p.photo_required)?<T text={'At least one photo is required'}/>:<T text={'Optional · up to three photos'}/>}</small><LocaleInput type="file" accept="image/*" capture="environment" disabled={photoBusy||busy} onChange={event=>{const file=event.target.files?.[0];if(file)void capture(file);event.currentTarget.value='';}}/></label>}<div className="field-photos">{photos.map(photo=><PhotoPreview key={photo.id} photo={photo} readonly={queued} onRemove={()=>{if(queued)return;void removePhoto(scope,photo.id).then(()=>setPhotos(items=>items.filter(item=>item.id!==photo.id))).catch(cause=>setError(messageOf(cause)));}}/>)}</div><p className="field-tiny"><T text="Photos are compressed and kept on this device until the upload is confirmed."/></p></section>
     <section className="field-section"><label className="field-input-label"><T text="Service note "/><span className="field-reference"><T text="Included in the customer report. Do not add gate codes or private notes."/></span><LocaleTextarea maxLength={2000} value={visibleDraft.notes} disabled={queued||busy} placeholder="Optional service information for the customer" onChange={event=>update({...visibleDraft,notes:event.target.value})}/></label></section>
     <details className="field-section"><summary><T text="Internal service details"/></summary><p className="field-tiny"><T text="For staff only. These details are not included in customer emails."/></p>{([['technician_notes','Technician notes'],['equipment_problems','Equipment problems'],['filter_cleaning','Filter cleaning'],['repairs_performed','Repairs performed']] as const).map(([key,label])=><label className="field-input-label" key={key}><T text={label}/><LocaleTextarea value={visibleDraft.service_details?.[key]??''} disabled={queued||busy} maxLength={2000} onChange={e=>update({...visibleDraft,service_details:{technician_notes:'',equipment_problems:'',filter_cleaning:'',repairs_performed:'',...visibleDraft.service_details,[key]:e.target.value}})}/></label>)}</details>
-    <div className="field-complete-bar"><button className="field-button" disabled={busy||photoBusy||queued||retiredPools.length>0} onClick={()=>void complete()}>{queued?<T text={'Saved on device — waiting to sync'}/>:busy?<T text={'Saving visit…'}/>:<T text={'COMPLETE & NEXT →'}/>}</button><p role="status">{saveStatus} <T text="· Only checked tasks and recorded values enter the report."/></p></div>
+    <div className="field-complete-bar"><button className="field-button" disabled={busy||photoBusy||queued||retiredPools.length>0} onClick={()=>void complete()}>{queued?<T text={'Saved on device — waiting to sync'}/>:busy?<T text={'Saving visit…'}/>:<T text={'COMPLETE & NEXT →'}/>}</button><p role="status"><T text={saveStatus}/> <T text="· Only checked tasks and recorded values enter the report."/></p></div>
     </>}
   </div>;
 }

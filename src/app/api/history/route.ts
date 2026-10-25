@@ -5,9 +5,12 @@ import { z } from 'zod';
 export async function GET(request:Request) {
  try {
  const operator=await getOperator();if(!operator)return json({error:'Please sign in.'},401);
- const customer=new URL(request.url).searchParams.get('customer_id');
+ const params=new URL(request.url).searchParams;
+ const customer=params.get('customer_id');
+ const options=z.object({query:z.string().max(100),status:z.enum(['all','pending','sent','failed']),offset:z.coerce.number().int().min(0).max(1000000)}).parse({query:params.get('q')??'',status:params.get('status')??'all',offset:params.get('offset')??0});
  if(customer)z.uuid().parse(customer);
- return json({role:operator.profile.role,visits:await loadHistory(operator,customer??undefined)});
+ const visits=await loadHistory(operator,customer??undefined,options);
+ return json({role:operator.profile.role,visits:visits.slice(0,50),hasMore:visits.length>50});
  }catch(error){return apiError(error);}
 }
 

@@ -53,5 +53,8 @@ test('public shell reopens scoped route and draft after offline tab closure', as
   });
   expect(cachedPaths).toContain('/offline');
   expect(cachedPaths.some(path=>path.startsWith('/api/')||path==='/login'||path==='/')).toBe(false);
+  await reopened.goto(baseURL+'/stops');
+  await expect(reopened.getByRole('heading',{name:'Today’s Stops',exact:true})).toBeVisible();
+  await expect(reopened.getByRole('heading',{name:'Fictional Next Stop',exact:true})).toBeVisible();
   await context.close();
 });
