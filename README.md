@@ -6,6 +6,22 @@ Fluxo: **Route → Checklist → Readings → Dosages → Photo → Complete & N
 
 Não há financeiro, cobrança, inventário, marketing, portal ou otimização automática de rotas nesta versão. As tabelas financeiras da fundação foram preservadas para não apagar dados, mas não aparecem na navegação.
 
+## Teste fácil no navegador — sem instalar nada
+
+Para conhecer o fluxo sem configurar o projeto completo:
+
+1. No GitHub, clique em **Code → Download ZIP** e extraia o arquivo.
+2. Abra a pasta **demo** e dê duplo clique em **index.html**.
+3. Escolha Chrome ou Edge. Não é necessário Node, Docker, Supabase, login ou internet.
+4. Clique em **Start service**, consulte o histórico químico de 30 dias, preencha FC/pH, produtos e foto e toque em **Complete & Next**.
+5. Use **History → Preview customer report** para visualizar o relatório. Nenhum e-mail é enviado.
+
+O arquivo `demo/index.html` é independente: pode ser copiado sozinho para outra pasta. A interface é em inglês. Dados fictícios, rascunhos e fotos ficam apenas no navegador por IndexedDB; não são sincronizados. Quando o browser não permite armazenamento, a tela avisa que a sessão é temporária. Não use dados reais de clientes.
+
+A demonstração inclui cadastro de clientes, múltiplas piscinas, dias recorrentes, checklist personalizado, foto opcional/obrigatória e reordenação manual da rota. O arquivo `index.html` **na raiz** ainda é o protótipo antigo; para o protótipo atual use **demo/index.html**.
+
+[Instruções da demonstração](demo/README.md) · [Abrir o arquivo no GitHub para baixar](demo/index.html)
+
 ## Começar: baixar, iniciar e testar
 
 **Requisitos:** Git, Node.js 22 ou superior e Docker em execução. No Windows, use Ubuntu/WSL2 com integração do Docker Desktop para seguir os comandos abaixo e executar os testes locais.
