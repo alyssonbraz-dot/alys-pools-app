@@ -30,6 +30,10 @@ test('public shell reopens scoped route and draft after offline tab closure', as
   await page.getByRole('button',{name:'Start service →'}).first().click();
   await expect(page.getByRole('heading',{name:'Fictional Offline Residence'})).toBeVisible();
   await page.getByRole('checkbox',{name:'Test Water',exact:true}).check();
+  await page.getByRole('button',{name:'Fictional pool FC 5 ppm',exact:true}).click();
+  await expect(page.getByRole('spinbutton',{name:'Fictional pool Free Chlorine (ppm)'})).toHaveValue('5');
+  await page.getByRole('button',{name:'Fictional pool pH 7.2',exact:true}).click();
+  await expect(page.getByRole('spinbutton',{name:'Fictional pool pH'})).toHaveValue('7.2');
   await page.getByRole('spinbutton',{name:'Fictional pool Free Chlorine (ppm)'}).fill('3.2');
   await page.getByRole('spinbutton',{name:'Fictional pool pH'}).fill('7.5');
   await expect(page.getByText('Draft saved on this device',{exact:false})).toBeVisible();

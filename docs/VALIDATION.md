@@ -34,3 +34,7 @@ A consulta é paginada e limitada às propriedades da rota. RPC dedicado permite
 Captura pela câmera física, instalação em iPhone/Android reais, legibilidade sob sol e tempo humano de registro30–60s ainda precisam de teste em aparelho. O teste de foto usa arquivo JPEG real; não é teste de câmera física. Backups/restauração, MFA, recuperação de senha e scheduler externo devem ser configurados antes de operação em produção. Não houve publicação, compra, ativação paga ou envio de dados reais. Não foi validada restauração em uma nova tarefa cloud.
 
 Histórico geral limita200 visitas recentes e listas de cadastro1000; paginação maior é evolução futura. O contexto químico mensal é paginado e não usa esse limite global de200. IndexedDB não é cofre nem backup; retenção local depende do browser/dispositivo.
+
+## Tema e entrada rápida de leituras
+
+App e demo usam azul-marinho claro. FC oferece1/3/5ppm e pH7.0/7.2/7.4/7.6/7.8/8.0 em botões grandes, com entrada manual livre e indicação da opção selecionada. A demonstração foi testada no Chromium mobile usando todos os atalhos, entrada manual fora dos presets e persistência após reload. O app Next foi testado pelo shell offline com escolha de FC/pH, alteração manual e retomada após fechar a aba. Lint, typecheck,39 testes unitários e build passaram. Estes valores são medições da água, não recomendações de dosagem.

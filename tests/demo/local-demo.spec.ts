@@ -22,6 +22,18 @@ test('standalone HTML has no external dependencies, saves photo and draft, compl
  await page.getByRole('button',{name:'COMPLETE & NEXT →',exact:true}).click();
  await expect(page.locator('#visit-error')).toContainText('Free Chlorine is required');
  await page.getByRole('button',{name:'Mark all done',exact:true}).click();
+ await page.getByRole('button',{name:'Main pool FC 1 ppm',exact:true}).click();
+ await expect(page.getByLabel('Main pool Free Chlorine',{exact:true})).toHaveValue('1');
+ await page.getByRole('button',{name:'Main pool FC 3 ppm',exact:true}).click();
+ await expect(page.getByLabel('Main pool Free Chlorine',{exact:true})).toHaveValue('3');
+ await page.getByRole('button',{name:'Main pool FC 5 ppm',exact:true}).click();
+ await expect(page.getByLabel('Main pool Free Chlorine',{exact:true})).toHaveValue('5');
+ await page.getByLabel('Main pool Free Chlorine',{exact:true}).fill('3.5');
+ await expect(page.getByRole('button',{name:'Main pool FC 5 ppm',exact:true})).toHaveAttribute('aria-pressed','false');
+ for(const value of [7,7.2,7.4,7.6,7.8,8]){
+  await page.getByRole('button',{name:`Main pool pH ${value.toFixed(1)}`,exact:true}).click();
+  await expect(page.getByLabel('Main pool pH',{exact:true})).toHaveValue(String(value));
+ }
  await page.getByLabel('Main pool Free Chlorine',{exact:true}).fill('3');
  await page.getByLabel('Main pool pH',{exact:true}).fill('7.5');
  await page.getByRole('combobox',{name:'Add chemical for Main pool'}).selectOption('Liquid Chlorine');

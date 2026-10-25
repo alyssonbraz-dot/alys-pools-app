@@ -1,6 +1,6 @@
 # ALYS Pool Manager — Fast Route
 
-Aplicação mobile-first em inglês para ALYS Pool Services LLC, Flórida. Next.js + TypeScript + Tailwind, Supabase Auth/PostgreSQL/Storage e PWA. Galões, ppm e timezone America/New_York. Interface navy/turquesa preservada.
+Aplicação mobile-first em inglês para ALYS Pool Services LLC, Flórida. Next.js + TypeScript + Tailwind, Supabase Auth/PostgreSQL/Storage e PWA. Galões, ppm e timezone America/New_York. Interface em azul-marinho claro.
 
 Fluxo: **Route → Checklist → Readings → Dosages → Photo → Complete & Next → Email → History**.
 
@@ -101,6 +101,8 @@ npx playwright test
 O teste de backend espera a fixture ainda sem visitas concluídas. Cada execução de setup cria uma nova conta fictícia; para repetir a sequência, execute setup novamente. O Playwright usa Chromium do sistema quando disponível ou o browser instalado por ele; `PLAYWRIGHT_CHROMIUM_EXECUTABLE` permite indicar outro executável.
 
 O fluxo testado inclui cadastro/edição, histórico químico de 30 dias, checklist, leituras, dosagens, JPEG no Storage privado, conclusão, próximo stop, retomada offline e sincronização sem duplicatas. E-mail real depende de configuração separada do Resend; permaneça com envio desativado nos testes locais.
+
+Cloro livre possui atalhos de **1, 3 e 5 ppm**; pH tem **7.0, 7.2, 7.4, 7.6, 7.8 e 8.0**. Também é possível digitar valores diferentes. São leituras da água; produtos aplicados continuam registrados separadamente com quantidade e unidade.
 
 ## Funcionalidades implementadas
 

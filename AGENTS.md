@@ -26,7 +26,7 @@ Você é o engenheiro principal do projeto ALYS Pool Manager. O produto é um ap
 
 - Propor arquitetura, migrations e fases antes de realizar mudanças disruptivas.
 - Preferir TypeScript estrito, componentes acessíveis e responsivos, fluxo offline-first quando viável, especialmente para técnicos em campo.
-- Reusar a identidade visual original: navy escuro, verde-água, cartões leves, layout mobile-first.
+- Paleta atual solicitada: azul-marinho claro, fundos azulados e cartões leves, layout mobile-first.
 - Preservar funções úteis do protótipo e explicar limitações; não alegar que integrações inexistentes funcionam.
 - Criar testes de validação de cálculos de receita, recorrência, permissões e registro de visitas.
 - Não realizar deploy, enviar mensagens nem configurar serviços pagos sem confirmação explícita.

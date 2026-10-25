@@ -1,6 +1,8 @@
 # ALYS Fast Route — demonstração local
 
-Esta é a demonstração **do fluxo atual**, em inglês, navy/turquesa, com dados fictícios. Não precisa instalar Node, Docker ou Supabase.
+Esta é a demonstração **do fluxo atual**, em inglês, azul-marinho claro, com dados fictícios. Não precisa instalar Node, Docker ou Supabase.
+
+Cloro livre possui atalhos de **1, 3 e 5 ppm**; pH tem **7.0, 7.2, 7.4, 7.6, 7.8 e 8.0**. Também é possível digitar valores diferentes. São leituras da água; produtos aplicados continuam registrados separadamente com quantidade e unidade.
 
 ## Como abrir
 
