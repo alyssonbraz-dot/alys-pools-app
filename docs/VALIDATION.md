@@ -80,3 +80,14 @@ A espera do PostgreSQL descartável passou a conferir TCP, evitando confundir o 
 - Exemplos de handoff local Complete & Next → próximo stop:462ms e109ms em execuções mobile emuladas, com upload retido. São amostras locais, não benchmark de câmera/aparelho/rede real e não prova de visita inteira em15–30s. O teste exige visibilidade do próximo stop em até1.5s após o clique.
 
 Nenhuma dependência paga foi adicionada. O worker de e-mail e os limites existentes foram reutilizados; nenhum relatório real foi enviado. Publicação remota Netlify, conta/remetente Resend, cotas atuais e operação em aparelho físico continuam sem validação nesta mudança. Com app fechado/suspenso não há garantia de retentativa contínua. Guia: FAST-TECHNICIAN-MODE.md.
+
+## Preparação da entrega e domínio Hostinger — 27/10/2026
+
+- README refeito com sequência de publicação Netlify Free/Supabase Free/Resend Free, migrations001–014, provisionamento do proprietário, variáveis seguras, DNS externo `app.alyspools.com` e alternativa para raiz/`www`, HTTPS, remetente Resend, PWA e checklist de aceite.
+- Guias locais e de operação separados; links relativos dos documentos conferidos sem destinos ausentes. Nenhuma migration anterior foi alterada, nenhum reset/seed remoto foi executado.
+- Adicionada função agendada Netlify de recuperação de relatórios a cada15 minutos: usa a origem HTTPS do próprio site, autentica o endpoint com header secreto, não segue redirects, limita a espera a25s e não expõe o corpo da resposta/segredo nos erros. Com envio desabilitado não faz requisição. Mantém o processamento idempotente já existente, um job devido por chamada.
+- Lint, typecheck, **64 testes unitários em12 arquivos** e build de produção aprovados. Os7 testes adicionais exercitam desativação, configuração insegura/incompleta, endpoint/header corretos e falha503 sem alegar envio. Não houve chamada ao Resend real.
+- Empacotamento local da nova função pelo bundler oficial `@netlify/zip-it-and-ship-it` aprovado: `report-worker`, runtime APIv2 e cron `*/15 * * * *` reconhecidos. Isso valida o artefato da função, não o deploy completo nem o acionamento remoto da agenda.
+- Suítes SQL/mobile da etapa Fast Technician permanecem registradas acima; não foram repetidas nesta mudança de documentação/agendamento, que não altera migrations, RLS ou a interface.
+
+As consultas a páginas oficiais de preços/DNS retornaram bloqueio de rede403; o guia manda conferir cotas/valores DNS nos painéis atuais em vez de prometer limites fixos ou IP de tutorial. O adapter Next/Netlify ainda precisa de validação no ambiente publicado; o build local anterior do adapter teve falha de fetch no empacotamento Edge. Não foi feito novo deploy, acesso às contas do titular, alteração de DNS, ativação paga ou envio real. Publicação, HTTPS, câmera física, agenda remota e relatório recebido no Gmail continuam como aceite operacional explícito no README.

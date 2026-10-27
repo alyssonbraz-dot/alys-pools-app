@@ -43,7 +43,7 @@ Owner/Admin permissions remain compatible with existing installations. Technicia
 
 A cached route for the verified account/date/role is displayed while refreshing online. Route/date race protection remains active. The map planner is loaded on demand for online owner planning, not for a technician's routine screen; calendar/arrival display is separated from the Leaflet component. The generic PWA shell still supports cached stops/drafts with no network.
 
-The app continues using the existing Netlify, Supabase and Resend configuration. No new paid dependency, image service or scheduler is introduced. Empty/not-yet-due outboxes make no network call on the retry check. Existing photo/storage quotas and provider rate limits still apply. This change does not resolve the previously pending live account/domain setup or prove remote Netlify deployment/real email delivery.
+The app continues using Netlify, Supabase and Resend without new paid dependencies or an image service. Foreground retry checks do not upload when the visit outbox is empty or not due. Existing photo/storage quotas and provider rate limits still apply. The delivery preparation now also includes a Netlify production schedule that invokes the protected report worker every fifteen minutes; it does not run locally or on previews, and skips network calls while email delivery is disabled. This recovers server-side report jobs, not device-local unsynced visits. See the [README](../README.md) for configuration, quotas and domain setup. Remote deployment, schedule execution and real email delivery still require production acceptance checks.
 
 ## Updating and testing
 

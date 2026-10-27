@@ -1,221 +1,195 @@
-# ALYS Pool Manager — Fast Route
+# ALYS Pool Manager
 
-Aplicação mobile-first em inglês por padrão, com português e espanhol para ALYS Pool Services LLC, Flórida. Next.js + TypeScript + Tailwind, Supabase Auth/PostgreSQL/Storage e PWA. Galões, ppm e timezone America/New_York. Interface em azul-escuro.
+Aplicativo da ALYS Pool Services LLC para registrar manutenção de piscinas pelo celular. Inglês por padrão, com português e espanhol; tema azul-escuro, galões, ppm, USD e horário `America/New_York`.
 
-Fluxo: **Route → Checklist → Readings → Dosages → Photo → Complete & Next → Email → History**.
+**Fluxo do técnico:** Stops → Start Service → Readings → Chemicals → Checklist → Photo → Complete & Next. A visita fica salva no aparelho primeiro; **Synced** confirma que o servidor a registrou. O relatório é processado depois, sem bloquear o próximo cliente.
 
-Não há financeiro, cobrança, inventário, marketing ou portal de cliente nesta versão. A expansão inclui gestão de clientes, mapas e otimização por tempo de condução com provedor configurado. As tabelas financeiras da fundação foram preservadas para não apagar dados, mas não aparecem na navegação.
+Este README é o roteiro de entrega e publicação com **Netlify Free + Supabase Free + Resend Free**, usando o domínio **alyspools.com**, registrado na Hostinger. Não é necessário contratar hospedagem na Hostinger. A renovação do domínio já comprado continua sendo responsabilidade do titular; planos gratuitos têm cotas e não garantem operação ilimitada sem custo.
 
-## Fast Technician Mode
+## O que está incluído
 
-Technicians use a compact assigned-stops screen and one service form: **Readings → Chemicals → Checklist → Photo → Complete & Next**. Common products have direct buttons; previous readings remain reference only. Predefined issue flags are recorded with the visit. Photo upload shows progress while the technician works at the next stop. Offline submissions are frozen, drained safely and retried with backoff while the app remains open; Pending Sync, Synced and Failed are distinct states.
+- Login por senha, proprietário/administrador e técnico; autorização no servidor e RLS por empresa/atendimento atribuído.
+- Clientes, propriedades, piscinas/spas, agendas recorrentes, stops do dia e planejamento de rotas.
+- Leituras anteriores de 30 dias como referência, sem preencher medições atuais automaticamente.
+- Leituras, produtos/quantidades, checklist por piscina, fotos comprimidas e indicadores de problemas.
+- Rascunhos e fila offline por conta, sincronização com tentativas seguras e proteção contra visitas/relatórios duplicados.
+- Histórico, fotos privadas e relatório por e-mail com foto. Relatórios respeitam a opção de envio de cada cliente.
+- PWA instalável no celular. O app precisa permanecer aberto ou ser reaberto para sincronizar pendências locais.
 
-Apply **migration014** before the new code. Owner/Admin management, existing visits/photos/reports and organization isolation are preserved. See [Fast Technician Mode](docs/FAST-TECHNICIAN-MODE.md) for security, rollout, offline behavior and performance limits. The15–30 second interaction target is not yet validated on a physical phone.
+Financeiro completo, cobrança, inventário e portal de clientes não fazem parte desta entrega. Mapas/otimização são opcionais; o fluxo de visitas funciona sem contratar provedor de mapas.
 
-## Colocar visitas e relatórios no ar sem plano pago
+## 1. Preparar as contas gratuitas
 
-Para priorizar login, visitas, fotos e e-mail: siga [o roteiro de publicação gratuita](docs/COLOCAR-NO-AR-GRATIS.md). Inclui configuração Netlify, Supabase hospedado, acesso do proprietário e teste controlado do remetente. Publicação depende de contas/credenciais do proprietário; o código preparado não é prova de site online ou mensagem entregue. Não contrate plano pago nem compre domínio para seguir a parte de hospedagem.
+Use contas sob seu controle em [GitHub](https://github.com), [Netlify](https://app.netlify.com), [Supabase](https://supabase.com/dashboard) e [Resend](https://resend.com). Tenha acesso ao DNS de `alyspools.com` na Hostinger.
 
-## Teste fácil no navegador — sem instalar nada
+1. Selecione somente planos **Free**, sem adicionais pagos nem compra automática de créditos.
+2. Confira cotas de tráfego, execução, armazenamento e envios no painel de cada serviço. Ao atingir limites, reduza/pause o uso; não autorize upgrade automático.
+3. Ative autenticação de dois fatores nas contas administrativas.
+4. Guarde chaves e senhas em gerenciador de senhas/configurações seguras, nunca neste repositório ou no chat.
 
-Para conhecer o fluxo sem configurar o projeto completo:
+Links para conferir condições vigentes: [Netlify](https://www.netlify.com/pricing/) · [Supabase](https://supabase.com/pricing) · [Resend](https://resend.com/pricing). As páginas de preços não puderam ser consultadas nesta rede; não há promessa de cotas específicas neste documento.
 
-1. No GitHub, clique em **Code → Download ZIP** e extraia o arquivo.
-2. Abra a pasta **demo** e dê duplo clique em **index.html**.
-3. Escolha Chrome ou Edge. Não é necessário Node, Docker, Supabase, login ou internet.
-4. Clique em **Start service**, consulte o histórico químico de 30 dias, preencha FC/pH, produtos e foto e toque em **Complete & Next**.
-5. Use **History → Preview customer report** para visualizar o relatório. Nenhum e-mail é enviado.
+## 2. Baixar o projeto
 
-O arquivo `demo/index.html` é independente: pode ser copiado sozinho para outra pasta. A interface inicia em inglês; o seletor permite português e espanhol. Dados fictícios, rascunhos e fotos ficam apenas no navegador por IndexedDB; não são sincronizados. Quando o browser não permite armazenamento, a tela avisa que a sessão é temporária. Não use dados reais de clientes.
-
-A demonstração inclui cadastro de clientes, múltiplas piscinas, dias recorrentes, checklist personalizado, foto opcional/obrigatória e reordenação manual da rota. O arquivo `index.html` **na raiz** ainda é o protótipo antigo; para o protótipo atual use **demo/index.html**.
-
-[Instruções da demonstração](demo/README.md) · [Abrir o arquivo no GitHub para baixar](demo/index.html)
-
-## Começar: baixar, iniciar e testar
-
-**Requisitos:** Git, Node.js 22 ou superior e Docker em execução. No Windows, use Ubuntu/WSL2 com integração do Docker Desktop para seguir os comandos abaixo e executar os testes locais.
-
-Este é o aplicativo Next.js completo. **Não abra o `index.html` para iniciar esta versão:** esse arquivo é apenas o protótipo antigo.
-
-### 1. Baixar o código e instalar
+No computador, instale Git e **Node.js 22 ou superior**. Docker é necessário apenas para desenvolvimento/testes locais, não para publicar usando o Supabase hospedado.
 
 ```bash
 git clone https://github.com/alyssonbraz-dot/alys-pools-app.git
 cd alys-pools-app
 npm ci
-cp .env.example .env.local
+cp .env.production.example .env.production.local
 ```
 
-Se já clonou, atualize seu checkout antes de instalar. Não substitua um `.env.local` existente: preserve suas configurações.
+Se já tiver o projeto, atualize seu checkout e execute `npm ci`. Preserve arquivos `.env.*.local` existentes: eles são privados e ignorados pelo Git. No Windows, use WSL2/Ubuntu para os comandos de terminal deste guia.
 
-### 2. Iniciar o banco, login e armazenamento locais
+## 3. Criar o Supabase e aplicar o banco
 
-Com o Docker em execução:
+1. No painel Supabase, crie um projeto no plano **Free**. Prefira uma região dos EUA próxima à operação na Flórida.
+2. Guarde a senha do banco. Em **Project Settings → API / API Keys**, obtenha a URL do projeto, a chave pública/publishable e a chave administrativa `service_role` ou secret equivalente. A interface do painel pode mudar.
+3. Coloque os valores nos campos correspondentes de `.env.production.local`. Não use URL `localhost` nem chaves do backend local no site publicado.
+4. Aplique todas as migrations pelo terminal:
 
 ```bash
-npx --yes supabase@2.121.0 start -x realtime,imgproxy,mailpit,postgres-meta,studio,edge-runtime,logflare,vector,supavisor
-npx --yes supabase@2.121.0 migration up --local
-npx --yes supabase@2.121.0 status
+npx --yes supabase@2.121.0 login
+npx --yes supabase@2.121.0 link --project-ref SEU_PROJECT_REF
+npx --yes supabase@2.121.0 migration list --linked
+npx --yes supabase@2.121.0 db push
+npx --yes supabase@2.121.0 migration list --linked
 ```
 
-O primeiro comando baixa imagens e pode demorar. Em `.env.local`, preencha com os dados **locais** do status:
+`SEU_PROJECT_REF` é o identificador no painel/URL do projeto Supabase. Confira que o projeto vinculado é o correto antes de confirmar `db push`. Em banco já utilizado, faça backup antes da atualização e revise as migrations pendentes.
 
-| Variável | Valor a usar |
+A lista remota deve incluir **001 a 014**, terminando em `202610270014_fast_technician.sql`. Elas criam tabelas, políticas RLS, bucket privado, fila de relatórios e provisionamento do proprietário. Não copie somente a última migration e não torne o bucket `visit-photos` público.
+
+**Nunca execute `db reset`, `supabase/seed.dev.sql` ou `tests/integration/setup.mjs` na produção.** Não há seed automático de clientes reais ou fictícios no deploy.
+
+No painel **Authentication**, mantenha login por e-mail/senha habilitado e **Allow new users to sign up desativado**. O arquivo `supabase/config.toml` controla o ambiente local; essas configurações precisam ser conferidas também no projeto hospedado.
+
+## 4. Criar seu acesso de proprietário
+
+Em `.env.production.local`, preencha `ALYS_INITIAL_OWNER_PASSWORD` com uma senha única de pelo menos 16 caracteres, além da URL/chave administrativa do Supabase. Execute no computador confiável:
+
+```bash
+node scripts/setup-owner.mjs \
+  --env-file=.env.production.local \
+  --project-host=SEU_PROJECT_REF.supabase.co \
+  --email=alyspools@gmail.com \
+  --name="ALYS Owner" \
+  --company="ALYS Pool Services LLC"
+```
+
+O hostname deve corresponder exatamente à URL do seu projeto. O script cria somente Auth + organização + perfil owner, sem cliente fictício, convite ou envio de mensagem. O endereço é confirmado administrativamente; use apenas o seu e-mail.
+
+A repetição preserva a senha existente e não duplica organização. Se houver erro depois da criação do Auth, corrija a configuração/migrations e repita com o mesmo e-mail. Remova `ALYS_INITIAL_OWNER_PASSWORD` do arquivo após concluir; não a coloque no Netlify.
+
+Para incluir técnicos, siga [acessos da equipe](docs/ENTREGA.md#acessos-da-equipe). Criar um usuário no Auth sem seu perfil não concede acesso ao app.
+
+## 5. Publicar no Netlify Free
+
+1. No Netlify, escolha **Add new project / Import an existing project → GitHub**.
+2. Autorize o repositório `alyssonbraz-dot/alys-pools-app` e selecione a branch **main**.
+3. Use a raiz do repositório, build **`npm run build`**, publish directory **`.next`**, Node **22**. O arquivo `netlify.toml` já configura esses valores e o adapter Next.js.
+4. Antes do primeiro build válido, abra **Project configuration → Environment variables** e cadastre:
+
+| Variável | Valor / uso |
 | --- | --- |
-| `NEXT_PUBLIC_SUPABASE_URL` | API URL local |
-| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | chave publicável ou anon local |
-| `SUPABASE_SERVICE_ROLE_KEY` | chave service_role local, somente no servidor |
-| `EMAIL_DELIVERY_ENABLED` | `false` durante testes |
+| `NEXT_PUBLIC_SUPABASE_URL` | `https://SEU_PROJECT_REF.supabase.co`, disponível no build e runtime |
+| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | chave pública do mesmo projeto, build e runtime |
+| `SUPABASE_SERVICE_ROLE_KEY` | chave administrativa do projeto, somente servidor/Functions |
+| `EMAIL_DELIVERY_ENABLED` | `false` inicialmente; `true` somente após preparar remetente e teste |
+| `RESEND_API_KEY` | chave Resend, somente servidor/Functions |
+| `EMAIL_FROM` | `ALYS Pool Services <reports@alyspools.com>`, após verificar o domínio no Resend |
+| `REPORT_WORKER_SECRET` | segredo aleatório com pelo menos 32 caracteres, somente servidor/Functions |
+| `CUSTOMER_INVITES_ENABLED` | `false` |
 
-As chaves reais não vêm no Git. Não compartilhe o status ou `.env.local`. Consulte a seção **Particularidades deste ambiente cloud** se encontrar erro de registry, espaço, HOME ou health probe.
+Para gerar o segredo, rode `node -e "console.log(require('node:crypto').randomBytes(32).toString('hex'))"` **no seu terminal privado** e copie o resultado somente para a configuração segura. Não publique o resultado nem use os placeholders dos exemplos como segredo.
 
-### 3. Criar acesso de teste e abrir o app
+As duas variáveis `NEXT_PUBLIC_*` são públicas por definição. Nenhuma chave administrativa, senha ou token pode ter esse prefixo. Se houver seleção de escopo, disponibilize segredos às Functions, e as variáveis públicas ao build/runtime. A função agendada precisa de `EMAIL_DELIVERY_ENABLED` e `REPORT_WORKER_SECRET` no runtime também.
 
-```bash
-node tests/integration/setup.mjs
-npm run dev
-```
+5. Faça o deploy e aguarde **Published**. Anote o endereço `https://SEU-SITE.netlify.app`.
+6. Abra `/login` nesse endereço e teste o login. Se as variáveis públicas mudarem, execute novo build/deploy.
+7. Em **Supabase → Authentication → URL Configuration**, use temporariamente esse endereço HTTPS como **Site URL** e redirect permitido exato.
 
-O setup cria uma conta e três stops **fictícios no Supabase local**; não envia e-mails. O cadastro público fica bloqueado. Consulte `email` e `password` em `/tmp/alys-integration-fixture.json` no seu terminal/editor privado para fazer login; não publique esse arquivo.
+Não envie `.env.production.local` ao GitHub e não publique `demo/` ou `index.html` como se fossem o aplicativo. O app exige servidor Next.js; upload estático no gerenciador de arquivos da Hostinger não executa login/API/relatórios.
 
-Abra a aplicação na porta **3000**, faça login e use **Route** para iniciar uma visita. **Clients** cadastra clientes, **Properties & pools** configura piscinas e **Settings** define recorrência. A interface é em inglês por padrão.
+## 6. Conectar alyspools.com pela Hostinger
 
-### 4. Executar os testes
+Recomendação para preservar seu site institucional: publicar o aplicativo em **`https://app.alyspools.com`**. O domínio continua registrado na Hostinger; o app é servido pelo Netlify com HTTPS gratuito. Você também pode usar a raiz, conforme a alternativa abaixo.
 
-Em outro terminal, na pasta do projeto:
+### Opção recomendada: app.alyspools.com
 
-```bash
-npm run lint
-npm run typecheck
-npm test
-npm run test:db
-npm run build
-```
+1. No Netlify, abra **Domain management → Add a domain** e adicione `app.alyspools.com`. Escolha DNS externo e siga a verificação de propriedade, se solicitada.
+2. Na Hostinger, abra **Domains → alyspools.com → DNS / Nameservers → DNS records**. Se os nameservers apontarem para outro provedor, edite a zona nesse provedor, não na Hostinger.
+3. Adicione o registro abaixo usando **o hostname real do seu site Netlify**:
 
-`test:db` requer Docker e descarta somente o container criado pelo próprio teste. Para testar o fluxo mobile e offline, pare o `npm run dev` com Ctrl+C e inicie o build de produção:
+| Tipo | Nome/Host | Destino | TTL |
+| --- | --- | --- | --- |
+| CNAME | `app` | `SEU-SITE.netlify.app` | padrão do painel |
 
-```bash
-ROUTING_API_URL=http://127.0.0.1:8131 GEOCODING_API_URL=http://127.0.0.1:8131/search npm start
-```
+O destino não inclui `https://` nem `/`. Substitua registros A/AAAA/CNAME conflitantes **somente para `app`**, depois de guardar a configuração anterior. Preserve MX, TXT, DKIM, SPF e os registros da raiz/`www` usados por outros serviços.
 
-Para a suíte de integração, mantenha também `node tests/integration/routing-stub.mjs` em outro terminal. Ele fornece respostas fictícias locais de mapas/endereços; use os overrides acima somente nos testes. Mantenha os terminais abertos. Em outro terminal, crie uma **fixture nova**, valide o backend e rode os testes de navegador nesta ordem:
+4. Aguarde a propagação. No Netlify, confira a verificação DNS e a emissão do certificado em **HTTPS / TLS certificate**. Não pague certificado nem habilite proxy externo adicional para esta configuração.
+5. Defina `app.alyspools.com` como domínio principal. Confirme que `https://app.alyspools.com/login` abre sem alerta de certificado.
+6. No Supabase Auth, altere **Site URL** e redirects permitidos para `https://app.alyspools.com`. Não precisa adicionar domínio personalizado pago ao Supabase: sua API continua `*.supabase.co`.
+7. Faça login novamente no domínio definitivo. Cookies, rascunhos e fotos locais são separados por domínio: **sincronize pendências no endereço antigo antes de trocar**.
 
-```bash
-node tests/integration/setup.mjs
-node tests/integration/backend.mjs
-npx playwright install chromium
-npx playwright test
-```
+### Alternativa: usar alyspools.com diretamente
 
-Os testes de rotas e endereço exigem o stub local na porta8131 e o Next iniciado com os overrides descritos acima. Não use essas estimativas fictícias em operação.
+Se não houver site que precise ser preservado na raiz, adicione `alyspools.com` e `www.alyspools.com` no Netlify e escolha a raiz como principal. No DNS externo, configure `@` com **o A/ALIAS exato indicado pelo painel Netlify**, e `www` com o CNAME indicado. Não use IP copiado de tutoriais antigos: siga os valores apresentados para seu site. Remova apenas conflitos desses hosts, preservando registros de e-mail.
 
-O teste de backend espera a fixture ainda sem visitas concluídas. Cada execução de setup cria uma nova conta fictícia; para repetir a sequência, execute setup novamente. O Playwright usa Chromium do sistema quando disponível ou o browser instalado por ele; `PLAYWRIGHT_CHROMIUM_EXECUTABLE` permite indicar outro executável.
+Depois, configure Auth Site URL/redirects para `https://alyspools.com` e faça os testes nesse endereço. Essa alternativa substitui o site existente na raiz. Não mude nameservers de toda a zona sem antes preservar todos os registros necessários.
 
-O fluxo testado inclui cadastro/edição, histórico químico de 30 dias, checklist, leituras, dosagens, JPEG no Storage privado, conclusão, próximo stop, retomada offline e sincronização sem duplicatas. E-mail real depende de configuração separada do Resend; permaneça com envio desativado nos testes locais.
+## 7. Ativar os relatórios com foto pelo Resend
 
-Cloro livre possui atalhos de **1, 3 e 5 ppm**; pH tem **7.0, 7.2, 7.4, 7.6, 7.8 e 8.0**. Também é possível digitar valores diferentes. São leituras da água; produtos aplicados continuam registrados separadamente com quantidade e unidade.
+1. No plano **Free** do Resend, abra **Domains → Add Domain** e adicione `alyspools.com`.
+2. Copie **exatamente** os registros de verificação/DKIM e os registros de envio SPF/MX mostrados pelo Resend para a zona DNS autoritativa. Nome, tipo, prioridade e destino devem vir do painel; não invente valores.
+3. Preserve os MX do seu correio existente. O MX de envio do Resend normalmente usa um subdomínio específico: não o substitua pelo MX da raiz. Não crie dois registros SPF concorrentes no mesmo host; revise a configuração se houver conflito. Não é preciso ativar recebimento no Resend para enviar relatórios.
+4. Aguarde o status **Verified** e crie uma chave com permissão de envio para o domínio, se disponível.
+5. No Netlify, salve a chave em `RESEND_API_KEY` e use `EMAIL_FROM=ALYS Pool Services <reports@alyspools.com>`. O domínio verificado permite esse remetente; receber respostas nesse endereço exige uma caixa/alias configurada separadamente. Gmail pode ser destinatário, não remetente verificado de `alyspools.com`.
+6. Faça um deploy com as variáveis atualizadas. Para o teste controlado, use **somente dados fictícios** e destinatário **alyspools@gmail.com**, previamente autorizado. Ative **Enable service report emails for this client** no cadastro desse cliente de teste.
+7. Defina `EMAIL_DELIVERY_ENABLED=true`, atualize o deploy e conclua uma visita com foto. Confira **History → Synced**, status do relatório e recebimento real no Gmail/Spam, com foto legível.
 
-## Funcionalidades implementadas
+**Sent** indica que o Resend aceitou a mensagem com ID; não comprova recebimento ou abertura. Falha de e-mail não desfaz a visita. Reenvios usam o mesmo job/payload/chave para evitar duplicação; erros incertos antigos exigem reconciliação, não criação de novo relatório.
 
-- Login por senha, autenticação no servidor, owner/admin e técnicos com RLS por empresa e por rota atribuída. Cadastro público desabilitado.
-- Clientes, propriedades e múltiplas piscinas/spas, checklists por piscina, leituras obrigatórias configuráveis, foto opcional/obrigatória e opt-in de relatório por cliente.
-- Dias recorrentes (0=domingo), múltiplas visitas semanais, geração idempotente de stops, reordenação manual, adição, início e skip. Links externos de navegação Google/Apple Maps abrem somente ao tocar.
-- Histórico químico dos últimos30dias já na tela do stop: referência mais recente visível, anteriores expansíveis, leituras e dosagens por piscina; disponível com a rota offline e sem preencher leituras atuais.
-- Visita em uma tela, checklist novo sem herdar marcações, leituras anteriores só como referência, FC/pH prioritários e dosagens reais com produto/quantidade/unidade. Botões de quantidade são atalhos de entrada, não recomendação química.
-- Até três fotos, captura traseira solicitada ao browser, compressão local e decodificação/remoção de metadados no servidor, armazenamento privado e acesso assinado. A câmera física depende do dispositivo.
-- Complete & Next salva primeiro no IndexedDB, abre o próximo stop do mesmo técnico e sincroniza. Transação no banco valida tudo e grava histórico imutável + fila de relatório. IDs estáveis evitam visitas/relatórios duplicados.
-- PWA com shell público offline e rota/rascunhos/blobs/fila separados por conta e empresa. Indicadores distinguem salvo no dispositivo, sincronizado e status do e-mail.
-- Histórico de tarefas, leituras, dosagens, fotos e relatório. Correções administrativas são notas anexadas com autor/data sem alterar o snapshot ou reenviar automaticamente.
-- E-mail em segundo plano via Resend: dados exatos da visita, foto real anexada/inline, sem notas de portão/acesso. Outbox, leases, backoff e chave idempotente; somente confirmação do provedor marca Sent.
+### Recuperação automática da fila
 
-## Requisitos e instalação
+A conclusão confirmada tenta enviar um relatório imediatamente em segundo plano. O arquivo **`netlify/functions/report-worker.ts`** acrescenta recuperação **a cada 15 minutos**, mesmo com o app fechado, no deploy de produção. Ele chama o endpoint protegido usando o segredo no header; não precisa de serviço externo pago nem token na URL.
 
-Node >=22 (testado com24.19.0), npm e Docker para backend local/testes SQL. Repositório já isolado por tarefa cloud; use o checkout existente, sem criar worktrees sem solicitação.
+Após publicar, confira **Functions → report-worker → Schedule / Logs**. Preview/local não executa a agenda de produção. `URL` é a variável do próprio Netlify com a origem HTTPS do site; não precisa cadastrar URL extra. Se mudar domínio, mantenha o principal correto e confirme que o worker não recebe redirect/erro.
 
-```bash
-npm ci
-cp .env.example .env.local
-```
+A agenda processa **um job devido por chamada**, além das tentativas imediatas por conclusão; um backlog grande pode demorar e deve ser acompanhado. Erros ficam na fila e respeitam leases/backoff; History permite retry administrativo. Com `EMAIL_DELIVERY_ENABLED=false`, a função agendada não faz requisição nem envia. A agenda consome cotas do plano Netlify; sua execução remota precisa ser confirmada no painel.
 
-Em cloud com HOME restrito use `npm --cache /tmp/alys-npm ci`. Nunca coloque credenciais em arquivos versionados, instruções salvas ou chat. `.env.local` é ignorado.
+## 8. Cadastrar a operação e instalar no celular
 
-## Backend local real
+1. Entre com o proprietário. Em **Clients**, cadastre cliente e contato; habilite relatórios somente quando autorizado pelo cliente.
+2. Abra **Properties & pools**, cadastre endereço, piscinas, leituras/checklist e **Require a service photo** quando necessário.
+3. Em **Settings**, configure dias recorrentes e técnico. Em **Route**, confira os stops gerados ou adicione um stop manual.
+4. O técnico abre **Stops** e atende somente os stops atribuídos. Quantidades rápidas são atalhos de entrada, não recomendações de dosagem.
+5. No celular, abra a rota online antes de ficar sem sinal. iPhone: Safari → Compartilhar → Adicionar à Tela de Início. Android: Chrome → Instalar app.
+6. Ao terminar, confira **Pending Sync / Synced / Failed**. Pendência no aparelho ainda não chegou ao servidor; reabra o app com rede para sincronizar. Não limpe dados do navegador nem saia da conta com trabalho pendente.
 
-Comando mínimo usado nos testes (mantém banco, Auth, REST, Storage e gateway):
+Use somente um domínio definitivo para operar. Aparelho perdido, limpeza do navegador ou pressão de armazenamento podem perder trabalho não sincronizado; IndexedDB não é backup.
 
-```bash
-SUPABASE_TELEMETRY_DISABLED=1 SUPABASE_USE_SLIM_IMAGES=1   npx --cache /tmp/alys-npm --yes supabase@2.121.0 start   -x realtime,imgproxy,mailpit,postgres-meta,studio,edge-runtime,logflare,vector,supavisor
+## 9. Checklist para aceitar a entrega em produção
 
-SUPABASE_TELEMETRY_DISABLED=1   npx --cache /tmp/alys-npm --yes supabase@2.121.0 migration up --local
-```
+- [ ] Planos Free confirmados, adicionais/compras automáticas desativados e consumo disponível.
+- [ ] Migrations 001–014 aplicadas, signup público bloqueado e bucket privado.
+- [ ] URL final com HTTPS e login funcionando em celular real.
+- [ ] Proprietário consegue cadastrar cliente, piscina, agenda e stop.
+- [ ] Técnico acessa somente seus stops e não consegue gerenciar clientes/equipe.
+- [ ] Visita com leitura/checklist/foto aparece como Synced e continua no histórico após recarregar.
+- [ ] Em modo avião, rascunho/conclusão local sobrevivem à reabertura; voltar online sincroniza sem duplicar visita.
+- [ ] Falha de upload preserva foto local e permite retry; só confirmação do servidor indica Synced.
+- [ ] Gmail autorizado recebe relatório com foto, e fila agendada aparece nos logs do Netlify.
+- [ ] Backup do banco e das fotos privadas planejado; consumo e retenção revisados.
 
-O primeiro start baixa imagens e cria volumes Docker locais. Não reinicialize ou remova um banco com dados sem confirmação e backup. O start aplica migrations pendentes; `migration up --local` também permite aplicar atualizações sem reset. O seed não é automático.
+Comece com uma foto comprimida por visita. Fotos/relatórios consomem Storage, banco e tráfego; a aplicação também tem limites de upload próprios. Confira o uso semanalmente nos três provedores. Supabase Free pode pausar projetos inativos e não substitui estratégia de backup; exportação do banco não inclui os arquivos do Storage.
 
-Execute `npx --yes supabase@2.121.0 status` **no seu terminal privado** e configure:
+## 10. Desenvolvimento e testes locais
 
-- NEXT_PUBLIC_SUPABASE_URL: API local (porta54321).
-- NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: chave publicável/anon local.
-- SUPABASE_SERVICE_ROLE_KEY: chave administrativa **local**, apenas no servidor, necessária para upload validado de fotos e worker. Nunca usar prefixo NEXT_PUBLIC nela.
-- EMAIL_DELIVERY_ENABLED=false: mantenha desligado durante os testes locais.
+Para instalar backend local, criar somente dados fictícios e executar testes, siga [Desenvolvimento local](docs/LOCAL-DEVELOPMENT.md). Para uma demonstração sem instalar serviços, abra **`demo/index.html`** no navegador; ela não tem autenticação/backend/envio real e não deve receber dados reais.
 
-Reinicie o Next depois de mudar `.env.local`. Em Supabase hospedado, migrations/provisionamento e URL/chaves precisam ser configurados em um projeto aprovado; esta entrega não cria serviços externos nem faz deploy.
-
-Auth: `[auth] enable_signup=false` bloqueia cadastro público; `[auth.email] enable_signup=true` mantém o provedor de login por senha funcionando. Provisionamento de usuários e papéis usa canal administrativo, nunca metadata controlável pelo usuário.
-
-Para testar imediatamente com **dados fictícios locais**, após configurar `.env.local`:
-
-```bash
-node tests/integration/setup.mjs
-```
-
-O script aceita exclusivamente API localhost/127.0.0.1, cria contas isoladas de teste, propriedades/piscinas/stops e salva o login gerado em `/tmp/alys-integration-fixture.json`, com permissão restrita, sem imprimir senha. Consulte esse arquivo apenas no seu terminal privado para entrar no app. Cada execução cria novos dados de teste; não é seed de produção. Para cadastrar seu próprio usuário local, use Auth Admin em canal confiável ou inicie o Supabase Studio separadamente. Vincule o UUID a organizations/profiles conforme a migration; não use signup público.
-
-`supabase/seed.dev.sql` é uma alternativa manual fictícia que exige substituir UUID pelo usuário local existente; não execute junto com um provisionamento conflitante e nunca em banco hospedado.
-
-```bash
-npm run dev
-```
-
-O app roda na porta3000. Cadastre cliente → propriedade → piscina, configure dias/técnico em Settings ou adicione stop em Route. Clientes/piscinas sem contato real são suficientes para testes. Técnicos veem apenas rotas atribuídas; cadastros administrativos são de owner/admin.
-
-### Particularidades deste ambiente cloud
-
-A telemetria do CLI tentou usar HOME somente leitura; `SUPABASE_TELEMETRY_DISABLED=1` resolve. Imagens slim evitaram falta de espaço no daemon Docker. Quando o registry padrão for negado, use o override oficial `SUPABASE_INTERNAL_IMAGE_REGISTRY=ghcr.io` para as imagens oficiais do Supabase.
-
-Health probes internos herdaram proxy HTTP e falharam mesmo com serviços funcionando. Isso foi diagnosticado por requisições reais Auth/health, Storage/status e REST, além dos testes completos de login/upload. `--ignore-health-check` foi usado somente para manter containers e investigar; não é prova de disponibilidade. Não ignore novas falhas sem investigar os serviços. Esta particularidade e o procedimento exato do teste estão no registro de validação.
-
-## E-mail real e worker
-
-O código integra Resend; **nenhum envio real foi feito sem configuração**. Para testar com o destinatário autorizado `alyspools@gmail.com`, configure no servidor:
-
-```dotenv
-EMAIL_DELIVERY_ENABLED=true
-RESEND_API_KEY=<secure-server-key>
-EMAIL_FROM=ALYS Pool Services <sender@your-verified-domain>
-SUPABASE_SERVICE_ROLE_KEY=<server-only-project-key>
-REPORT_WORKER_SECRET=<random-secret-with-at-least-32-characters>
-```
-
-Valores reais somente em `.env.local`/secret manager/configurações seguras. O domínio HTTPS necessário é `api.resend.com`. O remetente/domínio deve estar verificado no provedor. Habilite Email Reports no cliente de teste e use somente o destinatário autorizado. Não ative integrações pagas sem autorização.
-
-A conclusão já dispara o processamento com `after()` sem bloquear o próximo stop. Configure também um scheduler confiável a cada60s para retomar jobs após falhas/restarts. Endpoint: `POST /api/email/worker`, header `Authorization: Bearer <REPORT_WORKER_SECRET>`. Nunca coloque o segredo na URL. Não foi provisionado scheduler externo nesta entrega.
-
-O worker só opera com configuração completa e habilitada; sem ela jobs ficam Pending, attempts não é consumido e não há envio. Tentativas em falha respeitam backoff e até5 tentativas automáticas. History permite retry administrativo do mesmo job, sem criar um novo relatório. Sent significa **aceito pelo Resend com ID do provedor**, não confirmação de chegada/abertura na caixa postal; webhooks de bounce/delivery não foram implementados.
-
-O payload completo (HTML/texto/destinatário/remetente/fotos) é congelado antes do primeiro envio; novas tentativas usam os mesmos bytes e chave. Depois de22h desde a primeira tentativa, reenvio incerto é bloqueado para não ultrapassar a deduplicação de24h do provedor. Reconciliar manualmente com o provedor antes de qualquer nova entrega. Mudança de opt-in ou destinatário impede o envio pendente; não redirecionamos relatórios silenciosamente.
-
-## Offline e instalação PWA
-
-Em produção é necessário HTTPS (localhost é a exceção). iPhone/Safari: Share → Add to Home Screen. Android/Chrome: menu → Install app. Abra a rota online uma vez e aguarde a instalação do shell antes de trabalhar sem rede.
-
-Para testar offline de forma reproduzível, prefira `npm run build && npm start`. CacheStorage guarda apenas shell genérico `/offline`, ícones e chunks públicos, nunca HTML autenticado, APIs, fotos privadas ou payload RSC. IndexedDB guarda a rota e o trabalho do usuário/empresa no dispositivo, incluindo notas internas necessárias ao serviço; use aparelho pessoal protegido. Isso não é backup nem criptografia local: apagar dados do browser, pressão de armazenamento ou perda do aparelho podem perder trabalho ainda não sincronizado.
-
-O queue uploader preserva UUID da visita/foto e o horário efetivo informado pelo dispositivo. `received_at` registra o recebimento pelo servidor separadamente. Só a confirmação da transação remove rascunhos/blobs locais. Falha de upload mantém trabalho para retry; falha de e-mail não desfaz a visita. Sincronização automática ocorre com o app aberto e rede restaurada; mobile OS pode suspender o app fechado, então reabra para sincronizar. Nenhuma promessa de background sync ilimitado.
-
-Rejeição definitiva422 permite editar o rascunho e tentar com o mesmo ID; falhas de rede/resultado incerto mantêm snapshot local bloqueado para não alterar algo possivelmente aceito. Verifique History em conflito409. Logout avisa sobre pendências e limpa dados locais, serializando com sincronização para evitar repopulação após sair. Não compartilhe o aparelho enquanto houver trabalho offline.
-
-## Testes
+Com dependências instaladas:
 
 ```bash
 npm run lint
@@ -223,78 +197,12 @@ npm run typecheck
 npm test
 npm run test:db
 npm run build
-npm start
 ```
 
-Testes de integração com backend local configurado (somente localhost):
+`test:db` usa Docker/PostgreSQL descartável do próprio teste. Integração mobile/offline exige Supabase local e o procedimento específico do guia local.
 
-```bash
-node tests/integration/setup.mjs
-node tests/integration/backend.mjs
-npx playwright test
-```
+## Estado da entrega e suporte
 
-Os testes Playwright usam Chromium local em `/usr/bin/chromium` quando ele existe; caso contrário, usam o browser instalado com `npx playwright install chromium`. Ajuste `PLAYWRIGHT_CHROMIUM_EXECUTABLE` para um executável específico. Não é preciso instalar outro browser neste ambiente cloud. `TEST_BASE_URL` altera a origem local do app.
+Validações e limites: [VALIDATION](docs/VALIDATION.md). Operação, equipe, atualização e recuperação: [ENTREGA](docs/ENTREGA.md). Detalhes técnicos: [Fast Technician Mode](docs/FAST-TECHNICIAN-MODE.md) · [Arquitetura](docs/ARCHITECTURE.md).
 
-O teste SQL usa um PostgreSQL descartável próprio, sem portas/volumes persistentes, com harness auth/storage mínimo; já os testes de integração usam Supabase real. Nunca confundir esses níveis de validação. Testes de e-mail simulam provedor e não enviam mensagens externas.
-
-Resultados e limitações em [VALIDATION](docs/VALIDATION.md). Esquema, permissões e decisões em [ARCHITECTURE](docs/ARCHITECTURE.md). Revisão do protótipo em [REVIEW](docs/REVIEW.md).
-
-## Histórico anterior
-
-index.html, app.js e styles.css continuam na raiz como referência; Next não os expõe em public/. O protótipo antigo usa localStorage; a demonstração atual usa IndexedDB. Nenhum deles deve receber dados reais. Não registrar seu worker antigo no novo app. O worker da PWA nova remove o cache antigo ALYS ao ativar.
-
-## Expansão: clientes, idiomas e rotas
-
-O seletor **Language** troca EN/PT/ES sem apagar formulário ou leituras e guarda a preferência neste navegador. Inglês continua padrão. Nomes, endereços e notas digitados não são traduzidos; os snapshots de relatório mantêm seus valores originais.
-
-**Clients** oferece busca, filtro por status/tags, ordenação, seleção múltipla, CSV, cadastro/edição/consulta, tags, técnico, frequência, endereço de cobrança e mensalidade em USD. Ações em lote e exclusão exigem confirmação na interface. Delete arquiva o cliente, preservando propriedades e histórico. Dados de cobrança/notas administrativas ficam em tabela acessível apenas a gestores. O preço cadastrado não representa receita recebida, MRR calculado ou lucro; não soma carteira própria com subcontratos. Atribuição/frequência no perfil do cliente não remanejam stops existentes: configure a agenda em Settings.
-
-**Route** inclui calendário semanal, mapa recolhível no celular e lista/mapa lado a lado em telas maiores. Marcadores numerados exibem o stop escolhido e permitem iniciar a visita/navegar. Há reordenação por arraste no desktop e botões no celular. Configure coordenadas em Clients, local/horário inicial no mapa e calcule ou otimize o percurso. A otimização usa matriz de tempo viário, até50 stops abertos, com heurística de melhoria; não garante ótimo global. Stops concluídos/ignorados mantêm suas posições. Alterar ordem/status invalida estimativas antigas.
-
-Configurações opcionais no servidor (reinicie o Next após alterar):
-
-```dotenv
-# Serviço compatível com OSRM table/v1 e route/v1; use uma instância autorizada.
-ROUTING_API_URL=
-# Endpoint /search compatível com Nominatim; consulta explícita, nunca automática em massa.
-GEOCODING_API_URL=
-# Tiles públicos; esta variável é incorporada no build.
-NEXT_PUBLIC_MAP_TILE_URL=https://tile.openstreetmap.org/{z}/{x}/{y}.png
-```
-
-Tiles requerem internet e atribuição OpenStreetMap. Coordenadas são enviadas ao provedor viário quando você calcula/otimiza; endereço é enviado ao geocodificador apenas ao tocar **Locate service address**. Avalie termos, capacidade e privacidade do provedor escolhido antes de operar com dados reais. Sem geocodificador, digite coordenadas; sem roteador, a lista/manual funciona e a aplicação informa que não calculou distâncias. Tiles e cálculos viários não são garantidos offline. Nesta cloud, a tentativa real de OSRM foi bloqueada pelo proxy403; testes de contrato usam um serviço local simulado.
-
-**Convites:** `CUSTOMER_INVITES_ENABLED=false` por padrão. Para habilitar, é necessário um portal HTTPS existente em `CUSTOMER_PORTAL_URL`, redirect permitido no Supabase Auth, SMTP configurado e chave administrativa somente no servidor. O app implementa pedido de convite via Auth Admin, não as páginas de portal. Claims persistentes evitam reenvio automático duplicado; pending/failed exigem reconciliação administrativa. Aceitação pelo serviço de e-mail não comprova entrega. Metadata do convite não concede acesso às tabelas. Nenhum convite externo foi enviado nesta validação.
-
-Leituras opcionais incluem cloro total (ppm) e temperatura (°F). Detalhes internos da visita registram observações do técnico, equipamentos, limpeza de filtro e reparos, com histórico imutável; esses campos não entram no relatório do cliente. Migrations006–009 acrescentam estes recursos sem resetar o banco. Execute `migration up --local` antes do app atualizado. A demonstração estática oferece idiomas, cadastro e calendário, mas não autenticação real, mapas online, otimização viária ou convites.
-
-## Correções da revisão e tela mobile de stops
-
-Acesse **Stops** na barra inferior ou `/stops`: lista compacta do dia atual na Flórida, filtros Remaining/Completed/All, início de visita e navegação. O app instalado abre essa tela. **Route** mantém planejamento semanal, mapa e reordenação. Settings agora oferece **Sign out** no celular; a saída avisa sobre pendências, limpa o IndexedDB e redireciona outras abas.
-
-Atualize o banco sem reset antes de iniciar esta versão:
-
-```bash
-npx --yes supabase@2.121.0 migration up --local
-```
-
-Migrations010–012 corrigem a reconciliação de agendas e permissões, adicionam pesquisa/paginação histórica, salvamento transacional de planos e orçamento de uploads. Mudança de técnico/dias reconcilia stops automáticos futuros ainda não iniciados, mantendo o ID. Concluídos e skips manuais são preservados. Agenda com atendimento em andamento exige concluir/pular esse atendimento antes de mudar. Arquivar/inativar cliente cancela os stops futuros abertos; isso também vale para os manuais. Não exclui histórico. Verifique a agenda após atualizar um banco que já contenha atendimentos antigos conflitantes.
-
-Um técnico consulta o cadastro/instruções atuais quando tem atendimento aberto entre ontem e os próximos7 dias, ou atendimento concluído ou pulado manualmente hoje. Atribuição antiga não concede códigos novos de acesso. O histórico autorizado usa snapshots e pode ser pesquisado/paginado sem depender da linha atual do imóvel. A rota carrega relacionamentos completos em páginas, sem cortes independentes de1000 registros.
-
-A CSP usa nonce por resposta e restringe scripts em produção; estilos inline continuam permitidos para Leaflet. O shell offline é HTML genérico renderizado por requisição, com seus próprios nonce/CSP preservados no cache, sem dados de sessão. HTTPS e proteção do aparelho continuam necessários. Mudanças de permissão no servidor não apagam instantaneamente informações já baixadas num aparelho offline; use dispositivo protegido e encerre a sessão ao trocar de operador.
-
-Limites de upload:12 reservas por stop,120 novas por hora por empresa e2000 acumuladas por empresa. Repetir o mesmo photo_id não consome outra reserva. Uma visita continua com até3 fotos. O limite considera tentativas/reservas, inclusive algumas falhas, para conter consumo; mensagens429 preservam a foto local. A liberação de orçamento é administrativa. Limpeza de órfãos é **dry run por padrão**, somente em stops fechados há mais de14 dias e sem foto vinculada a uma visita:
-
-```bash
-node scripts/cleanup-photos.mjs --organization=<UUID-da-organizacao>
-# Somente após revisar a simulação e autorizar a remoção dos órfãos:
-node scripts/cleanup-photos.mjs --organization=<UUID-da-organizacao> --apply
-```
-
-A manutenção precisa da chave administrativa no servidor. Não a execute com `--apply` sem revisar escopo e backup. Esta entrega não executou remoção real de arquivos. Geocodificação agora usa uma janela global persistida no banco, compartilhada entre instâncias. Convites informam aceitos/falhos/incertos/já solicitados; falhas/incertezas exigem reconciliação administrativa e não geram reenvio automático.
-
-O workflow `.github/workflows/checks.yml` executa lint, tipos, testes unitários/SQL, build e demonstração em push/PR. Os fluxos Supabase/Playwright completos continuam reproduzíveis com o procedimento local e stub descritos acima. O workflow foi adicionado; a execução no GitHub deve ser conferida em Actions após o push. Resultados e decisões: [correções da revisão](docs/CORRECOES-REVISAO.md).
-
-Ao reativar um cliente inativo, seus stops automáticos futuros cancelados por inatividade voltam à agenda. Stops manuais cancelados precisam de restauração explícita. Stops pulados podem ser restaurados pela ação Restore stop enquanto o cliente estiver ativo.
+O código e os testes locais não comprovam publicação, DNS/HTTPS, execução da agenda remota, câmera física ou recebimento de e-mail. Esses pontos são os testes de aceite acima, nas suas contas. Nenhum serviço pago é necessário ao roteiro dentro das cotas Free; não há garantia de gratuidade ilimitada com aumento do uso.
