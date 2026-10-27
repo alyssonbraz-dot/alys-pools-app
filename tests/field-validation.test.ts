@@ -29,3 +29,8 @@ it('checks incoming host when Next request URL uses its bind hostname',()=>{
  const hostile=new Request('http://0.0.0.0:3000/api/photos',{headers:{host:'127.0.0.1:3000',origin:'https://evil.example'}});
  expect(sameOrigin(hostile)).toBe(false);
 });
+it('accepts only distinct predefined issue flags and never invents readings for access problems',()=>{
+ expect(completionSchema.parse({...payload,issue_flags:['green_pool','equipment_issue','low_water','access_denied','other']})).toMatchObject({issue_flags:['green_pool','equipment_issue','low_water','access_denied','other']});
+ expect(completionSchema.safeParse({...payload,issue_flags:['invented']})).toMatchObject({success:false});
+ expect(completionSchema.safeParse({...payload,issue_flags:['green_pool','green_pool']})).toMatchObject({success:false});
+});

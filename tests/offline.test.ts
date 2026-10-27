@@ -42,7 +42,7 @@ describe('recoverable completion queue',()=>{
   let failVisit=true;const bodies:CompletionPayload[]=[];
   const network=vi.fn(async(input:RequestInfo|URL,init?:RequestInit)=>{
    const path=String(input);
-   if(path.startsWith('/api/route'))return json(route);
+   if(path.startsWith('/api/session'))return json(route);
    if(path==='/api/photos'){
     expect((init?.body as FormData).get('photo_id')).toBe(photo.id);
     return json({path:'org-a/stop-a/photo.jpg'});
@@ -69,7 +69,7 @@ describe('recoverable completion queue',()=>{
   const savedRoute={...route,stops:[{id:'stop-a',technician_id:scope.userId,service_date:route.date,position:1,status:'pending' as const,property:{id:'property-a',name:'Fictional property',address:'Fictional address',gate_notes:''},customer:{id:'customer-a',name:'Fictional'},pools:[]}]};
   await device.cacheRoute(scope,savedRoute);
   await device.enqueueCompletion(scope,draft);
-  vi.stubGlobal('fetch',vi.fn(async(input:RequestInfo|URL)=>String(input).startsWith('/api/route')?json(savedRoute):json({visit_id:draft.id,next_stop_id:null})));
+  vi.stubGlobal('fetch',vi.fn(async(input:RequestInfo|URL)=>String(input).startsWith('/api/session')?json(savedRoute):json({visit_id:draft.id,next_stop_id:null})));
   expect((await device.syncQueue(scope)).synced).toBe(1);
   expect((await device.getCachedRoute(scope))?.stops[0].status).toBe('completed');
   expect(await device.getQueue(scope)).toHaveLength(0);
@@ -79,7 +79,7 @@ describe('recoverable completion queue',()=>{
   await device.enqueueCompletion(scope,draft);
   const identifiers:string[]=[];let interrupted=true;
   vi.stubGlobal('fetch',vi.fn(async(input:RequestInfo|URL,init?:RequestInit)=>{
-   if(String(input).startsWith('/api/route'))return json(route);
+   if(String(input).startsWith('/api/session'))return json(route);
    if(input==='/api/photos'){
     identifiers.push(String((init?.body as FormData).get('photo_id')));
     if(interrupted){interrupted=false;throw new TypeError('Upload response was lost');}
@@ -109,7 +109,7 @@ describe('recoverable completion queue',()=>{
   await device.enqueueCompletion(scope,timestamped);
   const timestamps:unknown[]=[];let fail=true;
   vi.stubGlobal('fetch',vi.fn(async(input:RequestInfo|URL,init?:RequestInit)=>{
-   if(String(input).startsWith('/api/route'))return json(route);
+   if(String(input).startsWith('/api/session'))return json(route);
    timestamps.push(JSON.parse(String(init?.body)).completed_at);
    if(fail){fail=false;throw new TypeError('Offline overnight');}
    return json({visit_id:draft.id,next_stop_id:null});
@@ -121,7 +121,7 @@ describe('recoverable completion queue',()=>{
   await device.savePhoto(scope,draft.stop_id,new Blob(['photo'],{type:'image/jpeg'}));
   await device.enqueueCompletion(scope,draft);
   vi.stubGlobal('fetch',vi.fn(async(input:RequestInfo|URL)=>{
-   if(String(input).startsWith('/api/route'))return json(route);
+   if(String(input).startsWith('/api/session'))return json(route);
    if(input==='/api/photos')return json({path:'org-a/stop-a/photo.jpg'});
    return json({error:'A current pH reading is required'},422);
   }));
@@ -134,7 +134,7 @@ describe('recoverable completion queue',()=>{
  });
  it('keeps ambiguous server errors read-only because the visit may have committed',async()=>{
   await device.enqueueCompletion(scope,draft);
-  vi.stubGlobal('fetch',vi.fn(async(input:RequestInfo|URL)=>String(input).startsWith('/api/route')?json(route):json({error:'Server response interrupted'},503)));
+  vi.stubGlobal('fetch',vi.fn(async(input:RequestInfo|URL)=>String(input).startsWith('/api/session')?json(route):json({error:'Server response interrupted'},503)));
   await device.syncQueue(scope);
   await expect(device.releaseRejectedCompletion(scope,draft.stop_id)).rejects.toThrow('Only a visit rejected');
   expect(await device.getQueue(scope)).toHaveLength(1);
@@ -145,7 +145,7 @@ describe('recoverable completion queue',()=>{
   let started:()=>void=()=>{};
   const uploading=new Promise<void>(resolve=>{started=resolve;});
   vi.stubGlobal('fetch',vi.fn(async(input:RequestInfo|URL,init?:RequestInit)=>{
-   if(String(input).startsWith('/api/route'))return json(route);
+   if(String(input).startsWith('/api/session'))return json(route);
    started();
    return new Promise<Response>((_,reject)=>{
     init?.signal?.addEventListener('abort',()=>reject(new DOMException('Logged out','AbortError')),{once:true});
@@ -168,9 +168,44 @@ describe('recoverable completion queue',()=>{
  });
  it('shares an in-flight sync so repeated clicks cannot send the queue twice',async()=>{
   await device.enqueueCompletion(scope,draft);
-  vi.stubGlobal('fetch',vi.fn(async(input:RequestInfo|URL)=>String(input).startsWith('/api/route')?json(route):json({visit_id:draft.id,next_stop_id:null})));
+  vi.stubGlobal('fetch',vi.fn(async(input:RequestInfo|URL)=>String(input).startsWith('/api/session')?json(route):json({visit_id:draft.id,next_stop_id:null})));
   const first=device.syncQueue(scope),second=device.syncQueue(scope);
   expect(first).toBe(second);
   expect((await first).synced).toBe(1);
  });
+});
+
+it('freezes the entire queued submission and rejects stale-tab edits after completion',async()=>{
+ const photo=await device.savePhoto(scope,draft.stop_id,new Blob(['original']));
+ await device.enqueueCompletion(scope,draft);
+ await device.enqueueCompletion(scope,{...draft,id:'replacement',notes:'changed',pools:[]});
+ expect((await device.getQueue(scope))[0].payload).toEqual(draft);
+ await expect(device.saveDraft(scope,{...draft,notes:'late'})).rejects.toThrow('read-only');
+ await expect(device.savePhoto(scope,draft.stop_id,new Blob(['late']))).rejects.toThrow('read-only');
+ await expect(device.removePhoto(scope,photo.id)).rejects.toThrow('read-only');
+ expect(await device.listPhotos(scope,draft.stop_id)).toHaveLength(1);
+});
+it('drains visits completed during an in-flight upload without retrying failures in a tight loop',async()=>{
+ await device.savePhoto(scope,draft.stop_id,new Blob(['photo'],{type:'image/jpeg'}));await device.enqueueCompletion(scope,draft);
+ let release!:()=>void,started!:()=>void;const held=new Promise<void>(r=>release=r),uploading=new Promise<void>(r=>started=r);
+ const completed:string[]=[];
+ vi.stubGlobal('fetch',vi.fn(async(input:RequestInfo|URL,init?:RequestInit)=>{
+  if(input==='/api/session')return json(route);
+  if(input==='/api/photos'){started();await held;return json({error:'Storage unavailable'},503);}
+  const payload=JSON.parse(String(init?.body));completed.push(payload.stop_id);return json({visit_id:payload.id,next_stop_id:null});
+ }));
+ const work=device.syncQueue(scope);await uploading;
+ await device.enqueueCompletion(scope,{...draft,id:'visit-b',stop_id:'stop-b'});release();
+ expect(await work).toMatchObject({synced:1,pending:1});expect(completed).toEqual(['stop-b']);
+ const calls=vi.mocked(fetch).mock.calls.length;
+ expect(await device.syncQueue(scope,{automatic:true})).toMatchObject({synced:0,pending:1});expect(vi.mocked(fetch).mock.calls).toHaveLength(calls);
+ expect((await device.getQueue(scope))[0]).toMatchObject({status:'failed',attempts:1});
+});
+it('persists flags offline and retries them with exactly the original visit ID and readings',async()=>{
+ const flagged={...draft,issue_flags:['green_pool','equipment_issue'] as const};
+ await device.enqueueCompletion(scope,{...flagged,issue_flags:[...flagged.issue_flags]});let fail=true;const sent:CompletionPayload[]=[];
+ vi.stubGlobal('fetch',vi.fn(async(input:RequestInfo|URL,init?:RequestInit)=>{
+  if(input==='/api/session')return json(route);sent.push(JSON.parse(String(init?.body)));if(fail){fail=false;throw new TypeError('lost acknowledgement');}return json({visit_id:draft.id,next_stop_id:null});
+ }));
+ await device.syncQueue(scope);await device.syncQueue(scope);expect(sent[0]).toEqual(sent[1]);expect(sent[1].issue_flags).toEqual(flagged.issue_flags);
 });

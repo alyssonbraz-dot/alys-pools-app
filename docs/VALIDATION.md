@@ -67,3 +67,16 @@ OSRM real retornou403 CONNECT bloqueado pelo proxy. Tiles/geocodificador reais n
 A manutenção de fotos foi executada somente em simulação local, sem remoção de arquivos. CI foi adicionado, mas não se presume resultado remoto. Provedores de e-mail/portal/roteamento externos, backups hospedados e aparelhos físicos continuam sem validação nesta entrega. Nenhum deploy, envio externo ou serviço pago foi ativado. Detalhes das correções em CORRECOES-REVISAO.md.
 
 A espera do PostgreSQL descartável passou a conferir TCP, evitando confundir o servidor temporário de inicialização com a instância final. A última execução de todas as7 suítes foi concluída sem erros.
+
+## Fast Technician Mode — 27/10/2026
+
+- Lint sem erros/warnings, typecheck,57 testes unitários em11 arquivos e build de produção aprovados.
+- 9 suítes SQL aprovadas com migrations001–014. Nova suíte mantém foto obrigatória, bloqueia acesso direto à rotina base, rejeita flags desconhecidas/duplicadas, protege flags por técnico/empresa e comprova imutabilidade e repetição sem duplicar visitas, químicos ou relatórios. Migrations anteriores preservadas.
+- Backend Supabase real local aprovado novamente. Migration014 aplicada localmente sem reset.
+- 10 testes mobile de integração aprovados em conjunto;4 testes da demonstração existente aprovados. Incluem os fluxos anteriores e o novo técnico com3 stops atribuídos, negativos de acesso, cache com role conferido, ordem de seções, leitura nova vazia, foto obrigatória e JPEG real no Storage privado.
+- O teste novo reteve o primeiro upload, abriu o próximo stop e concluiu outro atendimento antes de liberar a rede. A primeira foto falhou503, o segundo stop sincronizou, o primeiro permaneceu Failed e foi recuperado com Retry sync. Nova conclusão do mesmo payload manteve uma visita, um conjunto químico e um relatório. Flags apareceram no histórico autorizado.
+- XHR testado com progresso de bytes40%/99%, credenciais/headers de escopo, aborto e preservação do status503.100% não é publicado como armazenamento confirmado antes da resposta do servidor. Testes de fila cobrem submissão congelada, edição/remoção de foto por aba antiga bloqueada, drenagem de visitas novas e backoff sem loop de requisições.
+- Cache exibiu o roteiro autorizado antes de uma atualização retida; uma cópia com role Owner foi recusada quando o servidor identificou Technician. Start Service não fez nova consulta à rota. Mapas são carregados sob demanda no planejamento online, não no fluxo do técnico.
+- Exemplos de handoff local Complete & Next → próximo stop:462ms e109ms em execuções mobile emuladas, com upload retido. São amostras locais, não benchmark de câmera/aparelho/rede real e não prova de visita inteira em15–30s. O teste exige visibilidade do próximo stop em até1.5s após o clique.
+
+Nenhuma dependência paga foi adicionada. O worker de e-mail e os limites existentes foram reutilizados; nenhum relatório real foi enviado. Publicação remota Netlify, conta/remetente Resend, cotas atuais e operação em aparelho físico continuam sem validação nesta mudança. Com app fechado/suspenso não há garantia de retentativa contínua. Guia: FAST-TECHNICIAN-MODE.md.

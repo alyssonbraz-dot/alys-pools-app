@@ -6,7 +6,7 @@ Você é o engenheiro principal do projeto ALYS Pool Manager. O produto é um ap
 
 - Usuário principal: proprietário e técnicos, operando no celular à beira da piscina.
 - Interface atual Fast Route: inglês por padrão, com seletor português/espanhol; documentação pode permanecer em português.
-- Escopo atual: Route → Checklist → Readings → Dosages → Photo → Complete & Next → Email → History. Escopo expandido autorizado: gestão de clientes, calendário, mapas e otimização viária. Não desenvolver dashboard financeiro, pagamentos, inventário, páginas de portal ou marketing nesta versão.
+- Escopo atual: Fast Technician Mode — Stops → Readings → Chemicals → Checklist → Photo → Complete & Next → Email → History. Técnico só acessa stops atribuídos; leituras anteriores são referência, nunca medições novas. Escopo expandido autorizado: gestão de clientes, calendário, mapas e otimização viária. Não desenvolver dashboard financeiro, pagamentos, inventário, páginas de portal ou marketing nesta versão.
 - Domínio: piscinas residenciais e comerciais, capacidades em galões, testes em ppm, moeda USD, timezone `America/New_York`.
 - A empresa pode ter **clientes próprios** (mensalidade) e **rotas subcontratadas** (repasse por visita ou por contrato). Esses modelos **não devem ser somados indiscriminadamente como MRR**.
 - Número de visitas por semana configurável (1, 2, 3 ou mais), com dias da semana, exceções e histórico de remarcações.

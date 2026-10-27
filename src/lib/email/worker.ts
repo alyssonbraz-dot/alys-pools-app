@@ -24,6 +24,8 @@ export async function processEmailQueue(options: { limit?: number } = {}) {
       if (!customer?.email_reports_enabled || customer.email !== job.recipient) throw new DeliveryError('customer_reports_disabled_or_recipient_changed', false);
       let payload = job.request_payload;
       if (!payload) {
+        const {data:issue,error:issueError}=await db.from('visit_issue_flags').select('flags').eq('visit_id',job.visit_id).maybeSingle();
+        if(issueError)throw new DeliveryError('issue_metadata_unavailable',true);
         const { data: photos, error: photoError } = await db.from('visit_photos').select('storage_path').eq('visit_id', job.visit_id).order('id');
         if (photoError) throw new DeliveryError('photo_metadata_unavailable', true);
         const attachments: ReportPhoto[] = [];
@@ -32,7 +34,7 @@ export async function processEmailQueue(options: { limit?: number } = {}) {
           if (imageError || !image || image.size > 2 * 1024 * 1024) throw new DeliveryError('photo_download_unavailable', true);
           attachments.push({ content: Buffer.from(await image.arrayBuffer()).toString('base64'), filename: `service-photo-${index + 1}.jpg` });
         }
-        payload = createServiceReport({ snapshot: visit.snapshot, completedAt: visit.completed_at, recipient: job.recipient, from: config.from, photos: attachments });
+        payload = createServiceReport({ snapshot: {...visit.snapshot,issue_flags:issue?.flags??[]}, completedAt: visit.completed_at, recipient: job.recipient, from: config.from, photos: attachments });
       }
       // Revalidate and renew the lease immediately before every send, including
       // retries with an already frozen payload. Slow downloads or a stale batch

@@ -1,10 +1,11 @@
 import { getOperator } from '@/lib/auth';
 import { stopMutationSchema } from '@/lib/field/validation';
-import { boundedJson,sameOrigin,apiError,json } from '@/lib/http';
+import { boundedJson,sameOrigin,apiError,json,matchesDeviceScope } from '@/lib/http';
 export async function POST(request:Request) {
  if(!sameOrigin(request))return json({error:'Invalid request origin.'},403);
  try {
  const operator=await getOperator();if(!operator)return json({error:'Please sign in.'},401);
+ if(!matchesDeviceScope(request,operator.user.id,operator.profile.organization_id))return json({error:'Account changed. Sign in with the account that started this visit.'},403);
  const data=stopMutationSchema.parse(await boundedJson(request,20000));
  const {db,user,profile}=operator;
  let result;

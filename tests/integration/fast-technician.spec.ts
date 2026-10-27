@@ -1,0 +1,55 @@
+import {test,expect} from '@playwright/test';
+import {createClient} from '@supabase/supabase-js';
+import {randomUUID} from 'node:crypto';
+import {readFileSync,writeFileSync} from 'node:fs';
+import sharp from 'sharp';
+try{process.loadEnvFile('.env.local');}catch{/* CI injection allowed. */}
+const fixture=JSON.parse(readFileSync('/tmp/alys-integration-fixture.json','utf8'));
+if(!['localhost','127.0.0.1'].includes(new URL(fixture.url).hostname))throw new Error('Local integration only');
+const admin=createClient(fixture.url,process.env.SUPABASE_SERVICE_ROLE_KEY!,{auth:{persistSession:false,autoRefreshToken:false}});
+test('technician completes the next stops while a required-photo upload is delayed or failed, then safely retries once',async({page,baseURL})=>{
+ const email=`fast-${randomUUID()}@example.test`,password=randomUUID()+'Aa1!';const {data:user,error:authError}=await admin.auth.admin.createUser({email,password,email_confirm:true});expect(authError).toBeNull();const uid=user.user!.id;
+ expect((await admin.from('profiles').insert({id:uid,organization_id:fixture.orgId,role:'technician',display_name:'Fictional fast technician'})).error).toBeNull();
+ const stops:{id:string;pool:string}[]=[];
+ for(let i=1;i<=3;i++){
+  const customer=randomUUID(),property=randomUUID(),pool=randomUUID();expect((await admin.from('customers').insert({id:customer,organization_id:fixture.orgId,name:`Fast fixture client ${i}`,email:'nobody@example.test',email_reports_enabled:true})).error).toBeNull();
+  expect((await admin.from('properties').insert({id:property,organization_id:fixture.orgId,customer_id:customer,name:`Fast Stop ${i}`,address:`Fictional Fast Address ${i}, FL`})).error).toBeNull();
+  expect((await admin.from('pools').insert({id:pool,organization_id:fixture.orgId,property_id:property,name:'Fast pool',gallons:12000,water_type:'chlorine',type:'residential',checklist:['Test Water','Brush Pool'],photo_required:i===1})).error).toBeNull();
+  const {data:stop,error}=await admin.from('route_stops').insert({organization_id:fixture.orgId,property_id:property,technician_id:uid,service_date:fixture.date,position:i}).select('id').single();expect(error).toBeNull();stops.push({id:stop!.id,pool});
+ }
+ let routeRequests=0;page.on('request',request=>{if(request.url().includes('/api/route?'))routeRequests++;});
+ await page.goto('/login');await page.getByLabel('Email',{exact:true}).fill(email);await page.getByLabel('Password',{exact:true}).fill(password);await page.getByRole('button',{name:'Sign in',exact:true}).click();await expect(page.getByRole('heading',{name:'Today’s Stops'})).toBeVisible();
+ await expect(page.getByRole('link',{name:'Clients',exact:true})).toHaveCount(0);await expect(page.getByRole('link',{name:'Route',exact:true})).toHaveCount(0);
+ const data=await (await page.request.get('/api/route?date='+fixture.date)).json();expect(data.stops.map((s:{id:string})=>s.id)).toEqual(stops.map(s=>s.id));
+ expect((await page.request.get('/api/customers')).status()).toBe(403);
+ const forged=await page.request.post('/api/visits',{headers:{Origin:baseURL!},data:{id:randomUUID(),stop_id:fixture.stops[0].id,pools:[{pool_id:fixture.stops[0].poolId,tasks:[],readings:{fc:3,ph:7.4},dosages:[]}],notes:'',issue_flags:['green_pool'],photo_paths:[]}});expect(forged.status()).toBe(403);
+ let resume!:()=>void,seen!:()=>void,finished!:()=>void;const cacheHold=new Promise<void>(r=>resume=r),fetchSeen=new Promise<void>(r=>seen=r),fetchDone=new Promise<void>(r=>finished=r);
+ await page.route('**/api/route?date='+fixture.date,async route=>{const response=await route.fetch();seen();await cacheHold;await route.fulfill({response});finished();});
+ await page.reload();await fetchSeen;await expect(page.getByRole('heading',{name:'Today’s Stops',exact:true})).toBeVisible({timeout:1000});await expect(page.locator('.field-stop')).toHaveCount(3);resume();await fetchDone;await page.unroute('**/api/route?date='+fixture.date);
+ // A cached Owner view must not be reused after the verified role becomes Technician.
+ await page.evaluate(async()=>{const db=await new Promise<IDBDatabase>((resolve,reject)=>{const request=indexedDB.open('alys-field-device-v1',1);request.onsuccess=()=>resolve(request.result);request.onerror=()=>reject(request.error);});await new Promise<void>((resolve,reject)=>{const tx=db.transaction('records','readwrite'),store=tx.objectStore('records'),request=store.getAll();request.onsuccess=()=>{for(const record of request.result){if(record.key.includes(':route:')){record.value.role='owner';record.value.stops[0].property.name='Privileged cached stop';store.put(record);}}};tx.oncomplete=()=>resolve();tx.onerror=()=>reject(tx.error);});db.close();});
+ let allowRefresh!:()=>void,roleFetch!:()=>void;const roleHold=new Promise<void>(r=>allowRefresh=r),roleStarted=new Promise<void>(r=>roleFetch=r);
+ await page.route('**/api/route?date='+fixture.date,async route=>{const response=await route.fetch();roleFetch();await roleHold;await route.fulfill({response});});await page.reload();await roleStarted;await expect(page.getByRole('heading',{name:'Privileged cached stop',exact:true})).toHaveCount(0);await expect(page.getByRole('heading',{name:'Loading your route…',exact:true})).toBeVisible();allowRefresh();await expect(page.getByRole('heading',{name:'Today’s Stops',exact:true})).toBeVisible();await page.unroute('**/api/route?date='+fixture.date);
+ const initialRouteRequests=routeRequests;
+ await page.getByRole('button',{name:'Start service →',exact:true}).first().click();await expect(page.getByRole('heading',{name:'Fast Stop 1',exact:true})).toBeVisible();await expect(page.locator('.field-section-letter')).toHaveText(['A · WATER READINGS','B · CHEMICAL DOSAGES','C · CHECKLIST','D · SERVICE PHOTO']);
+ expect(routeRequests).toBe(initialRouteRequests);await expect(page.getByRole('spinbutton',{name:'Fast pool Free Chlorine (ppm)',exact:true})).toHaveValue('');
+ await page.getByRole('button',{name:'Fast pool FC 3 ppm',exact:true}).click();await page.getByRole('button',{name:'Fast pool pH 7.4',exact:true}).click();await page.getByRole('button',{name:'＋ Liquid Chlorine',exact:true}).click();await page.getByRole('button',{name:'0.5 gal',exact:true}).click();await page.getByRole('button',{name:'Mark all done',exact:true}).click();await page.getByRole('button',{name:'Equipment Issue',exact:true}).click();
+ await page.getByRole('button',{name:'COMPLETE & NEXT →',exact:true}).click();await expect(page.getByRole('alert').filter({hasText:'one service photo is required'})).toBeVisible();await expect(page.getByRole('heading',{name:'Fast Stop 1',exact:true})).toBeVisible();
+ const photo=await sharp({create:{width:640,height:480,channels:3,background:'#1c4874'}}).jpeg().toBuffer();await page.locator('input[type=file]').setInputFiles({name:'phone.jpg',mimeType:'image/jpeg',buffer:photo});await expect(page.getByAltText('Captured service photo')).toBeVisible();
+ let release!:()=>void,started!:()=>void;const held=new Promise<void>(r=>release=r),uploading=new Promise<void>(r=>started=r);let uploads=0;
+ await page.route('**/api/photos',async route=>{uploads++;if(uploads===1){started();await held;await route.fulfill({status:503,json:{error:'Temporary upload failure'}});}else await route.continue();});
+ const payloads:Record<string,unknown>[]=[];page.on('request',r=>{if(r.method()==='POST'&&new URL(r.url()).pathname==='/api/visits')payloads.push(r.postDataJSON());});
+ await page.screenshot({path:'/tmp/alys-fast-technician-mobile.png',fullPage:true});
+ const start=Date.now();await page.getByRole('button',{name:'COMPLETE & NEXT →',exact:true}).click();await expect(page.getByRole('heading',{name:'Fast Stop 2',exact:true})).toBeVisible({timeout:1500});const handoff=Date.now()-start;writeFileSync('/tmp/alys-fast-timing.json',JSON.stringify({localHandoffMs:handoff,routeRequestsAtStart:initialRouteRequests,routeRequestsAfterStart:routeRequests}));console.log('Local Complete & Next handoff:',handoff,'ms with upload held');await test.info().attach('local-handoff-ms',{body:String(handoff),contentType:'text/plain'});
+ await expect(page.getByRole('spinbutton',{name:'Fast pool Free Chlorine (ppm)',exact:true})).toHaveValue('');
+ await uploading;await expect(page.getByRole('progressbar',{name:'Photo upload progress',exact:true})).toBeVisible();
+ await page.getByRole('button',{name:'Fast pool FC 1 ppm',exact:true}).click();await page.getByRole('button',{name:'Fast pool pH 7.2',exact:true}).click();await page.getByRole('button',{name:'Mark all done',exact:true}).click();await page.getByRole('button',{name:'COMPLETE & NEXT →',exact:true}).click();await expect(page.getByRole('heading',{name:'Fast Stop 3',exact:true})).toBeVisible({timeout:1500});release();
+ await expect(page.locator('.field-queue-list')).toContainText('Failed');
+ await expect.poll(async()=>{const {count}=await admin.from('visits').select('id',{count:'exact',head:true}).eq('route_stop_id',stops[1].id);return count;}).toBe(1);
+ expect((await admin.from('visits').select('id',{count:'exact',head:true}).eq('route_stop_id',stops[0].id)).count).toBe(0);
+ await page.getByRole('button',{name:'Retry sync',exact:true}).click();await expect.poll(async()=>{const {count}=await admin.from('visits').select('id',{count:'exact',head:true}).eq('route_stop_id',stops[0].id);return count;}).toBe(1);
+ await expect(page.locator('.field-sync-progress')).toContainText('Synced');
+ const payload=payloads.find(p=>p.stop_id===stops[0].id)!;expect(payload).toBeTruthy();const repeat=await page.request.post('/api/visits',{headers:{Origin:baseURL!},data:payload});expect(repeat.ok()).toBe(true);expect((await repeat.json()).already_completed).toBe(true);
+ const visitId=payload.id as string;expect((await admin.from('chemical_readings').select('id',{count:'exact',head:true}).eq('visit_id',visitId)).count).toBe(1);expect((await admin.from('chemical_dosages').select('id',{count:'exact',head:true}).eq('visit_id',visitId)).count).toBe(1);expect((await admin.from('email_delivery_logs').select('id',{count:'exact',head:true}).eq('visit_id',visitId)).count).toBe(1);expect((await admin.from('visit_issue_flags').select('flags').eq('visit_id',visitId).single()).data?.flags).toEqual(['equipment_issue']);expect(uploads).toBe(2);
+ await page.getByRole('link',{name:'History',exact:true}).click();await page.locator('.field-history-card').filter({hasText:'Fast Stop 1'}).locator('summary').click();await expect(page.getByRole('heading',{name:'Issue flags',exact:true}).first()).toBeVisible();await expect(page.getByText('Equipment Issue',{exact:true})).toBeVisible();await expect(page.getByRole('button',{name:'Retry report delivery',exact:true})).toHaveCount(0);expect((await page.request.post('/api/email/retry',{headers:{Origin:baseURL!},data:{visit_id:visitId}})).status()).toBe(403);
+});

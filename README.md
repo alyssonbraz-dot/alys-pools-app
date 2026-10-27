@@ -6,6 +6,12 @@ Fluxo: **Route → Checklist → Readings → Dosages → Photo → Complete & N
 
 Não há financeiro, cobrança, inventário, marketing ou portal de cliente nesta versão. A expansão inclui gestão de clientes, mapas e otimização por tempo de condução com provedor configurado. As tabelas financeiras da fundação foram preservadas para não apagar dados, mas não aparecem na navegação.
 
+## Fast Technician Mode
+
+Technicians use a compact assigned-stops screen and one service form: **Readings → Chemicals → Checklist → Photo → Complete & Next**. Common products have direct buttons; previous readings remain reference only. Predefined issue flags are recorded with the visit. Photo upload shows progress while the technician works at the next stop. Offline submissions are frozen, drained safely and retried with backoff while the app remains open; Pending Sync, Synced and Failed are distinct states.
+
+Apply **migration014** before the new code. Owner/Admin management, existing visits/photos/reports and organization isolation are preserved. See [Fast Technician Mode](docs/FAST-TECHNICIAN-MODE.md) for security, rollout, offline behavior and performance limits. The15–30 second interaction target is not yet validated on a physical phone.
+
 ## Colocar visitas e relatórios no ar sem plano pago
 
 Para priorizar login, visitas, fotos e e-mail: siga [o roteiro de publicação gratuita](docs/COLOCAR-NO-AR-GRATIS.md). Inclui configuração Netlify, Supabase hospedado, acesso do proprietário e teste controlado do remetente. Publicação depende de contas/credenciais do proprietário; o código preparado não é prova de site online ou mensagem entregue. Não contrate plano pago nem compre domínio para seguir a parte de hospedagem.

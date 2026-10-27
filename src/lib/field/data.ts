@@ -54,12 +54,13 @@ export async function loadHistory(operator:Operator,customerId?:string,options:{
  const allowed=visits??[];
  if(!allowed.length)return [];
  const ids=allowed.map((v:{id:string})=>v.id);
- const [photos,emails,corrections,details,people]=await Promise.all([
+ const [photos,emails,corrections,details,people,issues]=await Promise.all([
   forIds(ids,(ids,from,to)=>db.from('visit_photos').select('visit_id,storage_path').in('visit_id',ids).order('id').range(from,to)),
   forIds(ids,(ids,from,to)=>db.from('email_delivery_logs').select('id,visit_id,status,error,sent_at').in('visit_id',ids).order('id').range(from,to)),
   forIds(ids,(ids,from,to)=>db.from('visit_corrections').select('id,visit_id,note,created_at,actor_id').in('visit_id',ids).order('created_at').order('id').range(from,to)),
   forIds(ids,(ids,from,to)=>db.from('visit_service_details').select('visit_id,technician_notes,equipment_problems,filter_cleaning,repairs_performed').in('visit_id',ids).order('id').range(from,to)),
-  allRows((from,to)=>db.from('profiles').select('id,display_name').order('id').range(from,to))
+  allRows((from,to)=>db.from('profiles').select('id,display_name').order('id').range(from,to)),
+  forIds(ids,(ids,from,to)=>db.from('visit_issue_flags').select('visit_id,flags').in('visit_id',ids).order('id').range(from,to))
  ]);
- return allowed.map((v:{id:string;route_stop_id:string;completed_at:string;technician_id:string;snapshot:VisitSnapshot})=>({id:v.id,route_stop_id:v.route_stop_id,completed_at:v.completed_at,technician_name:people.find(p=>p.id===v.technician_id)?.display_name,snapshot:v.snapshot,service_details:details.find(d=>d.visit_id===v.id),photos:photos.filter(p=>p.visit_id===v.id).map(p=>({storage_path:p.storage_path})),email:emails.find(e=>e.visit_id===v.id),corrections:corrections.filter(c=>c.visit_id===v.id)}));
+ return allowed.map((v:{id:string;route_stop_id:string;completed_at:string;technician_id:string;snapshot:VisitSnapshot})=>({id:v.id,route_stop_id:v.route_stop_id,completed_at:v.completed_at,technician_name:people.find(p=>p.id===v.technician_id)?.display_name,snapshot:v.snapshot,issue_flags:issues.find(i=>i.visit_id===v.id)?.flags??[],service_details:details.find(d=>d.visit_id===v.id),photos:photos.filter(p=>p.visit_id===v.id).map(p=>({storage_path:p.storage_path})),email:emails.find(e=>e.visit_id===v.id),corrections:corrections.filter(c=>c.visit_id===v.id)}));
 }

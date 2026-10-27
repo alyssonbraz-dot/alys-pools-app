@@ -25,7 +25,7 @@ test('public shell reopens scoped route and draft after offline tab closure', as
   },fixture);
   await context.setOffline(true);
   await page.goto(baseURL+'/');
-  await expect(page.getByRole('heading',{name:'Today’s Route'})).toBeVisible();
+  await expect(page.getByRole('heading',{name:'Today’s Stops'})).toBeVisible();
   await expect(page.getByRole('heading',{name:'Fictional Offline Residence'})).toBeVisible();
   await page.getByRole('button',{name:'Start service →'}).first().click();
   await expect(page.getByRole('heading',{name:'Fictional Offline Residence'})).toBeVisible();
@@ -40,7 +40,7 @@ test('public shell reopens scoped route and draft after offline tab closure', as
   await page.close();
   const reopened=await context.newPage();
   await reopened.goto(baseURL+'/');
-  await expect(reopened.getByRole('heading',{name:'Today’s Route'})).toBeVisible();
+  await expect(reopened.getByRole('heading',{name:'Today’s Stops'})).toBeVisible();
   await reopened.getByRole('button',{name:'Start service →'}).first().click();
   await expect(reopened.getByRole('spinbutton',{name:'Fictional pool Free Chlorine (ppm)'})).toHaveValue('3.2');
   await expect(reopened.getByRole('spinbutton',{name:'Fictional pool pH'})).toHaveValue('7.5');

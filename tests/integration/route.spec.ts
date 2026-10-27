@@ -102,6 +102,7 @@ test('mobile service persists JPEG, snapshot and one outbox; offline visit survi
 });
 
 test('anonymous API access and cross-origin mutations are rejected',async({request})=>{
+ expect((await request.get('/api/session')).status()).toBe(401);
   expect((await request.get('/api/route')).status()).toBe(401);
   const response=await request.post('/api/visits',{data:{},headers:{Origin:'https://untrusted.example'}});
   expect([401,403]).toContain(response.status());

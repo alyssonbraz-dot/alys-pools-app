@@ -1,3 +1,5 @@
+import {publishSyncProgress,clearSyncProgress} from './progress';
+import {uploadPhoto} from './upload';
 import type { CompletionPayload, RouteData } from '@/lib/field/types';
 
 export type OfflineScope = { userId: string; organizationId: string };
@@ -8,6 +10,8 @@ export type QueueItem = {
   status: 'pending' | 'failed' | 'auth_required';
   error?: string;
   http_status?: number;
+  attempts?:number;
+  next_retry_at?:string;
   updated_at: string;
 };
 export type SyncResult = {
@@ -72,11 +76,12 @@ async function write(key: string, value: unknown) {
     tx.onabort = () => reject(tx.error ?? new Error('Device storage was interrupted.'));
   });
 }
-async function writeScoped(scope: OfflineScope, key: string, value: unknown) {
+async function writeScoped(scope: OfflineScope, key: string, value: unknown,unlockedStop?:string,remove=false) {
   const db = await database();
   await new Promise<void>((resolve, reject) => {
     const tx = db.transaction(STORE, 'readwrite');
     const records = tx.objectStore(STORE);
+    const commit=()=>{if(remove)records.delete(key);else records.put({key,value});};
     const active = records.get('active-scope');
     let failure: Error | undefined;
     active.onsuccess = () => {
@@ -85,20 +90,12 @@ async function writeScoped(scope: OfflineScope, key: string, value: unknown) {
         failure = new Error('The active account changed. Reconnect and sign in before saving local changes.');
         tx.abort(); return;
       }
-      records.put({key,value});
+      if(unlockedStop){const queued=records.get(scopeKey(scope,'queue',unlockedStop));queued.onsuccess=()=>{if(queued.result){failure=new Error('This visit is already queued. Its saved submission is read-only.');tx.abort();}else commit();};}
+      else commit();
     };
     tx.oncomplete = () => resolve();
     tx.onerror = () => reject(tx.error);
     tx.onabort = () => reject(failure ?? tx.error ?? new Error('Device save was interrupted.'));
-  });
-}
-async function erase(...keys: string[]) {
-  const db = await database();
-  return new Promise<void>((resolve, reject) => {
-    const tx = db.transaction(STORE, 'readwrite');
-    keys.forEach(key => tx.objectStore(STORE).delete(key));
-    tx.oncomplete = () => resolve();
-    tx.onerror = () => reject(tx.error);
   });
 }
 async function entries<T>(keyPrefix: string): Promise<{ key: string; value: T }[]> {
@@ -150,7 +147,7 @@ export async function getCachedRoute(scope: OfflineScope, date?: string): Promis
   return selected ? (await read<RouteData>(scopeKey(scope, 'route', selected))) ?? null : null;
 }
 export async function saveDraft(scope: OfflineScope, draft: CompletionPayload) {
-  await writeScoped(scope,scopeKey(scope, 'draft', draft.stop_id), draft);
+  await writeScoped(scope,scopeKey(scope, 'draft', draft.stop_id), draft,draft.stop_id);
   changed();
 }
 export async function getDraft(scope: OfflineScope, stopId: string): Promise<CompletionPayload | null> {
@@ -160,7 +157,7 @@ export async function savePhoto(scope: OfflineScope, stopId: string, blob: Blob)
   const current = await listPhotos(scope, stopId);
   if (current.length >= 3) throw new Error('A visit can have up to three photos.');
   const photo: LocalPhoto = { id: crypto.randomUUID(), stop_id: stopId, blob, created_at: new Date().toISOString() };
-  await writeScoped(scope,scopeKey(scope, 'photo', photo.id), photo);
+  await writeScoped(scope,scopeKey(scope, 'photo', photo.id), photo,stopId);
   changed();
   return photo;
 }
@@ -168,7 +165,8 @@ export async function listPhotos(scope: OfflineScope, stopId: string): Promise<L
   return (await entries<LocalPhoto>(scopeKey(scope, 'photo'))).map(x => x.value).filter(photo => photo.stop_id === stopId).sort((a,b) => a.created_at.localeCompare(b.created_at));
 }
 export async function removePhoto(scope: OfflineScope, photoId: string) {
-  await erase(scopeKey(scope, 'photo', photoId)); changed();
+  const key=scopeKey(scope,'photo',photoId);const photo=await read<LocalPhoto>(key);
+  if(photo)await writeScoped(scope,key,undefined,photo.stop_id,true);changed();
 }
 export async function enqueueCompletion(scope: OfflineScope, payload: CompletionPayload) {
   const db = await database();
@@ -187,8 +185,8 @@ export async function enqueueCompletion(scope: OfflineScope, payload: Completion
       if(failure)return;
       const existing = (request.result as RecordValue | undefined)?.value as QueueItem | undefined;
       // One atomic read/write per stop, even when two tabs complete simultaneously.
-      const stablePayload = existing ? { ...payload, id: existing.payload.id } : payload;
-      const item: QueueItem = { id: stablePayload.id, payload: stablePayload, status: 'pending', updated_at: new Date().toISOString() };
+      const stablePayload = existing ? existing.payload : payload;
+      const item: QueueItem = existing??{ id: stablePayload.id, payload: stablePayload, status: 'pending', updated_at: new Date().toISOString() };
       records.put({ key, value:item });
       records.put({ key:scopeKey(scope, 'draft', payload.stop_id), value:stablePayload });
     };
@@ -249,6 +247,7 @@ export async function clearDeviceData() {
   if (typeof navigator !== 'undefined' && navigator.locks) {
     await navigator.locks.request('alys-device-state',{mode:'exclusive'},clear);
   } else await clear();
+  clearSyncProgress();
   changed();
 }
 
@@ -296,16 +295,16 @@ async function networkJson<T>(input: RequestInfo | URL, init: RequestInit, signa
   try { return await responseJson<T>(await fetch(input,{...init,signal:controller.signal})); }
   finally { clearTimeout(timeout);signal.removeEventListener('abort',abort); }
 }
-async function performSync(scope: OfflineScope, signal: AbortSignal): Promise<SyncResult> {
+async function performSync(scope: OfflineScope, signal: AbortSignal,automatic=false): Promise<SyncResult> {
   const result: SyncResult = { synced: 0, pending: 0, authRequired: false, completions: [] };
   const queue = await getQueue(scope);
+  const due=(item:QueueItem)=>!automatic||(![409,422].includes(item.http_status??0)&&(!item.next_retry_at||Date.parse(item.next_retry_at)<=Date.now()));
   if (!queue.length) return result;
+  if(!queue.some(due))return {...result,pending:queue.length};
   if (typeof navigator !== 'undefined' && !navigator.onLine) return { ...result, pending: queue.length };
   try {
     // Session identity is verified before uploading a single byte. Stored scope never authorizes a request.
-    const cached = await getCachedRoute(scope);
-    const query = cached ? `?date=${encodeURIComponent(cached.date)}` : '';
-    const route = await networkJson<RouteData>(`/api/route${query}`, { cache: 'no-store', credentials: 'same-origin' },signal);
+    const route=await networkJson<Pick<RouteData,'userId'|'orgId'>>('/api/session',{cache:'no-store',credentials:'same-origin'},signal);
     if (route.userId !== scope.userId || route.orgId !== scope.organizationId) throw new ApiFailure('Sign in with the account that created these offline visits.', 401);
     const active = await getActiveScope();
     if (active?.userId !== scope.userId || active.organizationId !== scope.organizationId) throw new ApiFailure('The active account changed. Synchronization paused.', 401);
@@ -313,17 +312,24 @@ async function performSync(scope: OfflineScope, signal: AbortSignal): Promise<Sy
     result.authRequired = error instanceof ApiFailure && (error.status === 401 || error.status === 403);
     return { ...result, pending: queue.length };
   }
-  for (const item of queue) {
+  const attempted=new Set<string>();
+  let batch=queue.filter(due);
+  while(batch.length&&!signal.aborted){
+  for (const item of batch) {
+    attempted.add(item.payload.stop_id);
     try {
       const photos = await listPhotos(scope, item.payload.stop_id);
       const paths = [...item.payload.photo_paths];
-      for (const photo of photos) {
+      for (const [index,photo] of photos.entries()) {
         if (!photo.path) {
           const form = new FormData();
           form.set('stop_id', item.payload.stop_id);
           form.set('photo_id', photo.id);
           form.set('file', photo.blob, `${photo.id}.jpg`);
-          const { path } = await networkJson<{path:string}>('/api/photos', { method: 'POST', body: form, credentials: 'same-origin', headers:{'X-ALYS-User-ID':scope.userId,'X-ALYS-Organization-ID':scope.organizationId} },signal);
+          const progress=(percent:number)=>publishSyncProgress(scope,{stopId:item.payload.stop_id,phase:'uploading',photo:index+1,photos:photos.length,percent});
+          progress(0);
+          const {path}=await responseJson<{path:string}>(await uploadPhoto(form,{'X-ALYS-User-ID':scope.userId,'X-ALYS-Organization-ID':scope.organizationId},signal,progress));
+          progress(100);
           photo.path = path;
           // Persist each successful upload before continuing; interrupted sync reuses deterministic photo_id.
           await writeScoped(scope,scopeKey(scope, 'photo', photo.id), photo);
@@ -332,15 +338,20 @@ async function performSync(scope: OfflineScope, signal: AbortSignal): Promise<Sy
       }
       item.payload.photo_paths = paths;
       await writeScoped(scope,scopeKey(scope, 'queue', item.payload.stop_id), item);
+      publishSyncProgress(scope,{stopId:item.payload.stop_id,phase:'confirming',photo:photos.length,photos:photos.length,percent:100});
       const saved = await networkJson<{visit_id:string;next_stop_id:string|null}>('/api/visits', {
         method:'POST', headers:{'Content-Type':'application/json','X-ALYS-User-ID':scope.userId,'X-ALYS-Organization-ID':scope.organizationId}, body:JSON.stringify(item.payload), credentials:'same-origin'
       },signal);
       // Remove local blobs only after the server has confirmed the immutable visit transaction.
       await confirmLocalCompletion(scope,item,photos);
+      publishSyncProgress(scope,{stopId:item.payload.stop_id,phase:'synced',photo:photos.length,photos:photos.length,percent:100});
       result.synced++;
       result.completions.push({ ...saved, stop_id: item.payload.stop_id });
     } catch (error) {
       const auth = error instanceof ApiFailure && (error.status === 401 || error.status === 403);
+      publishSyncProgress(scope,{stopId:item.payload.stop_id,phase:'failed',photo:0,photos:0,percent:0});
+      item.attempts=(item.attempts??0)+1;
+      item.next_retry_at=new Date(Date.now()+(auth?300000:Math.min(300000,15000*2**Math.min(item.attempts-1,5)))).toISOString();
       item.status = auth ? 'auth_required' : 'failed';
       item.http_status = error instanceof ApiFailure ? error.status : undefined;
       item.error = error instanceof Error ? error.message.slice(0, 240) : 'Synchronization was interrupted. Please retry.';
@@ -349,11 +360,14 @@ async function performSync(scope: OfflineScope, signal: AbortSignal): Promise<Sy
       if (auth) break;
     }
   }
+  if(result.authRequired)break;
+  batch=(await getQueue(scope)).filter(item=>!attempted.has(item.payload.stop_id)&&due(item));
+  }
   result.pending = (await getQueue(scope)).length;
   changed();
   return result;
 }
-export function syncQueue(scope: OfflineScope): Promise<SyncResult> {
+export function syncQueue(scope: OfflineScope,options:{automatic?:boolean}={}): Promise<SyncResult> {
   logoutChannel();
   const key = prefix(scope);
   const existing = running.get(key);
@@ -362,9 +376,9 @@ export function syncQueue(scope: OfflineScope): Promise<SyncResult> {
   runningControllers.set(key,controller);
   const operation = async () => {
     if (typeof navigator !== 'undefined' && navigator.locks) {
-      return navigator.locks.request(`alys-sync-${key}`, () => performSync(scope,controller.signal));
+      return navigator.locks.request(`alys-sync-${key}`, () => performSync(scope,controller.signal,options.automatic));
     }
-    return performSync(scope,controller.signal);
+    return performSync(scope,controller.signal,options.automatic);
   };
   const task = (async () => {
     if (typeof navigator !== 'undefined' && navigator.locks) {
