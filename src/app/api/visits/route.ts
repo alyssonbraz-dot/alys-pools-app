@@ -26,7 +26,7 @@ export async function POST(request:Request) {
    const {data:stop}=await db.from('route_stops').select('service_date,technician_id').eq('id',payload.stop_id).single();
    if(stop){const {data:next}=await db.from('route_stops').select('id').eq('service_date',stop.service_date).eq('technician_id',stop.technician_id).in('status',['pending','in_progress']).order('position').order('id').limit(1);nextId=next?.[0]?.id??null;}
   }catch{/* Route refresh can recover the next stop without rewriting the visit. */}
-  after(async()=>{try{await processEmailQueue({limit:3});}catch{/* The durable outbox remains available for the scheduled worker. */}});
+  after(async()=>{try{await processEmailQueue({limit:1});}catch{/* The durable outbox remains available for the scheduled worker. */}});
   return json({...data,next_stop_id:nextId});
  }catch{return json({error:'Confirmation was interrupted. Your local visit is kept for safe retry.'},503);}
 }

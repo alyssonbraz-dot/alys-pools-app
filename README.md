@@ -6,6 +6,10 @@ Fluxo: **Route → Checklist → Readings → Dosages → Photo → Complete & N
 
 Não há financeiro, cobrança, inventário, marketing ou portal de cliente nesta versão. A expansão inclui gestão de clientes, mapas e otimização por tempo de condução com provedor configurado. As tabelas financeiras da fundação foram preservadas para não apagar dados, mas não aparecem na navegação.
 
+## Colocar visitas e relatórios no ar sem plano pago
+
+Para priorizar login, visitas, fotos e e-mail: siga [o roteiro de publicação gratuita](docs/COLOCAR-NO-AR-GRATIS.md). Inclui configuração Netlify, Supabase hospedado, acesso do proprietário e teste controlado do remetente. Publicação depende de contas/credenciais do proprietário; o código preparado não é prova de site online ou mensagem entregue. Não contrate plano pago nem compre domínio para seguir a parte de hospedagem.
+
 ## Teste fácil no navegador — sem instalar nada
 
 Para conhecer o fluxo sem configurar o projeto completo:
