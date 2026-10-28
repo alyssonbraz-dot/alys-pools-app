@@ -34,3 +34,7 @@ it('accepts only distinct predefined issue flags and never invents readings for 
  expect(completionSchema.safeParse({...payload,issue_flags:['invented']})).toMatchObject({success:false});
  expect(completionSchema.safeParse({...payload,issue_flags:['green_pool','green_pool']})).toMatchObject({success:false});
 });
+it('accepts staff-only service details alongside body-specific photo metadata without changing field names',()=>{
+ const payload={id:'a0000000-0000-4000-8000-000000000001',stop_id:'a0000000-0000-4000-8000-000000000002',notes:'Public note',pools:[{pool_id:'a0000000-0000-4000-8000-000000000003',tasks:['Test Water'],readings:{fc:3,ph:7.4},dosages:[]}],photo_paths:[],photo_assignments:{},service_details:{technician_notes:'Private note',equipment_problems:'Pump',filter_cleaning:'Checked',repairs_performed:''}};
+ expect(completionSchema.parse(payload).service_details).toEqual(payload.service_details);
+});

@@ -7,8 +7,8 @@ export async function getOperator() {
   const db=await supabase();
   const {data:{user},error}=await db.auth.getUser();
   if(error||!user)return null;
-  const {data:profile}=await db.from('profiles').select('organization_id,role,display_name').eq('id',user.id).single();
-  if(!profile||!['owner','admin','technician'].includes(profile.role))return null;
+  const {data:profile}=await db.from('profiles').select('organization_id,role,display_name,access_state').eq('id',user.id).single();
+  if(!profile||profile.access_state!=='active'||!['owner','admin','technician'].includes(profile.role))return null;
   return {db,user,profile};
 }
 export async function requireOperator() {

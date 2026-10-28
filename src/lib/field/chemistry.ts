@@ -1,5 +1,5 @@
 import { floridaDay, type Dosage, type ReadingValues } from './types';
-export type ChemistryEntry = {visit_id:string;completed_at:string;readings:ReadingValues;dosages:Dosage[]};
+export type ChemistryEntry = {technician_name?:string;reference_ranges?:Partial<Record<import('./types').ReadingKey,{min:number;max:number}>>;visit_id:string;completed_at:string;readings:ReadingValues;dosages:Dosage[]};
 export type ChemistryRow = ChemistryEntry & {pool_id:string};
 // Thirty service calendar days including the selected route day; DST never changes the day count.
 export function chemistryPeriod(day:string) {
@@ -17,7 +17,7 @@ export function groupChemistry(rows:ChemistryRow[],day:string):Record<string,Che
   if(serviceDay<from||serviceDay>through||seen.has(key))continue;
   seen.add(key);
   if(!Object.values(row.readings).some(value=>typeof value==='number')&&!row.dosages.length)continue;
-  (grouped[row.pool_id]??=[]).push({visit_id:row.visit_id,completed_at:row.completed_at,readings:row.readings,dosages:row.dosages});
+  (grouped[row.pool_id]??=[]).push({visit_id:row.visit_id,completed_at:row.completed_at,readings:row.readings,dosages:row.dosages,...(row.technician_name?{technician_name:row.technician_name}:{}),...(row.reference_ranges?{reference_ranges:row.reference_ranges}:{})});
  }
  return grouped;
 }

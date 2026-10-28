@@ -4,28 +4,13 @@ Data desta preparação: **27/10/2026**, referência da operação `America/New_
 
 ## Acessos da equipe
 
-O proprietário é provisionado pelo script do README. Não há cadastro público, tela de gestão de usuários ou atribuição de papel por metadata do navegador nesta versão. Técnicos adicionais são provisionados administrativamente:
+Para uma instalação existente, **não provisione o proprietário novamente**. Na V2, use **Team & Technicians** com sua conta Owner para convidar, editar, atribuir imóveis, suspender ou reativar técnicos. O destinatário define sua senha no link de aceitação; não há senha compartilhada. Configure o remetente verificado e `TEAM_INVITES_ENABLED` somente depois dos testes autorizados. Consulte [o fluxo V2](V2-DELIVERY.md).
 
-1. No painel Supabase correto, em Authentication → Users, use **Add user / Create user** com e-mail da pessoa e senha temporária forte. Use criação administrativa confirmada, sem convite automático; transmita o acesso por canal seguro.
-2. Anote o UUID retornado para esse usuário. No SQL Editor administrativo, consulte a organização pelo UUID do proprietário:
+Papéis, expiração, aceitação única e suspensão são verificados no servidor/banco. Recurring schedules ficam no perfil do cliente; atribuição/frequência no cadastro básico, isoladamente, não inventam dias de atendimento. Para propriedade com várias agendas, escolha a agenda específica no perfil.
 
-```sql
-select id, organization_id, role, display_name
-from public.profiles
-where id = 'UUID_DO_OWNER';
-```
+A troca de senha com senha atual está em **Settings → Account & Security → Change password**. Recuperação de senha esquecida continua sendo uma operação administrativa; esta entrega não configura SMTP de recuperação pública.
 
-3. Confira o projeto e insira o perfil com os UUIDs corretos. Os textos abaixo são placeholders a substituir; não são valores executáveis:
-
-```sql
-insert into public.profiles (id, organization_id, role, display_name)
-values ('UUID_DO_TECNICO', 'UUID_DA_ORGANIZACAO', 'technician', 'Nome do técnico');
-```
-
-Não use `upsert` para mover pessoas entre organizações, não crie organização para cada técnico e não conceda `owner` por conveniência. O SQL Editor é um canal privilegiado; não entregue chave administrativa à equipe. O procedimento atual de recuperação/troca de senha também é administrativo; a interface não oferece autosserviço de recuperação.
-
-4. No app como proprietário, atribua o técnico nas agendas de Settings/Route. O cadastro do cliente sozinho não remaneja stops existentes.
-5. Teste a conta em navegador privado: somente Stops/History/Settings, sem gestão de clientes nem acesso a stops de outra pessoa.
+Como contingência administrativa, um Owner com acesso confiável ao Supabase pode criar usuário Auth confirmado e inserir perfil `technician` na organização correta. Não use essa alternativa para substituir o convite normal ou criar senha compartilhada, não conceda Owner por conveniência, não altere associação entre organizações e não entregue chaves administrativas à equipe.
 
 Ao desligar alguém, bloqueie a conta/revogue sessões pelo Auth e revise atribuições. Mudanças de permissão não apagam dados já baixados num dispositivo offline; exija aparelho protegido e encerramento seguro da sessão. Não exclua perfis/histórico para bloquear um acesso.
 
@@ -74,7 +59,7 @@ Não use `--apply` sem conferir escopo, backup e autorização de exclusão. Nã
 
 1. Sincronize trabalho pendente dos dispositivos e faça backup antes de mudança de banco.
 2. Revise as alterações e aplique somente migrations pendentes com `supabase db push` no projeto correto, sem reset.
-3. Publique o código correspondente pelo Git/Netlify. Para a versão Fast Technician, a migration014 precisa preceder o app.
+3. Publique o código correspondente pelo Git/Netlify. Para a versão Fast Technician, as migrations015–020 precisam preceder o app V2.
 4. Teste login, stop, foto/histórico e relatório controlado. Confira a agenda e cotas.
 5. Em falha de código, restaure um deploy compatível pelo Netlify; não tente desfazer migrations apagando dados. Investigue e faça correção incremental.
 

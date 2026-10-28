@@ -209,3 +209,11 @@ it('persists flags offline and retries them with exactly the original visit ID a
  }));
  await device.syncQueue(scope);await device.syncQueue(scope);expect(sent[0]).toEqual(sent[1]);expect(sent[1].issue_flags).toEqual(flagged.issue_flags);
 });
+it('preserves body-of-water photo associations across reload and safe retry',async()=>{
+ await device.savePhoto(scope,draft.stop_id,new Blob(['body-photo'],{type:'image/jpeg'}),'pool-a');
+ expect((await device.listPhotos(scope,draft.stop_id))[0].pool_id).toBe('pool-a');
+ await device.enqueueCompletion(scope,draft);const sent:CompletionPayload[]=[];let fail=true;
+ vi.stubGlobal('fetch',vi.fn(async(input:RequestInfo|URL,init?:RequestInit)=>{if(input==='/api/session')return json(route);if(input==='/api/photos')return json({path:'org-a/stop-a/body-photo.jpg'});const body=JSON.parse(String(init?.body));sent.push(body);if(fail){fail=false;throw new TypeError('lost acknowledgement');}return json({visit_id:draft.id,next_stop_id:null});}));
+ await device.syncQueue(scope);expect(await device.listPhotos(scope,draft.stop_id)).toHaveLength(1);await device.syncQueue(scope);
+ expect(sent[0].photo_assignments).toEqual({'org-a/stop-a/body-photo.jpg':'pool-a'});expect(sent[1]).toEqual(sent[0]);expect(await device.listPhotos(scope,draft.stop_id)).toHaveLength(0);
+});

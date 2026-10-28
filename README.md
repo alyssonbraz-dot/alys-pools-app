@@ -6,6 +6,13 @@ Aplicativo da ALYS Pool Services LLC para registrar manutenção de piscinas pel
 
 Este README é o roteiro de entrega e publicação com **Netlify Free + Supabase Free + Resend Free**, usando o domínio **alyspools.com**, registrado na Hostinger. Não é necessário contratar hospedagem na Hostinger. A renovação do domínio já comprado continua sendo responsabilidade do titular; planos gratuitos têm cotas e não garantem operação ilimitada sem custo.
 
+
+## Atualização V2 de uma instalação existente
+
+A V2 está preparada na branch **`feat/alys-v2`** para revisão, sem disparar o deploy de `main` antes do banco. Não recrie seu projeto, proprietário ou clientes. Siga [a ordem de atualização e aceite V2](docs/V2-DELIVERY.md): backup → revisar/aplicar migrations **015–020** no projeto correto → merge/deploy → validar produção. Um push no GitHub não aplica migrations Supabase.
+
+Novidades: cadastro integrado com múltiplos imóveis/piscinas e agendas, perfil completo do cliente, Team & Technicians com convites seguros, dashboard Owner com MRR próprio, química em tabelas/CSV, localização confirmada, Settings reorganizado e instalação offline com diagnóstico e retry. A implementação e os testes locais estão separados do estado de deploy no guia V2.
+
 ## O que está incluído
 
 - Login por senha, proprietário/administrador e técnico; autorização no servidor e RLS por empresa/atendimento atribuído.
@@ -59,7 +66,7 @@ npx --yes supabase@2.121.0 migration list --linked
 
 `SEU_PROJECT_REF` é o identificador no painel/URL do projeto Supabase. Confira que o projeto vinculado é o correto antes de confirmar `db push`. Em banco já utilizado, faça backup antes da atualização e revise as migrations pendentes.
 
-A lista remota deve incluir **001 a 014**, terminando em `202610270014_fast_technician.sql`. Elas criam tabelas, políticas RLS, bucket privado, fila de relatórios e provisionamento do proprietário. Não copie somente a última migration e não torne o bucket `visit-photos` público.
+A lista remota deve incluir **001 a 020**, terminando em `202610280020_service_safety.sql`. Elas criam tabelas, políticas RLS, bucket privado, fila de relatórios e provisionamento do proprietário. Não copie somente a última migration e não torne o bucket `visit-photos` público.
 
 **Nunca execute `db reset`, `supabase/seed.dev.sql` ou `tests/integration/setup.mjs` na produção.** Não há seed automático de clientes reais ou fictícios no deploy.
 
@@ -82,7 +89,7 @@ O hostname deve corresponder exatamente à URL do seu projeto. O script cria som
 
 A repetição preserva a senha existente e não duplica organização. Se houver erro depois da criação do Auth, corrija a configuração/migrations e repita com o mesmo e-mail. Remova `ALYS_INITIAL_OWNER_PASSWORD` do arquivo após concluir; não a coloque no Netlify.
 
-Para incluir técnicos, siga [acessos da equipe](docs/ENTREGA.md#acessos-da-equipe). Criar um usuário no Auth sem seu perfil não concede acesso ao app.
+Na V2, inclua técnicos por **Team & Technicians**, com convite para cada pessoa criar sua própria senha. A configuração de envio e a alternativa administrativa de contingência estão em [acessos da equipe](docs/ENTREGA.md#acessos-da-equipe). Criar um usuário no Auth sem seu perfil não concede acesso ao app.
 
 ## 5. Publicar no Netlify Free
 
@@ -100,7 +107,8 @@ Para incluir técnicos, siga [acessos da equipe](docs/ENTREGA.md#acessos-da-equi
 | `RESEND_API_KEY` | chave Resend, somente servidor/Functions |
 | `EMAIL_FROM` | `ALYS Pool Services <reports@alyspools.com>`, após verificar o domínio no Resend |
 | `REPORT_WORKER_SECRET` | segredo aleatório com pelo menos 32 caracteres, somente servidor/Functions |
-| `CUSTOMER_INVITES_ENABLED` | `false` |
+| `CUSTOMER_INVITES_ENABLED` | `false`, portal de clientes desativado |
+| `TEAM_INVITES_ENABLED` | `false` até remetente/fluxo de convite estarem verificados |
 
 Para gerar o segredo, rode `node -e "console.log(require('node:crypto').randomBytes(32).toString('hex'))"` **no seu terminal privado** e copie o resultado somente para a configuração segura. Não publique o resultado nem use os placeholders dos exemplos como segredo.
 
@@ -161,11 +169,11 @@ A agenda processa **um job devido por chamada**, além das tentativas imediatas 
 
 ## 8. Cadastrar a operação e instalar no celular
 
-1. Entre com o proprietário. Em **Clients**, cadastre cliente e contato; habilite relatórios somente quando autorizado pelo cliente.
-2. Abra **Properties & pools**, cadastre endereço, piscinas, leituras/checklist e **Require a service photo** quando necessário.
-3. Em **Settings**, configure dias recorrentes e técnico. Em **Route**, confira os stops gerados ou adicione um stop manual.
-4. O técnico abre **Stops** e atende somente os stops atribuídos. Quantidades rápidas são atalhos de entrada, não recomendações de dosagem.
-5. No celular, abra a rota online antes de ficar sem sinal. iPhone: Safari → Compartilhar → Adicionar à Tela de Início. Android: Chrome → Instalar app.
+1. Entre com o proprietário. Em **Clients → Add Customer**, preencha contato, imóvel, piscina(s), contrato e dias de atendimento; use **Save Customer & Activate Service**. O cadastro é transacional e gera uma janela de próximos stops.
+2. O perfil do cliente reúne piscinas, agendas, preços, relatórios, histórico e localização. Use **Edit customer & service** para editar; agendamento não é mais o formulário principal de Settings.
+3. Use **Team & Technicians** para equipe e **Route** para planejamento ou stop extra manual. O proprietário abre no Dashboard; o técnico abre em Stops e acessa somente seus atendimentos.
+4. No celular, abra a rota online antes de ficar sem sinal. iPhone: Safari → Compartilhar → Adicionar à Tela de Início. Android: Chrome → Instalar app.
+5. Confira **Offline shell ready** e a rota carregada. Em falha, use **Settings → Check offline installation** e consulte **Installation details**. Não limpe dados locais para resolver instalação.
 6. Ao terminar, confira **Pending Sync / Synced / Failed**. Pendência no aparelho ainda não chegou ao servidor; reabra o app com rede para sincronizar. Não limpe dados do navegador nem saia da conta com trabalho pendente.
 
 Use somente um domínio definitivo para operar. Aparelho perdido, limpeza do navegador ou pressão de armazenamento podem perder trabalho não sincronizado; IndexedDB não é backup.
@@ -173,7 +181,7 @@ Use somente um domínio definitivo para operar. Aparelho perdido, limpeza do nav
 ## 9. Checklist para aceitar a entrega em produção
 
 - [ ] Planos Free confirmados, adicionais/compras automáticas desativados e consumo disponível.
-- [ ] Migrations 001–014 aplicadas, signup público bloqueado e bucket privado.
+- [ ] Migrations 001–020 aplicadas, signup público bloqueado e bucket privado.
 - [ ] URL final com HTTPS e login funcionando em celular real.
 - [ ] Proprietário consegue cadastrar cliente, piscina, agenda e stop.
 - [ ] Técnico acessa somente seus stops e não consegue gerenciar clientes/equipe.
@@ -203,6 +211,6 @@ npm run build
 
 ## Estado da entrega e suporte
 
-Validações e limites: [VALIDATION](docs/VALIDATION.md). Operação, equipe, atualização e recuperação: [ENTREGA](docs/ENTREGA.md). Detalhes técnicos: [Fast Technician Mode](docs/FAST-TECHNICIAN-MODE.md) · [Arquitetura](docs/ARCHITECTURE.md).
+Validações e limites: [VALIDATION](docs/VALIDATION.md). Atualização V2: [V2-DELIVERY](docs/V2-DELIVERY.md). Operação, equipe e recuperação: [ENTREGA](docs/ENTREGA.md). Detalhes técnicos: [Fast Technician Mode](docs/FAST-TECHNICIAN-MODE.md) · [Arquitetura](docs/ARCHITECTURE.md).
 
 O código e os testes locais não comprovam publicação, DNS/HTTPS, execução da agenda remota, câmera física ou recebimento de e-mail. Esses pontos são os testes de aceite acima, nas suas contas. Nenhum serviço pago é necessário ao roteiro dentro das cotas Free; não há garantia de gratuidade ilimitada com aumento do uso.

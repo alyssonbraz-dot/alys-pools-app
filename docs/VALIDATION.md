@@ -91,3 +91,29 @@ Nenhuma dependência paga foi adicionada. O worker de e-mail e os limites existe
 - Suítes SQL/mobile da etapa Fast Technician permanecem registradas acima; não foram repetidas nesta mudança de documentação/agendamento, que não altera migrations, RLS ou a interface.
 
 As consultas a páginas oficiais de preços/DNS retornaram bloqueio de rede403; o guia manda conferir cotas/valores DNS nos painéis atuais em vez de prometer limites fixos ou IP de tutorial. O adapter Next/Netlify ainda precisa de validação no ambiente publicado; o build local anterior do adapter teve falha de fetch no empacotamento Edge. Não foi feito novo deploy, acesso às contas do titular, alteração de DNS, ativação paga ou envio real. Publicação, HTTPS, câmera física, agenda remota e relatório recebido no Gmail continuam como aceite operacional explícito no README.
+
+## ALYS V2 — 27/10/2026 (America/New_York)
+
+Baseline inspecionada: migrations001–014, permissões/RLS, autenticação, outbox/IndexedDB, PWA, Netlify, cadastro, agendas, histórico e relatórios. Lint, typecheck,64 testes unitários,9 suítes SQL e build passaram antes das alterações; não foi identificado erro pré-existente nesses comandos. O problema de instalação PWA em produção é relato do titular, não reprodução remota confirmada.
+
+Resultados executados:
+
+- **Lint, typecheck,74 testes unitários em14 arquivos e build Next.js de produção aprovados.** Testes novos incluem cadastro com vários imóveis/piscinas, recorrência/validação, ranges/CSV, foto associada ao corpo preservada em retries e instalação de shell com recurso faltante/recuperação.
+- **12 suítes SQL aprovadas**, em PostgreSQL descartável, aplicando migrations001–020 em ordem. Verificam cadastro atômico/idempotente (inclusive dois imóveis com payload idêntico), janela28 dias, pausa/retomada, remoção de atribuições preservando histórico, MRR próprio sem multiplicar por piscina/subcontrato, ledger por corpo sem zeros inventados, suspensão/reativação, negativas por organização/role, expiração/aceitação única de convite e metadados de auditoria sem payload/token de convite.
+- A nova suíte de fotos exige imagem específica de cada corpo configurado, recusa conclusão parcial sem a foto do spa, mantém o mapa de fotos imutável e comprova que retries não duplicam visita ou associação. O SQL usa metadados fictícios; decodificação do JPEG é exercitada separadamente no backend/navegador.
+- **Backend Supabase real local aprovado**: Auth, PostgREST, Storage privado, validação, transação/rollback e negativas de permissão. Migrations015–020 foram aplicadas somente localmente, sem reset; refinamentos de funções ainda não publicadas foram reaplicados localmente para o teste. Replay completo das migrations finais também passou nas suítes SQL descartáveis.
+- **12 testes mobile Playwright passaram juntos** no build de produção local. Incluem rotas/mapas com stub autorizado local, idioma, proteção de cache por role, foto requerida, upload503 e retry, navegação imediata, corrida de datas, logout em duas abas, CSP, cadastro/CSV, onboarding com duas propriedades/três piscinas e replay da mesma requisição, perfil e ausência do antigo formulário de agenda em Settings.
+- O convite foi gerado pelo **Auth local**, sem envio externo. A aceitação estabeleceu senha escolhida no teste, recusou segunda aceitação e APIs Owner para o técnico; troca de senha exigiu a senha atual, e suspensão pelo proprietário bloqueou sessão anterior e leitura direta de stops. Esse teste não comprova entrega da mensagem Resend nem a execução completa do envio habilitado na produção.
+- **4 testes da demonstração estática passaram.** A demo compartilha as traduções atualizadas, mas não passou a representar os módulos autenticados V2.
+- O shell PWA reabriu rota/rascunho após fechar a aba offline. Teste unitário preservou query `?dpl=...`, recusou declarar readiness com CSS503 e manteve o shell anterior até a recuperação. Nenhum caminho de atualização apaga o banco IndexedDB de rascunhos/fotos.
+- Amostra de handoff Complete & Next → próximo stop: **113ms** em Chromium mobile emulado, upload retido. Não inclui câmera/manutenção/entrada humana e não prova interação completa em15–30s.
+- A regressão inicial encontrou schema de notas internas rejeitando uma visita; o campo foi corrigido, recebeu teste específico e o cenário completo passou novamente. O teste de imutabilidade de correções passou a comparar o snapshot efetivamente gravado antes/depois, incluindo o novo carimbo do técnico em visitas novas.
+
+Limitações e produção:
+
+- A V2 foi preparada em **`feat/alys-v2`**, separada de `main`, para não disparar deploy antes das migrations aprovadas. Status de publicação/migrations remotas não é inferido do build.
+- Consultas públicas a `/sw.js` e `/offline` em `app.alyspools.com` e ao manifest em `alyspools.com` foram bloqueadas pelo proxy403 **antes de alcançar a origem**. Isso não demonstra falha do site. A causa exata do erro PWA publicado permanece sem confirmação; os novos diagnósticos e o checklist em aparelho real são necessários.
+- Geoapify/autocomplete real, termos/cotas vigentes do provedor, precisão do endereço, câmera/iPhone/Safari físicos, execução Netlify da agenda, backups/restauração hospedados e entrega Resend real **não foram validados**. A geocodificação de integração usa o stub local8131, não estimativas reais.
+- `TEAM_INVITES_ENABLED`, autocomplete e e-mail continuam desativados por padrão. Nenhuma chave real foi adicionada ao repositório, nenhuma conta hospedada/dado real foi criado ou alterado, nenhum envio externo/deploy/compra foi executado.
+
+Roteiro de atualização, mudanças por arquivo/migration, segurança, configuração pendente e aceite: [V2-DELIVERY](V2-DELIVERY.md).

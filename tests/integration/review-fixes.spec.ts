@@ -1,7 +1,7 @@
 import {test,expect,type Page} from '@playwright/test';
 import {readFileSync} from 'node:fs';
 const fixture=JSON.parse(readFileSync('/tmp/alys-integration-fixture.json','utf8'));
-async function login(page:Page){await page.goto('/login');await page.getByLabel('Email',{exact:true}).fill(fixture.email);await page.getByLabel('Password',{exact:true}).fill(fixture.password);await page.getByRole('button',{name:'Sign in',exact:true}).click();await expect(page.getByRole('heading',{name:'Today’s Route',exact:true})).toBeVisible();}
+async function login(page:Page){await page.goto('/login');await page.getByLabel('Email',{exact:true}).fill(fixture.email);await page.getByLabel('Password',{exact:true}).fill(fixture.password);await page.getByRole('button',{name:'Sign in',exact:true}).click();await expect(page.getByRole('heading',{name:'Dashboard',exact:true})).toBeVisible();await page.goto('/route');await expect(page.getByRole('heading',{name:'Today’s Route',exact:true})).toBeVisible();}
 test('a late old-day response cannot replace the selected date',async({page,baseURL})=>{
  await login(page);const original=await (await page.request.get('/api/route?date='+fixture.date)).json();
  const day=(n:number)=>{const d=new Date(fixture.date+'T12:00:00Z');d.setUTCDate(d.getUTCDate()+n);return d.toISOString().slice(0,10);};

@@ -3,7 +3,7 @@ import {uploadPhoto} from './upload';
 import type { CompletionPayload, RouteData } from '@/lib/field/types';
 
 export type OfflineScope = { userId: string; organizationId: string };
-export type LocalPhoto = { id: string; stop_id: string; blob: Blob; path?: string; created_at: string };
+export type LocalPhoto = { id: string; stop_id: string; pool_id?:string; blob: Blob; path?: string; created_at: string };
 export type QueueItem = {
   id: string;
   payload: CompletionPayload;
@@ -153,10 +153,10 @@ export async function saveDraft(scope: OfflineScope, draft: CompletionPayload) {
 export async function getDraft(scope: OfflineScope, stopId: string): Promise<CompletionPayload | null> {
   return (await read<CompletionPayload>(scopeKey(scope, 'draft', stopId))) ?? null;
 }
-export async function savePhoto(scope: OfflineScope, stopId: string, blob: Blob): Promise<LocalPhoto> {
+export async function savePhoto(scope: OfflineScope, stopId: string, blob: Blob, poolId?:string): Promise<LocalPhoto> {
   const current = await listPhotos(scope, stopId);
   if (current.length >= 3) throw new Error('A visit can have up to three photos.');
-  const photo: LocalPhoto = { id: crypto.randomUUID(), stop_id: stopId, blob, created_at: new Date().toISOString() };
+  const photo: LocalPhoto = { id: crypto.randomUUID(), stop_id: stopId, pool_id:poolId, blob, created_at: new Date().toISOString() };
   await writeScoped(scope,scopeKey(scope, 'photo', photo.id), photo,stopId);
   changed();
   return photo;
@@ -337,6 +337,8 @@ async function performSync(scope: OfflineScope, signal: AbortSignal,automatic=fa
         if (!paths.includes(photo.path)) paths.push(photo.path);
       }
       item.payload.photo_paths = paths;
+      const mappings={...(item.payload.photo_assignments??{})};for(const photo of photos)if(photo.path&&photo.pool_id)mappings[photo.path]=photo.pool_id;
+      if(Object.keys(mappings).length)item.payload.photo_assignments=mappings;
       await writeScoped(scope,scopeKey(scope, 'queue', item.payload.stop_id), item);
       publishSyncProgress(scope,{stopId:item.payload.stop_id,phase:'confirming',photo:photos.length,photos:photos.length,percent:100});
       const saved = await networkJson<{visit_id:string;next_stop_id:string|null}>('/api/visits', {

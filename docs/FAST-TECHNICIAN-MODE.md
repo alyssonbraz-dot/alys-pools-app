@@ -1,5 +1,7 @@
 # Fast Technician Mode
 
+This document describes the pre-V2 field workflow. For the current V2 rollout, apply migrations015–020 before deployment and follow [V2 delivery](V2-DELIVERY.md). The original field workflow and existing device storage are preserved.
+
 Goal: approximately15–30 seconds of interaction for a routine service, excluding maintenance. This is a design target, not a measured claim about a physical phone or camera.
 
 ## Inspection and incremental implementation

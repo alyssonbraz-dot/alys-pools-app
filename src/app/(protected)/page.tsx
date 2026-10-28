@@ -1,7 +1,18 @@
-import { FieldApp } from '@/components/field/field-app';
-import { requireOperator } from '@/lib/auth';
-export default async function RoutePage({searchParams}:{searchParams:Promise<{date?:string}>}) {
-  const {date}=await searchParams;
-  const {user,profile}=await requireOperator();
-  return <FieldApp expectedRole={profile.role} expectedScope={{userId:user.id,organizationId:profile.organization_id}} initialDate={date&&/^\d{4}-\d{2}-\d{2}$/.test(date)?date:undefined}/>;
+import Link from 'next/link';
+import {FieldApp} from '@/components/field/field-app';
+import {requireOperator} from '@/lib/auth';
+import {Panel} from '@/components/ui';
+import {T,DateText} from '@/components/i18n';
+import {DeviceSyncSummary} from '@/components/device-sync-summary';
+import {floridaDay} from '@/lib/field/types';
+export default async function Home({searchParams}:{searchParams:Promise<{date?:string}>}){
+ const {user,profile,db}=await requireOperator();const {date}=await searchParams;
+ const scope={userId:user.id,organizationId:profile.organization_id};
+ if(profile.role!=='owner'||date)return <FieldApp daily={profile.role==='technician'} expectedRole={profile.role} expectedScope={scope} initialDate={date}/>;
+ const {error:routeError}=await db.rpc('generate_route',{p_date:floridaDay()});if(routeError)throw new Error('Unable to generate today’s route.');
+ const {data:company}=await db.from('organizations').select('settings').eq('id',profile.organization_id).single();
+ const {data,error}=await db.rpc('owner_overview');if(error)throw new Error('Dashboard unavailable. Apply migrations015–018 before deploying V2.');
+ const metrics=data as Record<string,number>;const percent=metrics.scheduled?Math.round(metrics.completed/metrics.scheduled*100):0;
+ return <><div className="page-header"><div><div className="page-kicker">ALYS OPERATIONS</div><h1><T text="Dashboard"/></h1><p><DateText value={floridaDay()+'T12:00Z'} options={{dateStyle:'full'}}/> · America/New_York</p></div><Link className="btn btn-primary" href="/customers/new"><T text="Add Customer"/></Link></div><div className="quick-actions">{[['/stops',"Today’s Stops"],['/route',"Today’s Route"],['/team','Add Technician'],['/customers','Manage Schedules'],['/history','View History']].map(([href,label])=><Link href={href} className="btn btn-secondary" key={href}><T text={label}/></Link>)}</div><div className="stat-grid">{[['scheduled',"Today’s scheduled stops"],['completed','Completed stops'],['remaining','Remaining stops'],['technicians','Active technicians']].map(([key,label])=><Metric key={key} label={label} value={metrics[key]}/>)}</div><div className="completion-overview"><strong>{percent}% <T text="completed"/></strong><progress value={metrics.completed} max={metrics.scheduled||1}/></div><div className="stat-grid">{[['customers','Active customers'],['properties','Active properties'],['pools','Active pools / spas'],['new_customers','New customers · 30 days']].map(([key,label])=><Metric key={key} label={label} value={metrics[key]}/>)}</div><div className="profile-grid"><Panel title="Own-customer MRR"><strong className="display-number">{new Intl.NumberFormat('en-US',{style:'currency',currency:'USD'}).format(metrics.mrr_cents/100)}</strong><p className="note"><T text="Active own-customer monthly agreements with current recurring service. Counted once per agreement, not per pool. Subcontracts are excluded. This is contracted revenue, not cash collected or net profit."/></p></Panel><Panel title="Attention required">{[['pending_reports','Pending reports'],['failed_reports','Failed reports'],['missing_coordinates','Missing coordinates'],['issues','Service issues · 7 days'],['overdue','Overdue open stops']].filter(([key])=>key!=='issues'||company?.settings?.service_defaults?.show_issue_reminders!==false).map(([key,label])=><p className="metric-row" key={key}><T text={label}/><strong>{metrics[key]}</strong></p>)}</Panel></div><Panel title="Offline & Sync"><DeviceSyncSummary scope={scope}/></Panel></>;
 }
+function Metric({label,value}:{label:string;value:number}){return <section className="stat-card"><span className="stat-top"><T text={label}/></span><div className="stat-value">{value}</div></section>;}

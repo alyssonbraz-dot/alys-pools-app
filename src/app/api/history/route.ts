@@ -7,7 +7,7 @@ export async function GET(request:Request) {
  const operator=await getOperator();if(!operator)return json({error:'Please sign in.'},401);
  const params=new URL(request.url).searchParams;
  const customer=params.get('customer_id');
- const options=z.object({query:z.string().max(100),status:z.enum(['all','pending','sent','failed']),offset:z.coerce.number().int().min(0).max(1000000)}).parse({query:params.get('q')??'',status:params.get('status')??'all',offset:params.get('offset')??0});
+ const options=z.object({from:z.iso.date().nullable(),technicianId:z.uuid().nullable(),visitId:z.uuid().nullable(),query:z.string().max(100),status:z.enum(['all','pending','sent','failed']),offset:z.coerce.number().int().min(0).max(1000000)}).parse({from:params.get('from'),technicianId:params.get('technician_id'),visitId:params.get('visit_id'),query:params.get('q')??'',status:params.get('status')??'all',offset:params.get('offset')??0});
  if(customer)z.uuid().parse(customer);
  const visits=await loadHistory(operator,customer??undefined,options);
  return json({role:operator.profile.role,visits:visits.slice(0,50),hasMore:visits.length>50});

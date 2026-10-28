@@ -14,11 +14,12 @@ do $$ begin
  begin perform public.add_visit_correction('a6000000-0000-4000-8000-000000000001','Technician not permitted');raise exception 'Technician correction bypass';exception when insufficient_privilege then null;end;
 end $$;
 select set_config('request.jwt.claim.sub','a1000000-0000-4000-8000-000000000001',true);
-do $$ declare correction uuid; begin
+do $$ declare correction uuid;original_snapshot jsonb; begin
+ select snapshot into original_snapshot from public.visits where id='a6000000-0000-4000-8000-000000000001';
  begin perform public.add_visit_correction('a6000000-0000-4000-8000-000000000001',' ');raise exception 'Blank correction';exception when invalid_parameter_value then null;end;
  correction:=public.add_visit_correction('a6000000-0000-4000-8000-000000000001','FC recorded as 2.5 ppm; original retained.');
  if not exists(select 1 from public.visit_corrections where id=correction and actor_id=auth.uid()) then raise exception 'Correction missing actor';end if;
- if (select snapshot from public.visits where id='a6000000-0000-4000-8000-000000000001')<>'{"pools":[]}'::jsonb then raise exception 'Correction rewrote snapshot';end if;
+ if (select snapshot from public.visits where id='a6000000-0000-4000-8000-000000000001')<>original_snapshot then raise exception 'Correction rewrote snapshot';end if;
  if exists(select 1 from public.email_delivery_logs) then raise exception 'Correction auto-sent email';end if;
  if not exists(select 1 from public.audit_log where entity='visit_corrections' and record_id=correction) then raise exception 'Correction missing audit';end if;
  begin update public.visit_corrections set note='Rewrite';raise exception 'Correction mutable';exception when insufficient_privilege then null;end;

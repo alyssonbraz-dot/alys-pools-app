@@ -1,0 +1,24 @@
+begin;
+insert into auth.users(id) values('a0000019-0000-4000-8000-000000000001'),('a0000019-0000-4000-8000-000000000002');
+insert into public.organizations(id,name) values('b0000019-0000-4000-8000-000000000001','Photo body test');
+insert into public.profiles(id,organization_id,role,display_name) values('a0000019-0000-4000-8000-000000000001','b0000019-0000-4000-8000-000000000001','owner','Owner'),('a0000019-0000-4000-8000-000000000002','b0000019-0000-4000-8000-000000000001','technician','Unassigned tech');
+insert into public.customers(id,organization_id,name) values('c0000019-0000-4000-8000-000000000001','b0000019-0000-4000-8000-000000000001','Photo customer');
+insert into public.properties(id,organization_id,customer_id,address) values('d0000019-0000-4000-8000-000000000001','b0000019-0000-4000-8000-000000000001','c0000019-0000-4000-8000-000000000001','Fictional photo address');
+insert into public.pools(id,organization_id,property_id,name,gallons,water_type,type,photo_required,photo_scope_required,checklist) values('e0000019-0000-4000-8000-000000000001','b0000019-0000-4000-8000-000000000001','d0000019-0000-4000-8000-000000000001','Pool',10000,'chlorine','residential',true,true,array['Test Water']),('e0000019-0000-4000-8000-000000000002','b0000019-0000-4000-8000-000000000001','d0000019-0000-4000-8000-000000000001','Spa',2000,'chlorine','spa',true,true,array['Test Water']);
+insert into public.route_stops(id,organization_id,property_id,technician_id,service_date) values('f0000019-0000-4000-8000-000000000001','b0000019-0000-4000-8000-000000000001','d0000019-0000-4000-8000-000000000001','a0000019-0000-4000-8000-000000000001',current_date);
+insert into storage.objects(bucket_id,name,metadata) select 'visit-photos','b0000019-0000-4000-8000-000000000001/f0000019-0000-4000-8000-000000000001/ab000019-0000-4000-8000-00000000000'||n||'.jpg','{"mimetype":"image/jpeg","size":100}' from generate_series(1,2) n;
+set local role authenticated;
+select set_config('request.jwt.claim.sub','a0000019-0000-4000-8000-000000000001',true);
+do $$ declare payload jsonb;first_path text:='b0000019-0000-4000-8000-000000000001/f0000019-0000-4000-8000-000000000001/ab000019-0000-4000-8000-000000000001.jpg';second_path text:='b0000019-0000-4000-8000-000000000001/f0000019-0000-4000-8000-000000000001/ab000019-0000-4000-8000-000000000002.jpg';begin
+ payload:=jsonb_build_object('id',gen_random_uuid(),'stop_id','f0000019-0000-4000-8000-000000000001','notes','','photo_paths',jsonb_build_array(first_path,second_path),'photo_assignments',jsonb_build_object(first_path,'e0000019-0000-4000-8000-000000000001'),'pools',(select jsonb_agg(jsonb_build_object('pool_id',id,'tasks',jsonb_build_array('Test Water'),'readings',jsonb_build_object('fc',3,'ph',7.4),'dosages','[]'::jsonb)) from public.pools));
+ begin perform public.complete_visit(payload);raise exception 'Missing spa photo accepted';exception when invalid_parameter_value then null;end;
+ if exists(select 1 from public.visits) then raise exception 'Rejected photo produced partial visit';end if;
+ payload:=jsonb_set(payload,'{photo_assignments}',jsonb_build_object(first_path,'e0000019-0000-4000-8000-000000000001',second_path,'e0000019-0000-4000-8000-000000000002'));
+ perform public.complete_visit(payload);perform public.complete_visit(payload);
+ if (select count(*) from public.visit_photo_bodies)<>2 or (select count(*) from public.visits)<>1 then raise exception 'Body photo idempotence failed';end if;
+ begin update public.visit_photo_bodies set pool_id='e0000019-0000-4000-8000-000000000002';raise exception 'Photo mapping mutable';exception when insufficient_privilege then null;end;
+end $$;
+select set_config('request.jwt.claim.sub','a0000019-0000-4000-8000-000000000002',true);
+do $$ begin if exists(select 1 from public.visit_photo_bodies) then raise exception 'Unassigned tech leaked photo mapping';end if;end $$;
+rollback;
+select 'Body photo requirements, atomicity, idempotence, immutable mapping and RLS passed' as result;

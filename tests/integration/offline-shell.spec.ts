@@ -9,7 +9,7 @@ test('public shell reopens scoped route and draft after offline tab closure', as
   const page=await context.newPage();
   await page.goto(baseURL+'/login');
   await page.evaluate(async()=>{await navigator.serviceWorker.ready;});
-  await expect.poll(()=>page.evaluate(async()=>!!(await (await caches.open('alys-field-shell-v1')).match('/offline')))).toBe(true);
+  await expect.poll(()=>page.evaluate(async()=>!!(await (await caches.open('alys-field-shell-v2')).match('/offline')))).toBe(true);
   const fixture={userId:'offline-fixture-user',orgId:'offline-fixture-org',displayName:'Offline fixture',role:'technician',date:new Intl.DateTimeFormat('en-CA',{timeZone:'America/New_York',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date()),stops:[
     {id:'offline-stop-a',technician_id:'offline-fixture-user',service_date:'2026-10-22',position:1,status:'pending',property:{id:'property-a',name:'Fictional Offline Residence',address:'Fictional address A',gate_notes:''},customer:{id:'customer-a',name:'Fictional Test Customer'},pools:[{id:'pool-a',name:'Fictional pool',gallons:12000,checklist:['Test Water','Brush Pool'],required_readings:['fc','ph'],photo_required:false}]},
     {id:'offline-stop-b',technician_id:'offline-fixture-user',service_date:'2026-10-22',position:2,status:'pending',property:{id:'property-b',name:'Fictional Next Stop',address:'Fictional address B',gate_notes:''},customer:{id:'customer-b',name:'Fictional Other Customer'},pools:[{id:'pool-b',name:'Fictional spa',gallons:2000,checklist:['Test Water'],required_readings:[],photo_required:false}]}
@@ -49,7 +49,7 @@ test('public shell reopens scoped route and draft after offline tab closure', as
   await expect(reopened.getByRole('heading',{name:'Fictional Next Stop'})).toBeVisible();
   await expect(reopened.getByText('1 visit waiting to sync',{exact:true})).toBeVisible();
   const cachedPaths=await reopened.evaluate(async()=>{
-    const cache=await caches.open('alys-field-shell-v1');return (await cache.keys()).map(request=>new URL(request.url).pathname);
+    const cache=await caches.open('alys-field-shell-v2');return (await cache.keys()).map(request=>new URL(request.url).pathname);
   });
   expect(cachedPaths).toContain('/offline');
   expect(cachedPaths.some(path=>path.startsWith('/api/')||path==='/login'||path==='/')).toBe(false);

@@ -16,7 +16,7 @@ export async function processEmailQueue(options: { limit?: number } = {}) {
   const jobs = (data ?? []) as Job[];
   for (const job of jobs) {
     try {
-      const { data: visit, error: visitError } = await db.from('visits').select('snapshot,completed_at,route_stop_id').eq('id', job.visit_id).single();
+      const { data: visit, error: visitError } = await db.from('visits').select('snapshot,completed_at,route_stop_id,technician_id').eq('id', job.visit_id).single();
       if (visitError || !visit) throw new DeliveryError('visit_not_found', false);
       const { data: stop } = await db.from('route_stops').select('property_id').eq('id', visit.route_stop_id).single();
       const { data: property } = await db.from('properties').select('customer_id').eq('id', stop?.property_id ?? '').single();
@@ -34,7 +34,8 @@ export async function processEmailQueue(options: { limit?: number } = {}) {
           if (imageError || !image || image.size > 2 * 1024 * 1024) throw new DeliveryError('photo_download_unavailable', true);
           attachments.push({ content: Buffer.from(await image.arrayBuffer()).toString('base64'), filename: `service-photo-${index + 1}.jpg` });
         }
-        payload = createServiceReport({ snapshot: {...visit.snapshot,issue_flags:issue?.flags??[]}, completedAt: visit.completed_at, recipient: job.recipient, from: config.from, photos: attachments });
+        const {data:technician}=await db.from('profiles').select('display_name').eq('id',visit.technician_id).maybeSingle();
+        payload = createServiceReport({ snapshot: {...visit.snapshot,technician_name:visit.snapshot.technician_name??technician?.display_name,issue_flags:issue?.flags??[]}, completedAt: visit.completed_at, recipient: job.recipient, from: config.from, photos: attachments });
       }
       // Revalidate and renew the lease immediately before every send, including
       // retries with an already frozen payload. Slow downloads or a stale batch

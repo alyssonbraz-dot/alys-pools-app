@@ -28,6 +28,7 @@ test('mobile service persists JPEG, snapshot and one outbox; offline visit survi
   await page.getByLabel('Email',{exact:true}).fill(fixture.email);
   await page.getByLabel('Password',{exact:true}).fill(fixture.password);
   await page.getByRole('button',{name:'Sign in',exact:true}).click();
+  await expect(page.getByRole('heading',{name:'Dashboard',exact:true})).toBeVisible();await page.goto('/route');
   await expect(page.getByRole('heading',{name:'Today’s Route'})).toBeVisible();
   await expect(page.getByRole('heading',{name:'Test Property 1',exact:true})).toBeVisible();
   await page.screenshot({path:'/tmp/alys-route-mobile.png',fullPage:true});
@@ -38,8 +39,8 @@ test('mobile service persists JPEG, snapshot and one outbox; offline visit survi
   const chemistry=page.getByRole('region',{name:'Pool 1 chemical history'});
   await expect(chemistry.getByRole('heading',{name:'Chemical history',exact:true})).toBeVisible();
   await expect(chemistry).toContainText('Last 30 days');
-  await expect(chemistry).toContainText('0 ppm');
-  await expect(chemistry).toContainText('Liquid Chlorine: 0.5 gal');
+  await expect(chemistry.getByRole('cell',{name:'0',exact:true})).toBeVisible();
+  await expect(chemistry.getByRole('cell',{name:'Liquid Chlorine',exact:true})).toBeVisible();await expect(chemistry.getByRole('cell',{name:'0.5',exact:true})).toBeVisible();
   await page.screenshot({path:'/tmp/alys-mobile-service.png',fullPage:true});
   await page.getByLabel('Skim Surface',{exact:true}).check();
   await page.getByLabel('Test Water',{exact:true}).check();
@@ -109,13 +110,12 @@ test('anonymous API access and cross-origin mutations are rejected',async({reque
 });
 
 test('manager customer table supports search, lead status, confirmed bulk actions, CSV and coordinate lookup',async({page,baseURL})=>{
- await page.goto('/login');await page.getByLabel('Email',{exact:true}).fill(fixture.email);await page.getByLabel('Password',{exact:true}).fill(fixture.password);await page.getByRole('button',{name:'Sign in',exact:true}).click();await expect(page.getByRole('heading',{name:'Today’s Route'})).toBeVisible();
- await page.goto('/customers');await page.getByRole('button',{name:'Add Customer',exact:true}).click();
+ await page.goto('/login');await page.getByLabel('Email',{exact:true}).fill(fixture.email);await page.getByLabel('Password',{exact:true}).fill(fixture.password);await page.getByRole('button',{name:'Sign in',exact:true}).click();await expect(page.getByRole('heading',{name:'Dashboard',exact:true})).toBeVisible();await page.goto('/route');await expect(page.getByRole('heading',{name:'Today’s Route'})).toBeVisible();
+ await page.goto('/customers');await page.getByRole('link',{name:'Add Customer',exact:true}).click();
  const dialog=page.getByRole('dialog');const last='Mobile '+randomUUID().slice(0,6),name='Fictional '+last;
- await dialog.getByLabel('First name',{exact:true}).fill('Fictional');await dialog.getByLabel('Last name',{exact:true}).fill(last);await dialog.getByLabel('Customer email',{exact:true}).fill('mobile@example.test');await dialog.getByLabel('Service address',{exact:true}).fill('Fictional Mobile Service Address FL');await dialog.getByLabel('Property name',{exact:true}).fill('Mobile Form Property');await dialog.getByLabel('Billing address (if different)',{exact:true}).fill('Fictional Billing Address');await dialog.getByLabel('Tags (comma separated)',{exact:true}).fill('weekly, salt');await dialog.getByLabel('Monthly service price (USD)',{exact:true}).fill('175.25');await dialog.getByRole('combobox',{name:'Status',exact:true}).selectOption('lead');
- await dialog.getByRole('button',{name:'Locate service address',exact:true}).click();await expect(dialog.getByLabel('Latitude',{exact:true})).toHaveValue('26.1224');await expect(dialog.getByLabel('Longitude',{exact:true})).toHaveValue('-80.1373');
- await dialog.getByRole('combobox',{name:'Language',exact:true}).selectOption('pt');await expect(dialog.getByLabel('Nome',{exact:true})).toHaveValue('Fictional');await dialog.getByRole('combobox',{name:'Idioma',exact:true}).selectOption('en');
- await dialog.getByRole('button',{name:'Save client',exact:true}).click();await expect(dialog).not.toBeVisible();
+ await page.getByLabel('First name',{exact:true}).fill('Fictional');await page.getByLabel('Last name',{exact:true}).fill(last);await page.getByLabel('Email',{exact:true}).fill('mobile@example.test');await page.getByLabel('Service address',{exact:true}).fill('Fictional Mobile Service Address FL');await page.getByLabel('Property name (optional)',{exact:true}).fill('Mobile Form Property');await page.getByLabel('Billing address (if different)',{exact:true}).fill('Fictional Billing Address');await page.getByLabel('Tags (comma separated)',{exact:true}).fill('weekly, salt');await page.getByLabel('Monthly service price (USD)',{exact:true}).fill('175.25');await page.getByRole('combobox',{name:'Status',exact:true}).selectOption('lead');
+ await page.getByRole('button',{name:'Find address suggestions',exact:true}).click();await page.getByRole('button',{name:'Fictional Mobile Service Address FL',exact:true}).click();await expect(page.getByLabel('Latitude',{exact:true})).toHaveValue('26.1224');await expect(page.getByLabel('Longitude',{exact:true})).toHaveValue('-80.1373');
+ await page.getByRole('button',{name:'Save Customer & Activate Service',exact:true}).click();await expect(page.getByRole('heading',{name,exact:true})).toBeVisible();await page.goto('/customers');
  await page.getByRole('searchbox').fill(name);let row=page.locator('tbody tr').filter({hasText:name});await expect(row).toContainText('Lead');await expect(row).toContainText('Fictional Billing Address');
  // Managed Chromium may disable filesystem downloads. Verify the actual CSV blob and link instead.
  await page.evaluate(()=>{let exported:Blob;const originalUrl=URL.createObjectURL;URL.createObjectURL=function(blob){if(blob instanceof Blob)exported=blob;return originalUrl(blob);};const original=HTMLAnchorElement.prototype.click;HTMLAnchorElement.prototype.click=function(){if(this.download){void exported.text().then(csv=>{document.body.dataset.exportCsv=csv;document.body.dataset.exportName=this.download;});}else original.call(this);};});
