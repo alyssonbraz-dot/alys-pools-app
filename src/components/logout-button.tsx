@@ -16,5 +16,5 @@ export function LogoutButton() {
   }catch{setBusy(false);setError('Unable to clear local data. Please try again before signing out.');return;}
   await logout();
  }
- return <><button type="button" className="nav-item" disabled={busy} onClick={signOut}>{busy?<T text={'Signing out…'}/>:<T text={'Sign out'}/>}</button>{error&&<p role="alert"><T text={error}/></p>}</>;
+ return <><button type="button" className="nav-item" disabled={busy} onClick={signOut}>{busy?<T text={"Signing out…"}/>:<T text={"Sign out"}/>}</button>{error&&<p role="alert"><T text={error}/></p>}</>;
 }

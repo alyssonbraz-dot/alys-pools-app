@@ -26,7 +26,7 @@ export default function Join() {
       });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error);
-      window.location.replace("/stops");
+      window.location.replace("/");
     } catch (e) {
       setError(e instanceof Error ? e.message : "Unable to accept invitation.");
       setBusy(false);
@@ -38,11 +38,11 @@ export default function Join() {
         <T text="Join ALYS Pool Services" />
       </h1>
       <p>
-        <T text="Create your own password to accept your technician invitation." />
+        <T text="Create your own password to accept this invitation." />
       </p>
       {error && (
         <p role="alert" className="notice">
-          {error}
+          <T text={error}/>
         </p>
       )}
       <form action={accept}>

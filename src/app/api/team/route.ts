@@ -1,13 +1,18 @@
 import { z } from "zod";
+import {serviceDay,addServiceDays} from "@/lib/service-time";
 import { getOperator } from "@/lib/auth";
 import { apiError, boundedJson, json, sameOrigin } from "@/lib/http";
 import { administration, tokenDigest } from "@/lib/team/server";
+import {applicationOrigin,invitationReadiness} from "@/lib/readiness";
 import { emailConfiguration } from "@/lib/email/config";
 import { sendReport } from "@/lib/email/provider";
-import { escapeHtml } from "@/lib/email/report";
+import {invitationMessage} from "@/lib/team/message";
 const command = z.object({
   action: z.enum(["invite", "resend", "revoke", "access", "assign", "edit"]),
   id: z.uuid(),
+  role:z.enum(["technician","owner"]).default("technician"),
+  confirm_owner:z.boolean().default(false),
+  language:z.enum(["en","pt","es"]).default("en"),
   email: z.email().max(254).optional(),
   first_name: z.string().trim().min(1).max(100).optional(),
   last_name: z.string().trim().max(49).default(""),
@@ -22,32 +27,31 @@ export async function GET() {
     if (!op || op.profile.role !== "owner")
       return json({ error: "Owner access required." }, 403);
     const { db } = op;
-    const [people, invites, assignments, properties, stops, pools, schedules] =
+    const {data:company,error:companyError}=await db.from('organizations').select('settings').eq('id',op.profile.organization_id).single();
+    if(companyError||!company)throw new Error("Company settings unavailable");
+    const demo=company.settings?.demo===true;
+    const [people, invites, assignments, properties, queriedStops, pools, schedules] =
       await Promise.all([
         db
           .from("profiles")
           .select(
             "id,display_name,role,access_state,team_member_details(phone,notes)",
           )
-          .eq("role", "technician"),
+          .in("role", ["technician","owner"]),
         db
           .from("team_invitations")
-          .select("id,email,display_name,phone,notes,user_id,state,expires_at")
+          .select("id,email,display_name,phone,notes,user_id,state,expires_at,invited_role")
           .order("created_at", { ascending: false })
           .limit(200),
         db
           .from("technician_property_assignments")
           .select("technician_id,property_id,active"),
-        db.from("properties").select("id,name,address,customer_id"),
+        db.from("properties").select("id,name,address,customer_id,service_timezone"),
         db
           .from("route_stops")
           .select("id,property_id,technician_id,service_date,status")
-          .eq(
-            "service_date",
-            new Intl.DateTimeFormat("en-CA", {
-              timeZone: "America/New_York",
-            }).format(new Date()),
-          ),
+          .gte("service_date",addServiceDays(serviceDay(new Date(),'UTC'),-1))
+          .lte("service_date",addServiceDays(serviceDay(new Date(),'UTC'),1)),
         db.from("pools").select("id,property_id").eq("status", "active"),
         db
           .from("recurring_schedules")
@@ -58,11 +62,12 @@ export async function GET() {
       await db.rpc("team_contacts");
     if (contactsError) throw contactsError;
     if (
-      [people, invites, assignments, properties, stops, pools, schedules].some(
+      [people, invites, assignments, properties, queriedStops, pools, schedules].some(
         (r) => r.error,
       )
     )
       throw new Error("Team query failed");
+    const stops={data:queriedStops.data?.filter(s=>s.service_date===serviceDay(new Date(),properties.data?.find(p=>p.id===s.property_id)?.service_timezone))};
     const effective = [
       ...(assignments.data ?? []).filter((a) => a.active),
       ...(schedules.data ?? []).map((s) => ({ ...s, active: true })),
@@ -111,10 +116,11 @@ export async function GET() {
       properties: properties.data,
       stops: stops.data,
       pools: pools.data,
-      invitesEnabled: process.env.TEAM_INVITES_ENABLED === "true",
+      invitesEnabled: !demo&&invitationReadiness().ready,
+      inviteReadiness:invitationReadiness(),
     });
-  } catch (e) {
-    return apiError(e);
+  } catch {
+    return json({error:"Team data could not be loaded. Check System Health for database and runtime readiness.",code:"TEAM_QUERY_FAILED"},503);
   }
 }
 export async function POST(request: Request) {
@@ -125,7 +131,7 @@ export async function POST(request: Request) {
       return json({ error: "Owner access required." }, 403);
     const input = command.parse(await boundedJson(request, 15000));
     if (input.action === "edit") {
-      const { error } = await op.db.rpc("edit_technician", {
+      const { error } = await op.db.rpc("edit_team_member", {
         p_id: input.id,
         p_name: [input.first_name, input.last_name].filter(Boolean).join(" "),
         p_phone: input.phone,
@@ -136,14 +142,8 @@ export async function POST(request: Request) {
     }
     if (input.action === "access") {
       if (!input.state) return json({ error: "Status required." }, 422);
-      const { error } = await op.db.rpc("set_technician_access", {
-        p_id: input.id,
-        p_state: input.state,
-        p_name: input.first_name
-          ? [input.first_name, input.last_name].filter(Boolean).join(" ")
-          : null,
-      });
-      if (error) throw error;
+      const { error } = await op.db.rpc("set_team_access", {p_id:input.id,p_state:input.state});
+      if(error)return json({error:error.code==="22023"?"The last active Owner must be preserved. Invited users must accept their invitation before activation.":"Access was not changed. Check your permissions."},422);
       return json({ ok: true });
     }
     if (input.action === "assign") {
@@ -179,15 +179,16 @@ export async function POST(request: Request) {
       ...process.env,
       EMAIL_DELIVERY_ENABLED: "true",
     });
-    if (process.env.TEAM_INVITES_ENABLED !== "true" || !delivery)
+    if (!invitationReadiness().ready || !delivery)
       return json(
         {
           error:
-            "Team invitations are disabled. Verify the sender and configure TEAM_INVITES_ENABLED on the server.",
+            "Team invitations are not ready. Open Settings → System Health for the required configuration.",
         },
         503,
       );
     const org = op.profile.organization_id;
+    const {data:company,error:companyError}=await op.db.from('organizations').select('settings').eq('id',org).single();if(companyError||!company)return json({error:'Team data could not be loaded. Check System Health for database and runtime readiness.'},503);if(company.settings?.demo)return json({error:'External invitations are blocked in the demo organization.'},403);
     let { data: invite } = await admin
       .from("team_invitations")
       .select("*")
@@ -252,23 +253,9 @@ export async function POST(request: Request) {
           },
           409,
         );
-      const { data, error } = await admin
-        .from("team_invitations")
-        .insert({
-          id: input.id,
-          requested_by: op.user.id,
-          organization_id: org,
-          email: input.email.toLowerCase(),
-          display_name: [input.first_name, input.last_name]
-            .filter(Boolean)
-            .join(" "),
-          phone: input.phone,
-          notes: input.notes,
-        })
-        .select("*")
-        .single();
-      if (error) throw error;
-      invite = data;
+      if(input.role==='owner'&&!input.confirm_owner)return json({error:'Confirm that this administrator will have Owner permissions.'},422);
+      const {data:reserved,error}=await op.db.rpc('reserve_team_invitation',{p_payload:input});if(error)return json({error:error.code==='23505'?'An invitation already exists. Use Resend or Revoke.':'Invitation could not be reserved. Confirm the name, role and permissions.',code:error.code==='23505'?'INVITATION_EXISTS':'INVITATION_VALIDATION'},422);
+      const {data:created,error:readError}=await admin.from('team_invitations').select('*').eq('id',reserved).eq('organization_id',org).single();if(readError||!created)return json({error:'Invitation is saved, but server administration could not read it. Check System Health.'},503);invite=created;
     }
     if (
       !invite ||
@@ -300,7 +287,7 @@ export async function POST(request: Request) {
             access_state: string;
           }) =>
             member.organization_id !== org ||
-            member.role !== "technician" ||
+            member.role !== invite.invited_role ||
             member.access_state !== "invited",
         )
       )
@@ -331,7 +318,7 @@ export async function POST(request: Request) {
       if (
         existing &&
         (existing.organization_id !== org ||
-          existing.role !== "technician" ||
+          existing.role !== invite.invited_role ||
           existing.access_state !== "invited")
       )
         return json(
@@ -345,13 +332,13 @@ export async function POST(request: Request) {
         const { error: profileError } = await admin.from("profiles").insert({
           id: data.user.id,
           organization_id: org,
-          role: "technician",
+          role: invite.invited_role,
           access_state: "invited",
           display_name: invite.display_name,
         });
         if (profileError) throw profileError;
       }
-      const origin = request.headers.get("origin")!;
+      const origin = applicationOrigin()!;
       const link =
         origin +
         "/join#" +
@@ -359,14 +346,7 @@ export async function POST(request: Request) {
           invitation: invite.id,
           token_hash: data.properties.hashed_token,
         });
-      const payload = {
-        from: delivery.from,
-        to: [invite.email],
-        subject: "Your ALYS technician invitation",
-        html: `<h1>Join ALYS Pool Services</h1><p>Create your own password to accept your technician invitation.</p><p><a href="${escapeHtml(link)}">Accept invitation</a></p><p>This link expires and can only be accepted once.</p>`,
-        text: `Create your own password to join ALYS: ${link}`,
-        attachments: [],
-      };
+      const payload=invitationMessage({role:invite.invited_role,language:invite.language,from:delivery.from,replyTo:delivery.replyTo,recipient:invite.email,link});
       const { data: frozenRows, error: freezeError } = await admin
         .from("team_invitations")
         .update({

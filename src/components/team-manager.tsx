@@ -1,16 +1,16 @@
 "use client";
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { T } from "./i18n";
+import { T,useLanguage } from "./i18n";
 import { Input } from "./form-controls";
-type Person = {
+type Person = {role:"owner"|"technician";
   email?: string;
   team_member_details?: { phone: string; notes: string } | null;
   id: string;
   display_name: string;
   access_state: string;
 };
-type Invite = {
+type Invite = {invited_role?:"owner"|"technician";
   id: string;
   user_id: string | null;
   email: string;
@@ -18,7 +18,7 @@ type Invite = {
   state: string;
   expires_at: string;
 };
-type TeamData = {
+type TeamData = {inviteReadiness?:{ready:boolean;issues:string[]};
   poolCounts: Record<string, number>;
   now: string;
   people: Person[];
@@ -54,6 +54,7 @@ async function call(body?: unknown) {
   return result;
 }
 export function TeamManager() {
+ const {language}=useLanguage();const [inviteRole,setInviteRole]=useState<"owner"|"technician">("technician");
   const [data, setData] = useState<TeamData | null>(null),
     [error, setError] = useState(""),
     [notice, setNotice] = useState(""),
@@ -95,6 +96,7 @@ export function TeamManager() {
   async function invite(form: FormData) {
     const ok = await action({
       action: "invite",
+      role:inviteRole,language,confirm_owner:form.get("confirm_owner")==="on",
       id: crypto.randomUUID(),
       first_name: form.get("first_name"),
       last_name: form.get("last_name"),
@@ -116,31 +118,31 @@ export function TeamManager() {
             <T text="Invite technicians, control access and assign service properties." />
           </p>
         </div>
-        <button className="btn btn-primary" onClick={() => setShow(!show)}>
+        <button className="btn btn-primary" onClick={() => {setInviteRole("technician");setShow(!show);}}>
           <T text="Add Technician" />
-        </button>
+        </button><button type="button" className="btn btn-secondary" onClick={()=>{setInviteRole("owner");setShow(true);}}><T text="Add Administrator"/></button>
       </div>
       {error && (
         <p role="alert" className="notice">
-          {error}
+          <T text={error}/>
         </p>
       )}
       {notice && (
         <p role="status" className="notice">
-          {notice}
+          <T text={notice}/>
         </p>
       )}
       {show && (
         <section className="panel form-section">
           <h2>
-            <T text="Invite a technician" />
+            <T text={inviteRole==='owner'?"Invite an administrator":"Invite a technician"} />
           </h2>
           {!data?.invitesEnabled && (
             <p className="notice">
-              <T text="Invitations are disabled until the verified sender and server configuration are ready." />
+              <T text="Invitations are not ready. Open Settings → System Health to see the required configuration." />
             </p>
           )}
-          <form action={invite} className="form-grid">
+          <form action={invite} className="form-grid">{inviteRole==='owner'&&<label className="check-setting full"><input type="checkbox" name="confirm_owner" required/><T text="I authorize this person to have Owner permissions for this organization."/></label>}
             <Input
               label="First name"
               name="first_name"
@@ -152,7 +154,7 @@ export function TeamManager() {
             <Input label="Phone" name="phone" type="tel" />
             <Input label="Internal notes" name="notes" />
             <div className="full">
-              {data?.properties.map((p) => (
+              {inviteRole!=="owner"&&data?.properties.map((p) => (
                 <label className="check-setting" key={p.id}>
                   <input name="properties" type="checkbox" value={p.id} />
                   {p.name || p.address}
@@ -166,13 +168,13 @@ export function TeamManager() {
               <T text="Send secure invitation" />
             </button>
             <p className="note full">
-              <T text="Role is always Technician. The recipient creates their own password; no shared password is generated. Assign properties below after the account is created." />
+              <T text="The recipient creates their own password. Review the invited role before sending." />
             </p>
           </form>
         </section>
       )}
       {!data ? (
-        <p role="status">Loading team…</p>
+        <p role="status"><T text={"Loading team…"}/></p>
       ) : (
         <>
           <div className="panel table-wrap">
@@ -201,10 +203,10 @@ export function TeamManager() {
                     .map((a) => a.property_id);
                   return (
                     <tr key={p.id}>
-                      <td>{p.display_name}</td>
+                      <td>{p.display_name}<small><T text={p.role==='owner'?"Owner":"Technician"}/></small></td>
                       <td>{p.email || invite?.email || "—"}</td>
                       <td>
-                        <span className="status">{p.access_state}</span>
+                        <span className="status"><T text={p.access_state}/></span>
                       </td>
                       <td>{data.poolCounts[p.id] ?? 0}</td>
                       <td>
@@ -269,7 +271,7 @@ export function TeamManager() {
                         </div>
                         <details>
                           <summary>
-                            <T text="Edit & assign properties" />
+                            <T text={p.role==='owner'?"Edit administrator":"Edit & assign properties"} />
                           </summary>
                           <TechnicianEditor
                             person={p}
@@ -300,8 +302,8 @@ export function TeamManager() {
                 <strong>{i.display_name}</strong> · {i.email} ·{" "}
                 {Date.parse(i.expires_at) < Date.parse(data.now) &&
                 i.state !== "accepted"
-                  ? "Expired"
-                  : i.state}
+                  ? <T text="Expired"/>
+                  : <T text={i.state}/>}
                 <div className="table-actions">
                   {!["revoked", "accepted"].includes(i.state) && (
                     <>
@@ -372,7 +374,7 @@ function TechnicianEditor({
       >
         <T text="Save name" />
       </button>
-      {properties.map((p) => (
+      {person.role!=="owner"&&properties.map((p) => (
         <label className="check-setting" key={p.id}>
           <input
             type="checkbox"
@@ -388,7 +390,7 @@ function TechnicianEditor({
           {p.name || p.address}
         </label>
       ))}
-      <button
+      {person.role!=="owner"&&<button
         className="btn btn-primary"
         disabled={busy}
         onClick={() =>
@@ -396,7 +398,7 @@ function TechnicianEditor({
         }
       >
         <T text="Save assignments" />
-      </button>
+      </button>}
       <p className="note">
         <T text="Existing single active schedules follow reassignment. For a property without a schedule, set its service days in the customer profile. Multiple schedules require an explicit schedule edit." />
       </p>

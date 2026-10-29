@@ -1,6 +1,6 @@
 "use client";
 import type { InputHTMLAttributes, ButtonHTMLAttributes } from "react";
-import { T } from "./i18n";
+import { T,LocaleInput } from "./i18n";
 export function Input({
   label,
   onChange,
@@ -12,7 +12,7 @@ export function Input({
   return (
     <label className="form-field">
       <T text={label} />
-      <input {...props} onChange={(e) => onChange?.(e.target.value)} />
+      <LocaleInput {...props} onChange={(e) => onChange?.(e.target.value)} />
     </label>
   );
 }

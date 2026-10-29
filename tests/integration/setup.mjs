@@ -21,7 +21,7 @@ const stops=[];
 for(let i=1;i<=3;i++){
  const customerId=randomUUID(),propertyId=randomUUID(),poolId=randomUUID();
  await must(db.from('customers').insert({id:customerId,organization_id:orgId,name:`Fictional Client ${i}`,email:`report-${run}-${i}@example.test`,email_reports_enabled:true}),'create customer');
- await must(db.from('properties').insert({id:propertyId,organization_id:orgId,customer_id:customerId,name:`Test Property ${i}`,address:`Fictional Service Address ${i}, FL`,gate_notes:'PRIVATE GATE CODE MUST NEVER APPEAR IN REPORT',latitude:26.12+i/1000,longitude:-80.14-i/1000}),'create property');
+ await must(db.from('properties').insert({id:propertyId,organization_id:orgId,customer_id:customerId,name:`Test Property ${i}`,address:`Fictional Service Address ${i}, FL`,gate_notes:'PRIVATE GATE CODE MUST NEVER APPEAR IN REPORT',location_confirmed:true,latitude:26.12+i/1000,longitude:-80.14-i/1000}),'create property');
  await must(db.from('pools').insert({id:poolId,organization_id:orgId,property_id:propertyId,name:`Pool ${i}`,gallons:15000,water_type:'chlorine',type:'residential',required_readings:['fc','ph'],photo_required:true}),'create pool');
  const stop=await must(db.from('route_stops').insert({organization_id:orgId,property_id:propertyId,technician_id:user.id,service_date:date,position:i}).select('id').single(),'create stop');
  stops.push({id:stop.id,propertyId,poolId,customerId,name:`Test Property ${i}`});

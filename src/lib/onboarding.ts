@@ -25,6 +25,8 @@ export const bundleSchema = z.object({
           latitude: z.number().min(-90).max(90).nullable(),
           longitude: z.number().min(-180).max(180).nullable(),
           location_confirmed: z.boolean(),
+          country_code:z.enum(["US","BR"]).optional(),
+          unit_system:z.enum(["inherit","imperial","metric"]).optional(),
           service_timezone: z
             .string()
             .max(80)

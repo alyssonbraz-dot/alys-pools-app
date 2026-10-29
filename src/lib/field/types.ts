@@ -5,12 +5,12 @@ export type PoolConfig = { id:string; name:string; gallons:number; checklist:str
 export type StopStatus = 'pending' | 'in_progress' | 'completed' | 'skipped';
 export type RouteStop = {
  id:string; technician_id:string; service_date:string; position:number; status:StopStatus;estimated_service_minutes?:number;service_type?:string;
- property:{id:string; name:string; address:string; gate_notes:string;latitude?:number|null;longitude?:number|null};
+ property:{id:string; name:string; address:string; gate_notes:string;service_timezone?:string;unit_system?:'inherit'|'imperial'|'metric';location_confirmed?:boolean;country_code?:string;latitude?:number|null;longitude?:number|null};
  customer:{id:string;name:string}; pools:PoolConfig[];
  chemistry_history?:Record<string,import('./chemistry').ChemistryEntry[]>;
  last_readings?:Record<string,{recorded_at:string;readings:ReadingValues}>;
 };
-export type RouteData = {
+export type RouteData = {timeZone?:string;unitSystem?:import('../units').UnitSystem;demo?:boolean;
  userId:string;orgId:string;displayName:string;role:'owner'|'admin'|'technician';date:string;stops:RouteStop[];
  route_plans?:Record<string,{start_latitude:number|null;start_longitude:number|null;start_time:string;calculation:import('../routing').DrivingPlan|null;fingerprint:string|null}>;
  properties?:{id:string;name:string;address:string}[];
@@ -19,8 +19,8 @@ export type RouteData = {
 export type PoolVisit = {pool_id:string; tasks:string[]; readings:ReadingValues; dosages:Dosage[]};
 export type ServiceDetails={technician_notes:string;equipment_problems:string;filter_cleaning:string;repairs_performed:string};
 export type CompletionPayload = {id:string;stop_id:string;started_at?:string;completed_at?:string;pools:PoolVisit[];notes:string;photo_paths:string[];photo_assignments?:Record<string,string>;issue_flags?:import('./issues').IssueFlag[];service_details?:ServiceDetails};
-export type VisitSnapshot = {technician_name?:string;property_name:string;customer_name:string;notes:string;pools:(PoolVisit&{pool_name:string})[]};
-export type VisitHistory = {issue_flags?:import('./issues').IssueFlag[];service_details?:ServiceDetails;corrections?:{id:string;note:string;created_at:string;actor_id:string}[];id:string;route_stop_id:string;completed_at:string;technician_name?:string;snapshot:VisitSnapshot;photos:{storage_path:string;pool_name?:string}[];email?:{id?:string;status:'pending'|'sent'|'failed';error?:string|null;sent_at?:string|null}};
+export type VisitSnapshot = {technician_name?:string;service_timezone?:string;unit_system?:import('../units').UnitSystem;report_language?:'en'|'pt'|'es';property_name:string;customer_name:string;notes:string;pools:(PoolVisit&{pool_name:string})[]};
+export type VisitHistory = {issue_flags?:import('./issues').IssueFlag[];service_details?:ServiceDetails;corrections?:{id:string;note:string;created_at:string;actor_id:string}[];id:string;route_stop_id:string;completed_at:string;technician_name?:string;snapshot:VisitSnapshot;photos:{storage_path:string;pool_name?:string}[];email?:{id?:string;display_status?:string;status:'pending'|'sent'|'failed';error?:string|null;locked_until?:string|null;delivered_at?:string|null;delivery_outcome?:string|null;sent_at?:string|null}};
 export const DEFAULT_CHECKLIST=['Skim Surface','Brush Pool','Vacuum Pool','Empty Skimmer Basket','Empty Pump Basket','Check Equipment','Test Water','Add Chemicals'];
 export const READING_LABELS:Record<ReadingKey,string>={fc:'Free Chlorine (ppm)',ph:'pH',ta:'Total Alkalinity (ppm)',cya:'Cyanuric Acid (ppm)',ch:'Calcium Hardness (ppm)',salt:'Salt (ppm)',cc:'Combined Chlorine (ppm)',tc:'Total Chlorine (ppm)',temperature_f:'Water temperature (°F)'};
 export function floridaDay(date=new Date()) { return new Intl.DateTimeFormat('en-CA',{timeZone:'America/New_York',year:'numeric',month:'2-digit',day:'2-digit'}).format(date); }

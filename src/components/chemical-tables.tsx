@@ -1,4 +1,5 @@
 "use client";
+import {displayDose,fahrenheitToCelsius,readableNumber} from "@/lib/units";
 import Link from "next/link";
 import { DateText, T } from "./i18n";
 import {
@@ -32,7 +33,7 @@ export function ChemicalTables({ rows }: { rows: LedgerRow[] }) {
                         : "Parts per million"
                   }
                 >
-                  {label}
+                  <T text={key==='temperature_f'?"Water °F / °C":label}/>
                 </th>
               ))}
               <th>
@@ -49,7 +50,7 @@ export function ChemicalTables({ rows }: { rows: LedgerRow[] }) {
                     options={{
                       month: "short",
                       day: "numeric",
-                      year: "2-digit",
+                      year: "2-digit",timeZone:r.service_timezone??"America/New_York",
                     }}
                   />
                   {r.pool_name && <small>{r.pool_name}</small>}
@@ -73,7 +74,7 @@ export function ChemicalTables({ rows }: { rows: LedgerRow[] }) {
                         : "No target range configured"
                     }
                   >
-                    {r.readings[key] ?? "—"}
+                    {r.readings[key]===undefined?'—':key==='temperature_f'?`${r.unit_system==='metric'?readableNumber(fahrenheitToCelsius(r.readings[key]!)):r.readings[key]} ${r.unit_system==='metric'?'°C':'°F'}`:r.readings[key]}
                   </td>
                 ))}
                 <td>{r.technician_name || "—"}</td>
@@ -105,21 +106,21 @@ export function ChemicalTables({ rows }: { rows: LedgerRow[] }) {
           </thead>
           <tbody>
             {rows.flatMap((r, ri) =>
-              r.dosages.map((d, i) => (
+              r.dosages.map((stored, i) => {const d=displayDose(stored,r.unit_system??'imperial');return (
                 <tr key={r.visit_id + ":" + ri + ":" + i}>
                   <th>
                     <DateText
                       value={r.completed_at}
-                      options={{ month: "short", day: "numeric" }}
+                      options={{ month: "short", day: "numeric",timeZone:r.service_timezone??"America/New_York" }}
                     />
                     {r.pool_name && <small>{r.pool_name}</small>}
                   </th>
                   <td>{d.product}</td>
-                  <td>{d.quantity}</td>
+                  <td>{readableNumber(d.quantity)}</td>
                   <td>{d.unit}</td>
                   <td>{r.technician_name || "—"}</td>
                 </tr>
-              )),
+              );}),
             )}
           </tbody>
         </table>

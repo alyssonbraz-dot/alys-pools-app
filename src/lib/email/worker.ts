@@ -20,7 +20,11 @@ export async function processEmailQueue(options: { limit?: number } = {}) {
       if (visitError || !visit) throw new DeliveryError('visit_not_found', false);
       const { data: stop } = await db.from('route_stops').select('property_id').eq('id', visit.route_stop_id).single();
       const { data: property } = await db.from('properties').select('customer_id').eq('id', stop?.property_id ?? '').single();
-      const { data: customer } = await db.from('customers').select('email,email_reports_enabled').eq('id', property?.customer_id ?? '').single();
+      const { data: customer } = await db.from('customers').select('email,email_reports_enabled,email_delivery_state,organization_id').eq('id', property?.customer_id ?? '').single();
+      if(customer?.email_delivery_state==='bounced'||customer?.email_delivery_state==='complained')throw new DeliveryError('recipient_delivery_blocked',false);
+      const {data:organization,error:organizationError}=await db.from('organizations').select('settings').eq('id',customer?.organization_id??'').maybeSingle();
+      if(organizationError||!organization)throw new DeliveryError('organization_unavailable',true);
+      if(organization.settings?.demo)throw new DeliveryError('demo_delivery_blocked',false);
       if (!customer?.email_reports_enabled || customer.email !== job.recipient) throw new DeliveryError('customer_reports_disabled_or_recipient_changed', false);
       let payload = job.request_payload;
       if (!payload) {
@@ -35,7 +39,7 @@ export async function processEmailQueue(options: { limit?: number } = {}) {
           attachments.push({ content: Buffer.from(await image.arrayBuffer()).toString('base64'), filename: `service-photo-${index + 1}.jpg` });
         }
         const {data:technician}=await db.from('profiles').select('display_name').eq('id',visit.technician_id).maybeSingle();
-        payload = createServiceReport({ snapshot: {...visit.snapshot,technician_name:visit.snapshot.technician_name??technician?.display_name,issue_flags:issue?.flags??[]}, completedAt: visit.completed_at, recipient: job.recipient, from: config.from, photos: attachments });
+        payload = createServiceReport({ snapshot: {...visit.snapshot,technician_name:visit.snapshot.technician_name??technician?.display_name,issue_flags:issue?.flags??[]}, completedAt: visit.completed_at, recipient: job.recipient, from: config.from,replyTo:config.replyTo, photos: attachments });
       }
       // Revalidate and renew the lease immediately before every send, including
       // retries with an already frozen payload. Slow downloads or a stale batch

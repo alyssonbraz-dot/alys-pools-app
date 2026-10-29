@@ -83,7 +83,7 @@ export function ChemicalLedger({
               ["all", "All history"],
             ].map(([v, t]) => (
               <option key={v} value={v}>
-                {t}
+                <T text={t}/>
               </option>
             ))}
           </select>
@@ -98,7 +98,7 @@ export function ChemicalLedger({
               setLoading(true);
             }}
           >
-            <option value="">All pools</option>
+            <option value=""><T text={"All pools"}/></option>
             {pools.map((p) => (
               <option key={p.id} value={p.id}>
                 {p.name}
@@ -125,10 +125,10 @@ export function ChemicalLedger({
       </div>
       {error ? (
         <p role="alert" className="notice">
-          {error}
+          <T text={error}/>
         </p>
       ) : loading ? (
-        <p role="status">Loading history…</p>
+        <p role="status"><T text={"Loading history…"}/></p>
       ) : rows.length ? (
         <ChemicalTables rows={rows} />
       ) : (
@@ -144,10 +144,8 @@ export function ChemicalLedger({
             setOffset((n) => Math.max(0, n - 50));
             setLoading(true);
           }}
-        >
-          Previous page
-        </button>
-        <span>Page {offset / 50 + 1}</span>
+        ><T text={" Previous page "}/></button>
+        <span><T text={"Page "}/>{offset / 50 + 1}</span>
         <button
           className="btn btn-secondary"
           disabled={loading || !more}
@@ -155,9 +153,7 @@ export function ChemicalLedger({
             setOffset((n) => n + 50);
             setLoading(true);
           }}
-        >
-          Next page
-        </button>
+        ><T text={" Next page "}/></button>
       </div>
     </section>
   );
