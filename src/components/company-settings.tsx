@@ -49,12 +49,12 @@ export function CompanySettings({
           required
           maxLength={100}
         />
-        <p className="note">USD · gallons · ppm · America/New_York</p>
+        <p className="note"><T text={"USD · ppm"}/></p>
       </section>
       <section id="service" className="panel form-section">
         <h2>
           <T text="Service Defaults" />
-        </h2>
+        </h2><div className="form-grid"><label className="form-field"><T text="Report language"/><select value={data.report_language} onChange={e=>setData({...data,report_language:e.target.value as 'pt'})}><option value="en"><T text={"English"}/></option><option value="pt"><T text={"Português"}/></option><option value="es"><T text={"Español"}/></option></select></label><label className="form-field"><T text="Default units"/><select value={data.unit_system} onChange={e=>setData({...data,unit_system:e.target.value as 'metric'})}><option value="imperial"><T text={"Imperial · gal / °F / fl oz / lb"}/></option><option value="metric"><T text={"Metric · L / °C / mL / kg"}/></option></select></label><Input label="Default service timezone" value={data.timeZone} onChange={v=>setData({...data,timeZone:v})}/></div>
         <label className="check-setting">
           <input
             type="checkbox"
@@ -94,7 +94,7 @@ export function CompanySettings({
         </p>
         {Object.entries(READING_LABELS).map(([key, label]) => (
           <div className="range-editor" key={key}>
-            <span>{label}</span>
+            <span><T text={label}/></span>
             {(["min", "max"] as const).map((bound) => (
               <Input
                 key={bound}
@@ -155,7 +155,7 @@ export function CompanySettings({
       </section>
       {message && (
         <p className="notice" role="status">
-          {message}
+          <T text={message}/>
         </p>
       )}
       <button className="btn btn-primary" disabled={busy}>

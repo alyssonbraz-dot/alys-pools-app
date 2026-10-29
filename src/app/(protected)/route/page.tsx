@@ -6,9 +6,10 @@ export default async function RoutePage({
   searchParams: Promise<{ date?: string; technician?: string }>;
 }) {
   const { date, technician } = await searchParams;
-  const { user, profile } = await requireOperator();
+  const { user, profile,db } = await requireOperator();
+  const {data:prefs}=await db.rpc('operator_preferences');
   return (
-    <FieldApp
+    <FieldApp initialTimeZone={prefs?.timeZone}
       initialTechnician={profile.role === "technician" ? user.id : technician}
       expectedRole={profile.role}
       expectedScope={{

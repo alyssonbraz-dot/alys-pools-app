@@ -14,7 +14,7 @@ function fakeOutbox() {
  const audit:{success:boolean;error?:string}[]=[];
  const rows:Record<string,unknown>={
   visits:{route_stop_id:'stop-1',completed_at:'2026-10-22T16:00:00Z',snapshot:{property_name:'Fictional Pool',customer_name:'Fictional Customer',pools:[{pool_id:'pool-1',pool_name:'Pool',tasks:['Test Water'],readings:{fc:3,ph:7.5},dosages:[]}]}},
-  route_stops:{property_id:'property-1'},properties:{customer_id:'customer-1'},customers:{email:job.recipient,email_reports_enabled:true},visit_issue_flags:{flags:['equipment_issue']},visit_photos:[{storage_path:'private/photo.jpg'}]
+  route_stops:{property_id:'property-1'},properties:{customer_id:'customer-1'},customers:{email:job.recipient,email_reports_enabled:true,organization_id:'local-org'},organizations:{settings:{}},visit_issue_flags:{flags:['equipment_issue']},visit_photos:[{storage_path:'private/photo.jpg'}]
  };
  function chain(value:unknown) {
   return {select:()=>chain(value),eq:()=>chain(value),single:async()=>({data:value,error:null}),maybeSingle:async()=>({data:value,error:null}),order:async()=>({data:value,error:null})};
@@ -58,4 +58,8 @@ describe('background email worker',()=>{
   const fetcher=vi.fn();vi.stubGlobal('fetch',fetcher);
   expect((await processEmailQueue()).sent).toBe(0);expect(fetcher).not.toHaveBeenCalled();expect(state.audit[0].error).toContain('disabled');
  });
+});
+
+it('blocks real provider calls for demo tenants and bounced recipients even when mail is configured',async()=>{
+ for(const mode of ['demo','bounce']){environment();const state=fakeOutbox();if(mode==='demo')state.rows.organizations={settings:{demo:true}};else state.rows.customers={email:'customer@example.test',email_reports_enabled:true,email_delivery_state:'bounced',organization_id:'local-org'};const provider=vi.fn();vi.stubGlobal('fetch',provider);expect((await processEmailQueue()).sent).toBe(0);expect(provider).not.toHaveBeenCalled();expect(state.audit[0].error).toBe(mode==='demo'?'demo_delivery_blocked':'recipient_delivery_blocked');}
 });

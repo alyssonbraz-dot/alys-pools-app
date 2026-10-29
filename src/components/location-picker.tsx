@@ -1,20 +1,21 @@
 "use client";
 import dynamic from "next/dynamic";
-import { useEffect, useState } from "react";
+import { useEffect, useRef,useState } from "react";
 import { T } from "./i18n";
 const PinMap = dynamic(() => import("./pin-map"), {
   ssr: false,
-  loading: () => <p role="status">Loading map…</p>,
+  loading: () => <p role="status"><T text={"Loading map…"}/></p>,
 });
 export function LocationPicker({
   address,
+  countryCode="US",
   latitude,
   longitude,
   confirmed,
   onChange,
   onAddress,
 }: {
-  address: string;
+  address: string;countryCode?:"US"|"BR";
   latitude: number | null;
   longitude: number | null;
   confirmed: boolean;
@@ -25,6 +26,7 @@ export function LocationPicker({
   ) => void;
   onAddress?: (address: string) => void;
 }) {
+  const initialAddress=useRef(address);
   const [autocomplete, setAutocomplete] = useState(false),
     [attribution, setAttribution] = useState("");
   const [error, setError] = useState(""),
@@ -45,13 +47,13 @@ export function LocationPicker({
     };
   }, []);
   useEffect(() => {
-    if (!autocomplete || address.length < 5) return;
+    if (!autocomplete || confirmed || address===initialAddress.current || address.length < 3) return;
     let active = true;
     const timer = setTimeout(() => {
       fetch("/api/geocode", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ address, suggestions: true }),
+        body: JSON.stringify({ address, country_code:countryCode,suggestions: true }),
       })
         .then(async (r) => {
           const d = await r.json();
@@ -66,7 +68,7 @@ export function LocationPicker({
       active = false;
       clearTimeout(timer);
     };
-  }, [address, autocomplete]);
+  }, [address, autocomplete,countryCode,confirmed]);
   async function locate() {
     setBusy(true);
     setError("");
@@ -74,7 +76,7 @@ export function LocationPicker({
       const response = await fetch("/api/geocode", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ address, suggestions: true }),
+        body: JSON.stringify({ address, country_code:countryCode,suggestions: true }),
       });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error);
@@ -106,7 +108,7 @@ export function LocationPicker({
       </button>
       {error && (
         <p role="status" className="notice">
-          {error}
+          <T text={error}/>
         </p>
       )}
       {suggestions.map((s, i) => (
@@ -127,7 +129,7 @@ export function LocationPicker({
       <div className="form-grid">
         {(["Latitude", "Longitude"] as const).map((label, i) => (
           <label className="form-field" key={label}>
-            {label}
+            <T text={label}/>
             <input
               type="number"
               step="any"

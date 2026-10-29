@@ -11,6 +11,7 @@ import {
 import type { ReadingKey } from "@/lib/field/types";
 import type { CustomerBundle } from "@/lib/onboarding";
 import { Input } from "./form-controls";
+import {litersToGallons,gallonsToLiters,effectiveUnits} from "@/lib/units";
 import { LocationPicker } from "./location-picker";
 import type { CompanyDefaults } from "@/lib/company-settings";
 type Pool = CustomerBundle["properties"][number]["pools"][number];
@@ -31,6 +32,7 @@ function newPool(): Pool {
 }
 function newProperty(tech: string): CustomerBundle["properties"][number] {
   return {
+    country_code:"US",unit_system:"inherit",
     name: "",
     address: "",
     gate_notes: "",
@@ -89,6 +91,7 @@ export function CustomerOnboarding({
         properties: [
           {
             ...newProperty(ownerId),
+            service_timezone:defaults?.timeZone??"America/New_York",
             pools: [
               {
                 ...newPool(),
@@ -115,6 +118,7 @@ export function CustomerOnboarding({
   const [busy, setBusy] = useState(false),
     [error, setError] = useState("");
   function applyDefaults(p: ReturnType<typeof newProperty>) {
+    if(defaults)p.service_timezone=defaults.timeZone;
     if (defaults)
       for (const pool of p.pools)
         Object.assign(pool, {
@@ -214,7 +218,7 @@ export function CustomerOnboarding({
       </div>
       {error && (
         <p role="alert" className="notice">
-          {error}
+          <T text={error}/>
         </p>
       )}
       <fieldset disabled={busy} className="onboarding-body">
@@ -294,6 +298,8 @@ export function CustomerOnboarding({
                   })
                 }
               />
+              <label className="form-field"><T text="Country"/><select value={property.country_code??'US'} onChange={e=>change(c=>{c.properties[pi].country_code=e.target.value as 'US';c.properties[pi].service_timezone=e.target.value==='BR'?'America/Sao_Paulo':'America/New_York';c.properties[pi].location_confirmed=false;})}><option value="US"><T text={"United States · ZIP"}/></option><option value="BR"><T text={"Brazil · CEP"}/></option></select></label>
+              <label className="form-field"><T text="Property units"/><select value={property.unit_system??'inherit'} onChange={e=>change(c=>{c.properties[pi].unit_system=e.target.value as 'metric';})}><option value="inherit"><T text={"Company default"}/></option><option value="imperial"><T text={"Imperial"}/></option><option value="metric"><T text={"Metric"}/></option></select></label>
               <Input
                 label="Service timezone"
                 value={property.service_timezone}
@@ -305,6 +311,7 @@ export function CustomerOnboarding({
               />
             </div>
             <LocationPicker
+              countryCode={property.country_code??"US"}
               address={property.address}
               latitude={property.latitude}
               longitude={property.longitude}
@@ -346,15 +353,15 @@ export function CustomerOnboarding({
                     }
                   />
                   <Input
-                    label="Gallons"
+                    label={effectiveUnits(property.unit_system,defaults?.unit_system)==="metric"?"Liters":"Gallons"}
                     type="number"
                     required
                     min={1}
                     max={10000000}
-                    value={pool.gallons}
+                    value={effectiveUnits(property.unit_system,defaults?.unit_system)==="metric"?Number(gallonsToLiters(pool.gallons).toFixed(2)):pool.gallons}
                     onChange={(v) =>
                       change((c) => {
-                        c.properties[pi].pools[wi].gallons = Number(v);
+                        c.properties[pi].pools[wi].gallons = effectiveUnits(property.unit_system,defaults?.unit_system)==="metric"?litersToGallons(Number(v)):Number(v);
                       })
                     }
                   />
@@ -475,7 +482,7 @@ export function CustomerOnboarding({
                   </p>
                   {Object.entries(READING_LABELS).map(([key, label]) => (
                     <div className="range-editor" key={key}>
-                      <span>{label}</span>
+                      <span><T text={label}/></span>
                       {(["min", "max"] as const).map((bound) => (
                         <Input
                           key={bound}
@@ -667,8 +674,8 @@ export function CustomerOnboarding({
                   })
                 }
               >
-                <option value="own">Own customer</option>
-                <option value="subcontract">Subcontract</option>
+                <option value="own"><T text={"Own customer"}/></option>
+                <option value="subcontract"><T text={"Subcontract"}/></option>
               </select>
             </label>
             <label className="form-field">

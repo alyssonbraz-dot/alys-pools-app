@@ -1,0 +1,7 @@
+import {escapeHtml,type ProviderPayload} from '../email/report';
+import {translate,type Language} from '../i18n/core';
+export function invitationMessage(input:{role:'owner'|'technician';language:Language;from:string;replyTo?:string;recipient:string;link:string}):ProviderPayload{
+ const t=(s:string)=>translate(s,input.language);const title=t(input.role==='owner'?'Administrator invitation':'Technician invitation');const explanation=t(input.role==='owner'?'You are invited as an Owner administrator. This role can manage the company, team and business information.':'You are invited as a Technician. You will only see your assigned work and authorized service history.');
+ const label=t('Accept invitation');const expiry=t('Create your own password. This link expires and can only be accepted once.');
+ return {from:input.from,to:[input.recipient],subject:'ALYS Pool Services — '+title,...(input.replyTo?{reply_to:input.replyTo}:{}),text:[title,explanation,expiry,input.link].join('\n'),html:`<!doctype html><html lang="${input.language}"><body style="background:#edf3f8;font-family:Arial,sans-serif;color:#17334b;padding:24px"><main style="max-width:560px;margin:auto;background:white;padding:28px;border-radius:12px"><p style="font-weight:bold;color:#123d60">ALYS POOL SERVICES</p><h1>${escapeHtml(title)}</h1><p>${escapeHtml(explanation)}</p><p>${escapeHtml(expiry)}</p><a href="${escapeHtml(input.link)}" style="display:inline-block;padding:14px 20px;color:white;background:#153f62;border-radius:8px">${escapeHtml(label)}</a></main></body></html>`,attachments:[]};
+}

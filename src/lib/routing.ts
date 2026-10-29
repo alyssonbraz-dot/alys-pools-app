@@ -1,3 +1,4 @@
+import {zonedStart} from './service-time';
 import {z} from 'zod';
 export type GeoStop={id:string;latitude:number;longitude:number;service_minutes:number};
 export type DrivingPlan={provider:'osrm';ordered_stop_ids:string[];distance_m:number;duration_s:number;service_minutes:number;geometry:[number,number][];arrivals:{stop_id:string;at:string;distance_m:number;duration_s:number}[];calculated_at:string};
@@ -13,7 +14,7 @@ export function roadOrder(matrix:(number|null)[][],fixedStart=true):number[]{
  return order;
 }
 export function routeFingerprint(stops:GeoStop[]){return JSON.stringify(stops.map(s=>[s.id,s.latitude,s.longitude,s.service_minutes]));}
-export function floridaStart(date:string,time:string){const [h,m]=time.split(':').map(Number);const reference=new Date(`${date}T12:00:00Z`);const offset=new Intl.DateTimeFormat('en-US',{timeZone:'America/New_York',timeZoneName:'longOffset'}).formatToParts(reference).find(p=>p.type==='timeZoneName')!.value.replace('GMT','')||'+00:00';return new Date(`${date}T${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:00${offset}`);}
+export function floridaStart(date:string,time:string,timeZone='America/New_York'){return zonedStart(date,time,timeZone);}
 export async function calculateDriving(stops:GeoStop[],options:{baseUrl:string;optimize:boolean;start?:{latitude:number;longitude:number};startedAt:Date},fetcher:typeof fetch=fetch):Promise<DrivingPlan>{
  if(!stops.length||stops.length>50)throw new Error('Choose between 1 and 50 open stops');
  const base=new URL(options.baseUrl);if(base.protocol!=='https:'&&!['127.0.0.1','localhost'].includes(base.hostname))throw new Error('Routing URL must use HTTPS');

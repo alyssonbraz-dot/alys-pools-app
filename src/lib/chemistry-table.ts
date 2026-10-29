@@ -1,3 +1,4 @@
+import {displayDose,fahrenheitToCelsius,readableNumber} from "./units";
 import type { ChemistryEntry } from "./field/chemistry";
 import type { ReadingKey } from "./field/types";
 import { csvCell } from "./customer-management";
@@ -12,7 +13,7 @@ export const CHEMISTRY_COLUMNS: [ReadingKey, string][] = [
   ["salt", "Salt"],
   ["temperature_f", "Water °F"],
 ];
-export type LedgerRow = ChemistryEntry & {
+export type LedgerRow = ChemistryEntry & {unit_system?:import('./units').UnitSystem;service_timezone?:string;
   pool_id?: string;
   pool_name?: string;
   technician_name?: string;
@@ -34,14 +35,14 @@ export function chemistryCsv(rows: LedgerRow[], dosages = false) {
     ? [
         ["Date", "Pool", "Chemical", "Quantity", "Unit", "Technician"],
         ...rows.flatMap((r) =>
-          r.dosages.map((d) => [
+          r.dosages.map((stored) => {const d=displayDose(stored,r.unit_system??'imperial');return [
             r.completed_at,
             r.pool_name ?? "",
             d.product,
-            d.quantity,
+            readableNumber(d.quantity),
             d.unit,
             r.technician_name ?? "",
-          ]),
+          ];}),
         ),
       ]
     : [
@@ -50,14 +51,14 @@ export function chemistryCsv(rows: LedgerRow[], dosages = false) {
           "Pool",
           ...CHEMISTRY_COLUMNS.map(
             ([k, label]) =>
-              label + (k === "ph" || k === "temperature_f" ? "" : " (ppm)"),
+              (k==='temperature_f'?'Water (°F / °C)':label) + (k === "ph" || k === "temperature_f" ? "" : " (ppm)"),
           ),
           "Technician",
         ],
         ...rows.map((r) => [
           r.completed_at,
           r.pool_name ?? "",
-          ...CHEMISTRY_COLUMNS.map(([key]) => r.readings[key] ?? ""),
+          ...CHEMISTRY_COLUMNS.map(([key]) => r.readings[key]===undefined?'':key==='temperature_f'?`${r.unit_system==='metric'?readableNumber(fahrenheitToCelsius(r.readings[key]!)):r.readings[key]} ${r.unit_system==='metric'?'°C':'°F'}`:r.readings[key]),
           r.technician_name ?? "",
         ]),
       ];

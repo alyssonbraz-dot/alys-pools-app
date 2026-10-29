@@ -29,5 +29,5 @@ export function translateAttribute(text:string,language:Language):string {
  return text;
 }
 export function formatDate(value:string|Date,language:Language,options:Intl.DateTimeFormatOptions={dateStyle:'medium'}) {
- return new Intl.DateTimeFormat(languageTag(language),{...options,timeZone:'America/New_York'}).format(typeof value==='string'?new Date(value.length===10?value+'T12:00:00Z':value):value);
+ return new Intl.DateTimeFormat(languageTag(language),{timeZone:'America/New_York',...options}).format(typeof value==='string'?new Date(value.length===10?value+'T12:00:00Z':value):value);
 }

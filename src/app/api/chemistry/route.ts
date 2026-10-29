@@ -19,7 +19,7 @@ export async function GET(request: Request) {
         period: p.get("period") ?? "30",
         offset: p.get("offset") ?? 0,
       });
-    const { data, error } = await op.db.rpc("chemistry_ledger", {
+    const { data, error } = await op.db.rpc("chemistry_ledger_v21", {
       p_property: query.property_id,
       p_pool: query.pool_id,
       p_days: query.period === "all" ? null : Number(query.period),

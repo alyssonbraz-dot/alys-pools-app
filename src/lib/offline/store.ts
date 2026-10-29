@@ -1,3 +1,4 @@
+import {deviceStorageError} from './errors';
 import {publishSyncProgress,clearSyncProgress} from './progress';
 import {uploadPhoto} from './upload';
 import type { CompletionPayload, RouteData } from '@/lib/field/types';
@@ -72,8 +73,8 @@ async function write(key: string, value: unknown) {
     const tx = db.transaction(STORE, 'readwrite');
     tx.objectStore(STORE).put({ key, value });
     tx.oncomplete = () => resolve();
-    tx.onerror = () => reject(tx.error);
-    tx.onabort = () => reject(tx.error ?? new Error('Device storage was interrupted.'));
+    tx.onerror = () => reject(deviceStorageError(tx.error));
+    tx.onabort = () => reject(deviceStorageError(tx.error ?? new Error('Device storage was interrupted.')));
   });
 }
 async function writeScoped(scope: OfflineScope, key: string, value: unknown,unlockedStop?:string,remove=false) {
@@ -94,8 +95,8 @@ async function writeScoped(scope: OfflineScope, key: string, value: unknown,unlo
       else commit();
     };
     tx.oncomplete = () => resolve();
-    tx.onerror = () => reject(tx.error);
-    tx.onabort = () => reject(failure ?? tx.error ?? new Error('Device save was interrupted.'));
+    tx.onerror = () => reject(deviceStorageError(tx.error));
+    tx.onabort = () => reject(deviceStorageError(failure ?? tx.error ?? new Error('Device save was interrupted.')));
   });
 }
 async function entries<T>(keyPrefix: string): Promise<{ key: string; value: T }[]> {
@@ -133,17 +134,17 @@ export async function cacheRoute(scope: OfflineScope, route: RouteData, expected
         failure = new Error('This route request belongs to an account session that was signed out.');
         tx.abort(); return;
       }
-      records.put({key:scopeKey(scope,'route',route.date),value:route});
-      records.put({key:scopeKey(scope,'latest-route'),value:route.date});
+      records.put({key:scopeKey(scope,'route',route.date+(route.timeZone&&route.timeZone!=='America/New_York'?'@'+route.timeZone:'')),value:route});
+      records.put({key:scopeKey(scope,'latest-route'),value:route.date+(route.timeZone&&route.timeZone!=='America/New_York'?'@'+route.timeZone:'')});
       records.put({key:'active-scope',value:scope});
     };
     tx.oncomplete = () => resolve();
-    tx.onerror = () => reject(tx.error);
+    tx.onerror = () => reject(deviceStorageError(tx.error));
     tx.onabort = () => reject(failure ?? tx.error ?? new Error('Route cache was interrupted.'));
   });
 }
-export async function getCachedRoute(scope: OfflineScope, date?: string): Promise<RouteData | null> {
-  const selected = date ?? await read<string>(scopeKey(scope, 'latest-route'));
+export async function getCachedRoute(scope: OfflineScope, date?: string,timeZone='America/New_York'): Promise<RouteData | null> {
+  const selected = (date?date+(timeZone!=='America/New_York'?'@'+timeZone:''):undefined) ?? await read<string>(scopeKey(scope, 'latest-route'));
   return selected ? (await read<RouteData>(scopeKey(scope, 'route', selected))) ?? null : null;
 }
 export async function saveDraft(scope: OfflineScope, draft: CompletionPayload) {
@@ -191,7 +192,7 @@ export async function enqueueCompletion(scope: OfflineScope, payload: Completion
       records.put({ key:scopeKey(scope, 'draft', payload.stop_id), value:stablePayload });
     };
     tx.oncomplete = () => resolve();
-    tx.onerror = () => reject(tx.error);
+    tx.onerror = () => reject(deviceStorageError(tx.error));
     tx.onabort = () => reject(failure ?? tx.error ?? new Error('Queue save was interrupted.'));
   });
   changed();
@@ -215,7 +216,7 @@ export async function releaseRejectedCompletion(scope: OfflineScope, stopId: str
       records.delete(key);
     };
     tx.oncomplete = () => resolve();
-    tx.onerror = () => reject(tx.error);
+    tx.onerror = () => reject(deviceStorageError(tx.error));
     tx.onabort = () => reject(failure ?? tx.error ?? new Error('Unable to unlock the rejected visit.'));
   });
   changed();
@@ -241,7 +242,7 @@ export async function clearDeviceData() {
       // A nonpersonal tombstone prevents an older route request from recaching data after logout.
       records.put({key:'device-epoch',value:crypto.randomUUID()});
       tx.oncomplete = () => resolve();
-      tx.onerror = () => reject(tx.error);
+      tx.onerror = () => reject(deviceStorageError(tx.error));
     });
   };
   if (typeof navigator !== 'undefined' && navigator.locks) {
@@ -270,7 +271,7 @@ async function confirmLocalCompletion(scope: OfflineScope, item: QueueItem, phot
     records.delete(scopeKey(scope, 'draft', item.payload.stop_id));
     photos.forEach(photo => records.delete(scopeKey(scope, 'photo', photo.id)));
     tx.oncomplete = () => resolve();
-    tx.onerror = () => reject(tx.error);
+    tx.onerror = () => reject(deviceStorageError(tx.error));
     tx.onabort = () => reject(tx.error ?? new Error('Visit was saved on the server, but device confirmation was interrupted. Retry safely.'));
   });
 }

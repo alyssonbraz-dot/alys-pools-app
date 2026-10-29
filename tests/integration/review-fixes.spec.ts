@@ -7,7 +7,7 @@ test('a late old-day response cannot replace the selected date',async({page,base
  const day=(n:number)=>{const d=new Date(fixture.date+'T12:00:00Z');d.setUTCDate(d.getUTCDate()+n);return d.toISOString().slice(0,10);};
  const b=day(7),c=day(14);const add=await page.request.post('/api/stops',{headers:{Origin:baseURL!},data:{action:'add',property_id:original.stops[0].property.id,technician_id:fixture.userId,date:b}});expect(add.ok()).toBe(true);
  let release!:()=>void,seen!:()=>void,done!:()=>void;const held=new Promise<void>(r=>release=r),started=new Promise<void>(r=>seen=r),finished=new Promise<void>(r=>done=r);
- await page.route('**/api/route?date='+b,async route=>{const response=await route.fetch();seen();await held;try{await route.fulfill({response});}catch{/* The previous-date request is intentionally cancelled. */}finally{done();}});
+ await page.route('**/api/route?date='+b+'*',async route=>{const response=await route.fetch();seen();await held;try{await route.fulfill({response});}catch{/* The previous-date request is intentionally cancelled. */}finally{done();}});
  await page.getByRole('button',{name:'Next week →',exact:true}).click();await started;
  await page.getByRole('button',{name:'Next week →',exact:true}).click();await expect(page.getByText('A clear route, ready to plan.',{exact:true})).toBeVisible();release();await finished;
  await page.evaluate(()=>new Promise<void>(resolve=>requestAnimationFrame(()=>requestAnimationFrame(()=>resolve()))));

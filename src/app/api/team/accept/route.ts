@@ -55,7 +55,7 @@ export async function POST(request: Request) {
       .single();
     if (
       !profile ||
-      profile.role !== "technician" ||
+      profile.role !== invite.invited_role ||
       profile.organization_id !== invite.organization_id ||
       profile.access_state !== "invited"
     )

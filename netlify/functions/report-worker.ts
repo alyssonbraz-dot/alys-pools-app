@@ -15,7 +15,7 @@ export default async function scheduledReports() {
   }
   const response = await fetch(new URL('/api/email/worker', base), {
     method: 'POST',
-    headers: { Authorization: `Bearer ${secret}` },
+    headers: {'X-ALYS-Worker-Source':'schedule', Authorization: `Bearer ${secret}` },
     redirect: 'error',
     signal: AbortSignal.timeout(25_000),
   });

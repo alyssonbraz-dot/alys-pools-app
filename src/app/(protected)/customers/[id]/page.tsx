@@ -7,7 +7,7 @@ import { History } from "@/components/field/history";
 import { Panel } from "@/components/ui";
 import { T, DateText } from "@/components/i18n";
 import type { CustomerBundle } from "@/lib/onboarding";
-import { floridaDay } from "@/lib/field/types";
+import { serviceDay } from "@/lib/service-time";
 export default async function CustomerProfile({
   params,
   searchParams,
@@ -47,7 +47,7 @@ export default async function CustomerProfile({
         .from("route_stops")
         .select("id,property_id,service_date,status,technician_id")
         .in("property_id", propertyIds)
-        .gte("service_date", floridaDay())
+        .gte("service_date", (properties??[]).map(p=>serviceDay(new Date(),p.service_timezone)).sort()[0]??serviceDay(new Date()))
         .order("service_date")
         .limit(30)
     : { data: [] };
@@ -95,9 +95,10 @@ export default async function CustomerProfile({
     );
   return (
     <>
+      {c.email_delivery_state!=="unknown"&&c.email_delivery_state&&<p className="notice" role="alert"><T text="This address was bounced or reported as spam. Confirm and correct the customer email before further delivery."/></p>}
       <div className="page-header">
         <div>
-          <div className="page-kicker">CUSTOMER PROFILE</div>
+          <div className="page-kicker"><T text={"CUSTOMER PROFILE"}/></div>
           <h1>{c.name}</h1>
           <p>
             {c.email || "—"} · {c.phone || "—"}
@@ -130,7 +131,7 @@ export default async function CustomerProfile({
           {(contracts ?? []).map((a) => (
             <p key={a.id}>
               {a.source === "own" ? "Own customer" : "Subcontract"} ·{" "}
-              {a.billing_model} · ${(a.price_cents / 100).toFixed(2)} USD ·{" "}
+              {a.billing_model} · ${(a.price_cents / 100).toFixed(2)}<T text={" USD ·"}/>{" "}
               {a.status}
             </p>
           ))}
@@ -220,7 +221,7 @@ export default async function CustomerProfile({
                 <div key={pool.id} className="info-box">
                   <strong>{pool.name}</strong>
                   <p>
-                    {pool.gallons.toLocaleString()} gal · {pool.water_type}
+                    {pool.gallons.toLocaleString()}<T text={" gal · "}/>{pool.water_type}
                   </p>
                   <p className="note">{pool.equipment_notes}</p>
                   <p className="note">{pool.checklist.join(" · ")}</p>

@@ -217,3 +217,5 @@ it('preserves body-of-water photo associations across reload and safe retry',asy
  await device.syncQueue(scope);expect(await device.listPhotos(scope,draft.stop_id)).toHaveLength(1);await device.syncQueue(scope);
  expect(sent[0].photo_assignments).toEqual({'org-a/stop-a/body-photo.jpg':'pool-a'});expect(sent[1]).toEqual(sent[0]);expect(await device.listPhotos(scope,draft.stop_id)).toHaveLength(0);
 });
+
+it('keeps same-day routes for New York and Brazil separately without clearing a queued visit',async()=>{await device.enqueueCompletion(scope,draft);const br={...route,timeZone:'America/Sao_Paulo',displayName:'Brazil route'};await device.cacheRoute(scope,br);expect((await device.getCachedRoute(scope,route.date))?.displayName).toBe('Test technician');expect((await device.getCachedRoute(scope,route.date,'America/Sao_Paulo'))?.displayName).toBe('Brazil route');expect((await device.getCachedRoute(scope))?.timeZone).toBe('America/Sao_Paulo');expect((await device.getQueue(scope))[0].payload.id).toBe(draft.id);});
