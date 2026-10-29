@@ -11,6 +11,9 @@ import {
 import type { ReadingKey } from "@/lib/field/types";
 import type { CustomerBundle } from "@/lib/onboarding";
 import { Input } from "./form-controls";
+import {customerEditPayload,nextCustomerSubmission,type CustomerSubmission} from '@/lib/customer-edit';
+import {validationFieldLabel} from '@/lib/customer-errors';
+import {useRef} from 'react';
 import {litersToGallons,gallonsToLiters,effectiveUnits} from "@/lib/units";
 import { LocationPicker } from "./location-picker";
 import type { CompanyDefaults } from "@/lib/company-settings";
@@ -117,6 +120,8 @@ export function CustomerOnboarding({
   );
   const [busy, setBusy] = useState(false),
     [error, setError] = useState("");
+  const [fieldErrors,setFieldErrors]=useState<{path:string;message:string}[]>([]);
+  const submission=useRef<CustomerSubmission|null>(null);
   function applyDefaults(p: ReturnType<typeof newProperty>) {
     if(defaults)p.service_timezone=defaults.timeZone;
     if (defaults)
@@ -139,7 +144,7 @@ export function CustomerOnboarding({
   async function save(event: React.FormEvent) {
     event.preventDefault();
     setBusy(true);
-    setError("");
+    setError("");setFieldErrors([]);
     const first = data.properties[0];
     const payload = {
       ...data,
@@ -156,17 +161,22 @@ export function CustomerOnboarding({
       },
     };
     try {
+      const edit=customerEditPayload(payload,initial);
+      const body=JSON.stringify({...edit,request_id:undefined});
+      submission.current=nextCustomerSubmission(body,submission.current,()=>crypto.randomUUID());
+      submission.current.rejected=false;
       const response = await fetch("/api/customers/onboard", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
+        body: JSON.stringify({...edit,request_id:submission.current!.id}),
       });
       const result = await response.json();
-      if (!response.ok) throw new Error(result.error);
+      if (!response.ok){setFieldErrors(result.fieldErrors??[]);if(response.status===422&&!submission.current!.uncertain&&result.code!=='ALYS_REQUEST_REUSED')submission.current!.rejected=true;else submission.current!.uncertain=true;throw new Error(result.error);}
       router.push("/customers/" + result.id + "?saved=1");
       router.refresh();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Unable to save.");
+      if(submission.current&&!submission.current.rejected)submission.current.uncertain=true;
+      setError(e instanceof TypeError||e instanceof SyntaxError?"The save could not be confirmed. Your input is preserved. Retry with the same request before making another save.":e instanceof Error ? e.message : "Unable to save.");
     } finally {
       setBusy(false);
     }
@@ -217,9 +227,9 @@ export function CustomerOnboarding({
         </Link>
       </div>
       {error && (
-        <p role="alert" className="notice">
-          <T text={error}/>
-        </p>
+        <div role="alert" className="notice">
+          <T text={error}/>{fieldErrors.length>0&&<ul>{fieldErrors.map(e=><li key={e.path}>{validationFieldLabel(e.path).split(" → ").map((part,i)=><span key={i}>{i>0?" → ":""}<T text={part}/></span>)} — <T text={e.message}/></li>)}</ul>}
+        </div>
       )}
       <fieldset disabled={busy} className="onboarding-body">
         <section className="panel form-section">

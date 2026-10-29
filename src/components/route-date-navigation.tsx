@@ -1,0 +1,6 @@
+'use client';
+import {T,DateText,LocaleInput,useLanguage} from './i18n';
+import {addServiceDays,serviceDay} from '@/lib/service-time';
+export function RouteDateNavigation({date,timeZone,onChange}:{date:string;timeZone:string;onChange:(date:string)=>void}){
+ const {t}=useLanguage();return <nav className="route-date-navigation" aria-label={t("Route date navigation")}><div className="route-date-buttons"><button type="button" className="field-button field-button-secondary field-button-small" onClick={()=>onChange(addServiceDays(date,-1))}><T text="← Previous Day"/></button><button type="button" className="field-button field-button-secondary field-button-small" onClick={()=>onChange(serviceDay(new Date(),timeZone))}><T text="Today"/></button><button type="button" className="field-button field-button-secondary field-button-small" onClick={()=>onChange(addServiceDays(date,1))}><T text="Next Day →"/></button></div><p><DateText value={date} options={{weekday:'long',month:'short',day:'numeric',timeZone}}/></p><label className="field-input-label"><T text="Service date"/><LocaleInput type="date" value={date} required onChange={e=>{if(e.target.validity.valid&&e.target.value)onChange(e.target.value);}}/></label></nav>;
+}

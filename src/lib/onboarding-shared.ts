@@ -9,5 +9,5 @@ export const scheduleSchema = z
   .object(schedule.shape)
   .omit({ property_id: true })
   .safeExtend({ id: z.uuid().optional(), service_notes: z.string().max(2000) })
-  .refine((s) => new Set(s.days_of_week).size === s.days_of_week.length)
-  .refine((s) => !s.end_on || s.end_on >= s.start_on);
+  .refine((s) => new Set(s.days_of_week).size === s.days_of_week.length,{path:["days_of_week"]})
+  .refine((s) => !s.end_on || s.end_on >= s.start_on,{path:["end_on"]});

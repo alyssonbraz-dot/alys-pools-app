@@ -1,6 +1,6 @@
 'use client';
 import {useEffect,useSyncExternalStore,type ComponentProps,type ReactNode} from 'react';
-import {LANGUAGE_STORAGE_KEY,normalizeLanguage,languageTag,translate,translateAttribute,formatDate,type Language} from '@/lib/i18n/core';
+import {LANGUAGE_STORAGE_KEY,normalizeLanguage,languageTag,translate,translateAttribute,formatDate,formatNumber,type Language} from '@/lib/i18n/core';
 let memory:Language='en';
 const listeners=new Set<()=>void>();
 export function getLanguage():Language {
@@ -28,3 +28,6 @@ export function LocaleTextarea(props:ComponentProps<'textarea'>){return <textare
 export function LocaleSelect(props:ComponentProps<'select'>){return <select {...useAttributes(props)}/>;}
 export function DateText({value,options}:{value:string|Date;options?:Intl.DateTimeFormatOptions}){const {language}=useLanguage();return formatDate(value,language,options);}
 export function LocaleText({children}:{children:ReactNode}){return typeof children==='string'?<T text={children}/>:children;}
+
+export function NumberText({value,options}:{value:number;options?:Intl.NumberFormatOptions}){const {language}=useLanguage();return formatNumber(value,language,options);}
+export function CurrencyText({value}:{value:number}){return <NumberText value={value} options={{style:'currency',currency:'USD'}}/>;}

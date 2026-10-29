@@ -13,13 +13,15 @@ export async function loadRoute(operator:Operator,date:string,timeZone?:string):
  const {data:preferences,error:preferencesError}=await db.rpc('operator_preferences');if(preferencesError)throw new Error('Operator preferences are unavailable.');
  const stops=await allRows((from,to)=>db.from('route_stops').select('id,property_id,technician_id,service_date,position,status,estimated_service_minutes,service_type').eq('service_date',date).order('position').order('id').range(from,to));
  const propertyIds=[...new Set(stops.map(s=>s.property_id))];
+ const {data:context,error:contextError}=profile.role==='technician'?await db.rpc('assigned_route_context',{p_date:date}):{data:null,error:null};if(contextError)throw new Error('Unable to load assigned route.');
+ const scoped=context as {properties:(RouteStop['property']&{customer_id:string})[];pools:(PoolConfig&{property_id:string})[];customers:{id:string;name:string}[]}|null;
  const [properties,pools,profiles,options]=await Promise.all([
-  forIds(propertyIds,(ids,from,to)=>db.from('properties').select('id,customer_id,name,address,gate_notes,latitude,longitude,service_timezone,unit_system,location_confirmed,country_code').in('id',ids).order('id').range(from,to)),
-  forIds(propertyIds,(ids,from,to)=>db.from('pools').select('id,property_id,name,gallons,checklist,required_readings,photo_required,photo_scope_required,reference_ranges').eq('status','active').in('property_id',ids).order('id').range(from,to)),
+  scoped?Promise.resolve(scoped.properties):forIds(propertyIds,(ids,from,to)=>db.from('properties').select('id,customer_id,name,address,gate_notes,latitude,longitude,service_timezone,unit_system,location_confirmed,country_code').in('id',ids).order('id').range(from,to)),
+  scoped?Promise.resolve(scoped.pools):forIds(propertyIds,(ids,from,to)=>db.from('pools').select('id,property_id,name,gallons,checklist,required_readings,photo_required,photo_scope_required,reference_ranges').eq('status','active').in('property_id',ids).order('id').range(from,to)),
   allRows((from,to)=>db.from('profiles').select('id,display_name,role').order('id').range(from,to)),
   profile.role==='technician'?Promise.resolve([]):allRows((from,to)=>db.from('properties').select('id,name,address').order('id').range(from,to))
  ]);
- const customers=await forIds([...new Set(properties.map(p=>p.customer_id))],(ids,from,to)=>db.from('customers').select('id,name').in('id',ids).order('id').range(from,to));
+ const customers=scoped?scoped.customers:await forIds([...new Set(properties.map(p=>p.customer_id))],(ids,from,to)=>db.from('customers').select('id,name').in('id',ids).order('id').range(from,to));
  // Chemical context is scoped to visible current properties; each RPC accepts at most300 IDs.
  const visibleIds=properties.map(p=>p.id);
  const window=chemistryPeriod(date);

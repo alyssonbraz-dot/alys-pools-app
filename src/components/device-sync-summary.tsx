@@ -40,9 +40,9 @@ export function DeviceSyncSummary({ scope }: { scope: OfflineScope }) {
   return (
     <p className="device-sync">
       <T text="This device" />:{" "}
-      {counts
+      <T text={counts
         ? `${counts.pending} pending sync · ${counts.failed} failed / sign-in required`
-        : "Checking local storage…"}{" "}
+        : "Checking local storage…"}/>{" "}
       ·{" "}
       <Link href="/stops">
         <T text="Open Stops to synchronize" />
