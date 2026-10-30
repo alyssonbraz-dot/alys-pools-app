@@ -2,7 +2,7 @@
 
 import {chemistryCsv} from '@/lib/chemistry-table';
 import {ChemicalTables} from '@/components/chemical-tables';
-import {DateText,T,LocaleInput,LocaleTextarea} from '@/components/i18n';
+import {DateText,T,useLanguage,LocaleInput,LocaleTextarea} from '@/components/i18n';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
@@ -41,14 +41,14 @@ export function History({customerId}:{customerId?:string}){
 }
 
 function SignedPhoto({path,index,poolName}:{path:string;index:number;poolName?:string}){
-  const [url,setUrl]=useState('');
+  const {t}=useLanguage();const [url,setUrl]=useState('');
   const [error,setError]=useState('');
   useEffect(()=>{
     let cancelled=false;
     fetch('/api/photos?path='+encodeURIComponent(path),{cache:'no-store'}).then(async response=>{const data=await response.json();if(!response.ok)throw new Error('Photo access could not be confirmed.');if(!cancelled)setUrl(data.url);}).catch(cause=>{if(!cancelled)setError(messageOf(cause));});
     return()=>{cancelled=true;};
   },[path]);
-  return <figure className="field-photo">{poolName&&<figcaption>{poolName}</figcaption>}{url?<a href={url} target="_blank" rel="noopener noreferrer"><Image src={url} width={480} height={360} alt={`Service photo ${index+1}`} unoptimized/></a>:<p className="field-tiny">{error||'Loading private photo…'}</p>}</figure>;
+  return <figure className="field-photo">{poolName&&<figcaption>{poolName}</figcaption>}{url?<a href={url} target="_blank" rel="noopener noreferrer"><Image src={url} width={480} height={360} alt={t(`Service photo ${index+1}`)} unoptimized/></a>:<p className="field-tiny"><T text={error||'Loading private photo…'}/></p>}</figure>;
 }
 
 export function HistoryCard({visit,manager,onRefresh}:{visit:VisitHistory;manager:boolean;onRefresh:()=>Promise<void>}){

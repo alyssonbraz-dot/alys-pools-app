@@ -12,7 +12,7 @@ export function Input({
   return (
     <label className="form-field">
       <T text={label} />
-      <LocaleInput {...props} onChange={(e) => onChange?.(e.target.value)} />
+      <LocaleInput {...props} inputMode={props.inputMode??(props.type==="number"?"decimal":props.type==="tel"?"tel":props.type==="email"?"email":undefined)} autoCapitalize={props.autoCapitalize??(props.type==="email"?"none":undefined)} onChange={(e) => onChange?.(e.target.value)} />
     </label>
   );
 }

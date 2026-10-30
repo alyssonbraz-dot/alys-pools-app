@@ -5,7 +5,7 @@ import { CustomerOnboarding } from "@/components/customer-onboarding";
 import { ChemicalLedger } from "@/components/chemical-ledger";
 import { History } from "@/components/field/history";
 import { Panel } from "@/components/ui";
-import { T, DateText } from "@/components/i18n";
+import { T, DateText,CurrencyText,NumberText } from "@/components/i18n";
 import type { CustomerBundle } from "@/lib/onboarding";
 import { serviceDay } from "@/lib/service-time";
 export default async function CustomerProfile({
@@ -124,15 +124,15 @@ export default async function CustomerProfile({
       <div className="profile-grid">
         <Panel title="Contact & agreement">
           <p>
-            {c.status} ·{" "}
+            <T text={c.status}/> ·{" "}
             {c.customer_tags.map((t: { tag: string }) => t.tag).join(", ")}
           </p>
           <p>{details?.billing_address || first?.address}</p>
           {(contracts ?? []).map((a) => (
             <p key={a.id}>
-              {a.source === "own" ? "Own customer" : "Subcontract"} ·{" "}
-              {a.billing_model} · ${(a.price_cents / 100).toFixed(2)}<T text={" USD ·"}/>{" "}
-              {a.status}
+              <T text={a.source === "own" ? "Own customer" : "Subcontract"}/> ·{" "}
+              <T text={a.billing_model}/> · <CurrencyText value={a.price_cents/100}/><T text={" USD ·"}/>{" "}
+              <T text={a.status}/>
             </p>
           ))}
           {!contracts?.length && (
@@ -142,7 +142,7 @@ export default async function CustomerProfile({
           )}
           <p>
             <T text="Email reports" />:{" "}
-            {c.email_reports_enabled ? "Enabled" : "Disabled"}
+            <T text={c.email_reports_enabled ? "Enabled" : "Disabled"}/>
           </p>
           <p className="note">
             {details?.internal_notes || "No internal notes."}
@@ -165,7 +165,7 @@ export default async function CustomerProfile({
                     technicians?.find((t) => t.id === s.technician_id)
                       ?.display_name
                   }{" "}
-                  · {s.status}
+                  · <T text={s.status}/>
                 </p>
               ))}
               {upcoming.length > 6 && (
@@ -183,7 +183,7 @@ export default async function CustomerProfile({
                           s.technician_id
                         }
                       >
-                        {s.service_date} · {s.status}
+                        <DateText value={s.service_date}/> · <T text={s.status}/>
                       </Link>
                     </p>
                   ))}
@@ -204,9 +204,7 @@ export default async function CustomerProfile({
           </p>
           <p className="note">{p.gate_notes}</p>
           <p className="note">
-            {p.latitude == null
-              ? "Missing coordinates"
-              : `${p.latitude}, ${p.longitude} · ${p.location_confirmed ? "Confirmed" : "Not confirmed"}`}
+            {p.latitude==null?<T text="Missing coordinates"/>:<>{p.latitude}, {p.longitude} · <T text={p.location_confirmed?'Confirmed':'Not confirmed'}/></>}
           </p>
           <div className="profile-grid">
             {p.pools.map(
@@ -221,7 +219,7 @@ export default async function CustomerProfile({
                 <div key={pool.id} className="info-box">
                   <strong>{pool.name}</strong>
                   <p>
-                    {pool.gallons.toLocaleString()}<T text={" gal · "}/>{pool.water_type}
+                    <NumberText value={pool.gallons}/><T text={" gal · "}/><T text={pool.water_type}/>
                   </p>
                   <p className="note">{pool.equipment_notes}</p>
                   <p className="note">{pool.checklist.join(" · ")}</p>
@@ -240,18 +238,14 @@ export default async function CustomerProfile({
               service_notes: string;
             }) => (
               <p key={s.id}>
-                {s.active ? "Active" : "Paused"} ·{" "}
+                <T text={s.active ? "Active" : "Paused"}/> ·{" "}
                 {
                   technicians?.find((t) => t.id === s.technician_id)
                     ?.display_name
                 }{" "}
                 ·{" "}
-                {s.days_of_week
-                  .map(
-                    (d) => ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][d],
-                  )
-                  .join(", ")}{" "}
-                · {s.start_on} → {s.end_on || "No end date"} · {s.service_notes}
+                {s.days_of_week.map((d,i)=><span key={d}>{i?', ':''}<T text={["Sun","Mon","Tue","Wed","Thu","Fri","Sat"][d]}/></span>)}{" "}
+                · <DateText value={s.start_on}/> → {s.end_on?<DateText value={s.end_on}/>:<T text="No end date"/>} · {s.service_notes}
               </p>
             ),
           )}

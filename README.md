@@ -4,14 +4,18 @@ Aplicativo da ALYS Pool Services LLC para registrar manutenção de piscinas pel
 
 **Fluxo do técnico:** Stops → Start Service → Readings → Chemicals → Checklist → Photo → Complete & Next. A visita fica salva no aparelho primeiro; **Synced** confirma que o servidor a registrou. O relatório é processado depois, sem bloquear o próximo cliente.
 
+**Celular como interface principal:** navegação inferior fixa, calendário diário compacto, botões de pelo menos 44 px nos atalhos de campo e formulários em uma coluna. Clientes e equipe aparecem como cartões em telas pequenas. Salvar/concluir fica acima da navegação inferior, com espaço para a área segura do aparelho. O tema azul-escuro e os três idiomas foram preservados.
+
 Este README é o roteiro de entrega e publicação com **Netlify Free + Supabase Free + Resend Free**, usando o domínio **alyspools.com**, registrado na Hostinger. Não é necessário contratar hospedagem na Hostinger. A renovação do domínio já comprado continua sendo responsabilidade do titular; planos gratuitos têm cotas e não garantem operação ilimitada sem custo.
 
 
-## Atualização V2.1 de uma instalação existente
+## Atualização V2.1.1 de uma instalação existente
 
-Entrega na branch **`fix/alys-v2-1-complete`**, baseada no `main` V2 `868e30d`. A revisão e o push não publicam produção. Siga [o guia completo V2.1](docs/V21-DELIVERY.md): **revisão → migrations 021–023 → merge → deploy Netlify → aceite**. Não recrie seu projeto, proprietário ou clientes. Nenhuma migration remota ou envio real é feito automaticamente.
+Hotfix na branch **`fix/alys-v2-1-1-customer-route`**, criada do `main` `f7c01d3`. Corrige a edição independente de clientes, adiciona navegação diária para técnicos e completa os catálogos EN/PT/ES. Consulte [diagnóstico, testes e publicação V2.1.1](docs/V211-HOTFIX.md) e [cobertura de traduções](docs/V211-LOCALIZATION.md).
 
-Novidades: correção SQL da equipe, convites independentes para Técnicos e Owners, proteção do último Owner, geocoding US/BR e revisão de coordenadas, fusos locais, unidades, conversão explícita de contratos legados, diagnóstico Owner, webhook de entrega, Reply-To, revisão PT/EN e demo isolada. O [guia V2](docs/V2-DELIVERY.md) permanece como registro da atualização anterior.
+Em produção V2.1 com migrations 001–023, revise e aplique **somente 024** antes do merge/deploy. Não recrie o projeto, proprietário ou clientes. Ordem: **revisão → migration 024 → merge → deploy Netlify → aceite**. Nenhuma migration remota, deploy ou e-mail real é executado automaticamente.
+
+Para atualização de uma versão mais antiga, consulte também o [guia V2.1](docs/V21-DELIVERY.md) antes do hotfix. Instalações novas usam todas as migrations 001–024.
 
 ## O que está incluído
 
@@ -66,7 +70,7 @@ npx --yes supabase@2.121.0 migration list --linked
 
 `SEU_PROJECT_REF` é o identificador no painel/URL do projeto Supabase. Confira que o projeto vinculado é o correto antes de confirmar `db push`. Em banco já utilizado, faça backup antes da atualização e revise as migrations pendentes.
 
-A lista remota deve incluir **001 a 023**, terminando em `202610280023_operations_review.sql`. Elas criam tabelas, políticas RLS, bucket privado, fila de relatórios e provisionamento do proprietário. Não copie somente a última migration e não torne o bucket `visit-photos` público.
+A lista remota deve incluir **001 a 024**, terminando em `202610290024_customer_schedule_edit.sql`. Elas criam tabelas, políticas RLS, bucket privado, fila de relatórios e provisionamento do proprietário. Não copie somente a última migration e não torne o bucket `visit-photos` público.
 
 **Nunca execute `db reset`, `supabase/seed.dev.sql` ou `tests/integration/setup.mjs` na produção.** Não há seed automático de clientes reais ou fictícios no deploy.
 

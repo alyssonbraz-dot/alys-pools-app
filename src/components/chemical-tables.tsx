@@ -1,20 +1,20 @@
 "use client";
 import {displayDose,fahrenheitToCelsius,readableNumber} from "@/lib/units";
 import Link from "next/link";
-import { DateText, T } from "./i18n";
+import { DateText, T, useLanguage,NumberText } from "./i18n";
 import {
   CHEMISTRY_COLUMNS,
   outsideRange,
   type LedgerRow,
 } from "@/lib/chemistry-table";
 export function ChemicalTables({ rows }: { rows: LedgerRow[] }) {
-  return (
+  const {t}=useLanguage();return (
     <>
       <div
         className="chemistry-scroll"
         tabIndex={0}
         role="region"
-        aria-label="Water chemistry table"
+        aria-label={t("Water chemistry table")}
       >
         <table className="chemistry-table">
           <thead>
@@ -25,13 +25,13 @@ export function ChemicalTables({ rows }: { rows: LedgerRow[] }) {
               {CHEMISTRY_COLUMNS.map(([key, label]) => (
                 <th
                   key={key}
-                  title={
+                  title={t(
                     key === "ph"
                       ? "pH"
                       : key === "temperature_f"
                         ? "Degrees Fahrenheit"
                         : "Parts per million"
-                  }
+                  )}
                 >
                   <T text={key==='temperature_f'?"Water °F / °C":label}/>
                 </th>
@@ -68,11 +68,11 @@ export function ChemicalTables({ rows }: { rows: LedgerRow[] }) {
                         ? "reading-warning"
                         : undefined
                     }
-                    title={
+                    title={t(
                       r.reference_ranges?.[key]
                         ? `Configured range: ${r.reference_ranges[key]!.min}–${r.reference_ranges[key]!.max}`
                         : "No target range configured"
-                    }
+                    )}
                   >
                     {r.readings[key]===undefined?'—':key==='temperature_f'?`${r.unit_system==='metric'?readableNumber(fahrenheitToCelsius(r.readings[key]!)):r.readings[key]} ${r.unit_system==='metric'?'°C':'°F'}`:r.readings[key]}
                   </td>
@@ -90,7 +90,7 @@ export function ChemicalTables({ rows }: { rows: LedgerRow[] }) {
         className="chemistry-scroll"
         tabIndex={0}
         role="region"
-        aria-label="Chemical dosage table"
+        aria-label={t("Chemical dosage table")}
       >
         <table className="chemistry-table">
           <thead>
@@ -115,9 +115,9 @@ export function ChemicalTables({ rows }: { rows: LedgerRow[] }) {
                     />
                     {r.pool_name && <small>{r.pool_name}</small>}
                   </th>
-                  <td>{d.product}</td>
-                  <td>{readableNumber(d.quantity)}</td>
-                  <td>{d.unit}</td>
+                  <td><T text={d.product}/></td>
+                  <td><NumberText value={readableNumber(d.quantity)}/></td>
+                  <td><T text={d.unit}/></td>
                   <td>{r.technician_name || "—"}</td>
                 </tr>
               );}),
