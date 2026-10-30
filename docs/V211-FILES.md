@@ -1,9 +1,10 @@
-# Arquivos do hotfix V2.1.1
+# Arquivos do hotfix V2.1.1 e interface mobile
 
 Base: `main` `f7c01d3`. Branch: `fix/alys-v2-1-1-customer-route`. As migrations 001–023 não foram alteradas.
 
 - [README.md](../README.md)
 - [docs/COLOCAR-NO-AR-GRATIS.md](../docs/COLOCAR-NO-AR-GRATIS.md)
+- [docs/LOCAL-DEVELOPMENT.md](../docs/LOCAL-DEVELOPMENT.md)
 - [docs/V211-FILES.md](../docs/V211-FILES.md)
 - [docs/V211-HOTFIX.md](../docs/V211-HOTFIX.md)
 - [docs/V211-LOCALIZATION.md](../docs/V211-LOCALIZATION.md)
@@ -20,6 +21,8 @@ Base: `main` `f7c01d3`. Branch: `fix/alys-v2-1-1-customer-route`. As migrations 
 - [src/app/api/schedules/route.ts](../src/app/api/schedules/route.ts)
 - [src/app/api/stops/route.ts](../src/app/api/stops/route.ts)
 - [src/app/api/system-health/route.ts](../src/app/api/system-health/route.ts)
+- [src/app/globals.css](../src/app/globals.css)
+- [src/app/layout.tsx](../src/app/layout.tsx)
 - [src/components/chemical-tables.tsx](../src/components/chemical-tables.tsx)
 - [src/components/customer-manager.tsx](../src/components/customer-manager.tsx)
 - [src/components/customer-onboarding.tsx](../src/components/customer-onboarding.tsx)
@@ -28,11 +31,13 @@ Base: `main` `f7c01d3`. Branch: `fix/alys-v2-1-1-customer-route`. As migrations 
 - [src/components/field/field-app.tsx](../src/components/field/field-app.tsx)
 - [src/components/field/field.css](../src/components/field/field.css)
 - [src/components/field/history.tsx](../src/components/field/history.tsx)
+- [src/components/form-controls.tsx](../src/components/form-controls.tsx)
 - [src/components/i18n.tsx](../src/components/i18n.tsx)
 - [src/components/legacy-review.tsx](../src/components/legacy-review.tsx)
 - [src/components/route-calendar.tsx](../src/components/route-calendar.tsx)
 - [src/components/route-date-navigation.tsx](../src/components/route-date-navigation.tsx)
 - [src/components/shell.tsx](../src/components/shell.tsx)
+- [src/components/team-manager.tsx](../src/components/team-manager.tsx)
 - [src/lib/customer-edit.ts](../src/lib/customer-edit.ts)
 - [src/lib/customer-errors.ts](../src/lib/customer-errors.ts)
 - [src/lib/customer-management.ts](../src/lib/customer-management.ts)
@@ -49,3 +54,4 @@ Base: `main` `f7c01d3`. Branch: `fix/alys-v2-1-1-customer-route`. As migrations 
 - [tests/integration/v21-release.spec.ts](../tests/integration/v21-release.spec.ts)
 - [tests/integration/v211-hotfix.spec.ts](../tests/integration/v211-hotfix.spec.ts)
 - [tests/integration/v211-localization.spec.ts](../tests/integration/v211-localization.spec.ts)
+- [tests/integration/v211-mobile.spec.ts](../tests/integration/v211-mobile.spec.ts)

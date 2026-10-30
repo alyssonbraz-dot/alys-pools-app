@@ -4,6 +4,8 @@ Aplicativo da ALYS Pool Services LLC para registrar manutenção de piscinas pel
 
 **Fluxo do técnico:** Stops → Start Service → Readings → Chemicals → Checklist → Photo → Complete & Next. A visita fica salva no aparelho primeiro; **Synced** confirma que o servidor a registrou. O relatório é processado depois, sem bloquear o próximo cliente.
 
+**Celular como interface principal:** navegação inferior fixa, calendário diário compacto, botões de pelo menos 44 px nos atalhos de campo e formulários em uma coluna. Clientes e equipe aparecem como cartões em telas pequenas. Salvar/concluir fica acima da navegação inferior, com espaço para a área segura do aparelho. O tema azul-escuro e os três idiomas foram preservados.
+
 Este README é o roteiro de entrega e publicação com **Netlify Free + Supabase Free + Resend Free**, usando o domínio **alyspools.com**, registrado na Hostinger. Não é necessário contratar hospedagem na Hostinger. A renovação do domínio já comprado continua sendo responsabilidade do titular; planos gratuitos têm cotas e não garantem operação ilimitada sem custo.
 
 

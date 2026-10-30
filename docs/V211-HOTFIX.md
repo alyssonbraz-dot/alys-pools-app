@@ -99,6 +99,12 @@ Aceite em produção: editar telefone/nome/preço/endereço com visita em andame
 
 ## Resultados executados
 
+### Interface prioritária para celular
+
+A interface usa layout de uma coluna até 770 px, com navegação inferior e ações de salvar/concluir acima dela. O calendário diário ocupa uma linha e abre o seletor nativo; a preferência de fuso fica recolhida. Clientes e equipe usam cartões com campos identificados e ações grandes. Telefone/e-mail abrem o aplicativo escolhido pelo usuário; tocar nesses links não envia uma mensagem automaticamente.
+
+Campos usam fonte de 16 px, teclados numérico/telefone/e-mail conforme o tipo e áreas de toque maiores. O viewport permite que navegadores compatíveis ajustem a área visível ao teclado. Os testes verificam larguras de 320, 390 e 430 px, ausência de rolagem horizontal, calendário, atalhos químicos e conclusão acima da barra inferior, incluindo uma janela com altura reduzida. Isso não substitui o teste do teclado real em aparelhos físicos. Esta etapa visual não adiciona migrations além da 024 já descrita.
+
 | Verificação | Resultado |
 | --- | --- |
 | Baseline `main` antes das mudanças | Lint, typecheck, 97 testes unitários, 13 suítes SQL e build aprovados |
@@ -106,7 +112,7 @@ Aceite em produção: editar telefone/nome/preço/endereço com visita em andame
 | Testes unitários | **110 testes em 18 arquivos aprovados** |
 | SQL | **14 suítes aprovadas** em PostgreSQL 17 descartável, migrations 001–024 |
 | Supabase local real | Auth/PostgREST/Storage aprovados; migration 024 aplicada localmente, sem reset |
-| Integração e interface | **31 testes Playwright aprovados**: 22 Chromium em viewport iPhone, 6 em viewport Android/Pixel 5 e 3 desktop |
+| Integração e interface | **35 testes Playwright aprovados**: 24 Chromium em viewport iPhone, 8 em viewport Android/Pixel 5 e 3 desktop |
 | Build de produção | `npm run build` aprovado |
 | Tradução | **1.065 chaves em EN, PT e ES**, sem diferenças entre conjuntos nem parâmetros perdidos |
 

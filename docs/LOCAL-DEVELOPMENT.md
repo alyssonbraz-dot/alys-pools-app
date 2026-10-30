@@ -37,8 +37,9 @@ O primeiro start baixa imagens. Confira o status no seu terminal privado e preen
 | `SUPABASE_SERVICE_ROLE_KEY` | chave administrativa local, somente servidor |
 | `EMAIL_DELIVERY_ENABLED` | `false` |
 | `CUSTOMER_INVITES_ENABLED` | `false` |
+| `TEAM_INVITES_ENABLED` | `false` |
 
-Use migrations até **020**, sem resetar banco existente. O seed não é automático. O status contém segredos: não o publique. Reinicie o Next após alterar variáveis.
+Use migrations até **024**, sem resetar banco existente. O seed não é automático. O status contém segredos: não o publique. Reinicie o Next após alterar variáveis.
 
 ## Criar conta fictícia e abrir
 

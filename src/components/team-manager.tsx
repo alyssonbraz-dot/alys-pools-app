@@ -54,7 +54,7 @@ async function call(body?: unknown) {
   return result;
 }
 export function TeamManager() {
- const {language}=useLanguage();const [inviteRole,setInviteRole]=useState<"owner"|"technician">("technician");
+ const {language,t}=useLanguage();const [inviteRole,setInviteRole]=useState<"owner"|"technician">("technician");
   const [data, setData] = useState<TeamData | null>(null),
     [error, setError] = useState(""),
     [notice, setNotice] = useState(""),
@@ -118,9 +118,9 @@ export function TeamManager() {
             <T text="Invite technicians, control access and assign service properties." />
           </p>
         </div>
-        <button className="btn btn-primary" onClick={() => {setInviteRole("technician");setShow(!show);}}>
+        <div className="team-header-actions"><button className="btn btn-primary" onClick={() => {setInviteRole("technician");setShow(!show);}}>
           <T text="Add Technician" />
-        </button><button type="button" className="btn btn-secondary" onClick={()=>{setInviteRole("owner");setShow(true);}}><T text="Add Administrator"/></button>
+        </button><button type="button" className="btn btn-secondary" onClick={()=>{setInviteRole("owner");setShow(true);}}><T text="Add Administrator"/></button></div>
       </div>
       {error && (
         <p role="alert" className="notice">
@@ -178,9 +178,9 @@ export function TeamManager() {
       ) : (
         <>
           <div className="panel table-wrap">
-            <table className="data-table team-table">
-              <thead>
-                <tr>
+            <table className="data-table team-table" role="table">
+              <thead role="rowgroup">
+                <tr role="row">
                   {[
                     "Technician",
                     "Email",
@@ -189,33 +189,33 @@ export function TeamManager() {
                     "Today’s stops",
                     "Actions",
                   ].map((h) => (
-                    <th key={h}>
+                    <th role="columnheader" key={h}>
                       <T text={h} />
                     </th>
                   ))}
                 </tr>
               </thead>
-              <tbody>
+              <tbody role="rowgroup">
                 {data.people.map((p) => {
                   const invite = data.invites.find((i) => i.user_id === p.id);
                   const ids = data.assignments
                     .filter((a) => a.technician_id === p.id && a.active)
                     .map((a) => a.property_id);
                   return (
-                    <tr key={p.id}>
-                      <td>{p.display_name}<small><T text={p.role==='owner'?"Owner":"Technician"}/></small></td>
-                      <td>{p.email || invite?.email || "—"}</td>
-                      <td>
+                    <tr role="row" key={p.id}>
+                      <td role="cell" data-label={t("Technician")}>{p.display_name}<small><T text={p.role==='owner'?"Owner":"Technician"}/></small></td>
+                      <td role="cell" data-label={t("Email")}>{p.email || invite?.email || "—"}</td>
+                      <td role="cell" data-label={t("Status")}>
                         <span className="status"><T text={p.access_state}/></span>
                       </td>
-                      <td>{data.poolCounts[p.id] ?? 0}</td>
-                      <td>
+                      <td role="cell" data-label={t("Assigned pools")}>{data.poolCounts[p.id] ?? 0}</td>
+                      <td role="cell" data-label={t("Today’s stops")}>
                         {
                           data.stops.filter((s) => s.technician_id === p.id)
                             .length
                         }
                       </td>
-                      <td>
+                      <td role="cell" data-label={t("Actions")}>
                         <div className="table-actions">
                           <Link
                             className="btn btn-secondary"
