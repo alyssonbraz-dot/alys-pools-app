@@ -10,7 +10,7 @@ export default async function RoutePage({
   const { user, profile,db } = await requireOperator();
   const {data:prefs}=await db.rpc('operator_preferences');
   return (
-    <FieldApp initialTimeZone={timezone&&validTimeZone(timezone)?timezone:prefs?.timeZone}
+    <FieldApp currentMode={profile.role==='technician'} startInList initialTimeZone={timezone&&validTimeZone(timezone)?timezone:prefs?.timeZone}
       initialTechnician={profile.role === "technician" ? user.id : technician}
       expectedRole={profile.role}
       expectedScope={{

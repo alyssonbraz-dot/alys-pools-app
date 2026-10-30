@@ -39,7 +39,7 @@ O primeiro start baixa imagens. Confira o status no seu terminal privado e preen
 | `CUSTOMER_INVITES_ENABLED` | `false` |
 | `TEAM_INVITES_ENABLED` | `false` |
 
-Use migrations até **024**, sem resetar banco existente. O seed não é automático. O status contém segredos: não o publique. Reinicie o Next após alterar variáveis.
+Use migrations até **025**, sem resetar banco existente. O seed não é automático. O status contém segredos: não o publique. Reinicie o Next após alterar variáveis.
 
 ## Criar conta fictícia e abrir
 
@@ -50,7 +50,7 @@ npm run dev
 
 O setup aceita somente localhost/127.0.0.1; cria contas isoladas e três stops fictícios, sem envio de mensagem. O login gerado fica em **`/tmp/alys-integration-fixture.json`**, com permissão restrita. Consulte `email` e `password` somente no seu terminal/editor privado.
 
-Abra **http://localhost:3000**. Clients cadastra clientes, Properties & pools configura piscinas, o perfil do cliente define recorrência e Stops abre os atendimentos do dia. Signup público permanece desabilitado.
+Abra **http://localhost:3000**. Customers cadastra clientes; o perfil organiza propriedades, piscinas, contratos e recorrência. Routes abre o planejamento e os stops. More reúne histórico, equipe, relatórios, financeiro e configurações. Técnicos abrem a piscina atual em Current Service e a lista em My Route. Signup público permanece desabilitado.
 
 Cada setup cria novos dados de teste. Não use esse script nem `seed.dev.sql` no Supabase hospedado. O arquivo `index.html` na raiz é o protótipo antigo, não a aplicação Next.js.
 

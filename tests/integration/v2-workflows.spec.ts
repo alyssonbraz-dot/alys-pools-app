@@ -181,7 +181,7 @@ test("local single-use Auth invitation establishes a technician password, blocks
     .getByRole("button", { name: "Accept invitation", exact: true })
     .click();
   await expect(
-    page.getByRole("heading", { name: "Today’s Stops", exact: true }),
+    page.getByRole("link", { name: "Current Service", exact: true }),
   ).toBeVisible();
   expect((await page.request.get("/api/team")).status()).toBe(403);
   expect((await page.request.get("/api/customers")).status()).toBe(403);

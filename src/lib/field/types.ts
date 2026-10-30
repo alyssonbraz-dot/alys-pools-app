@@ -4,7 +4,7 @@ export type Dosage = { product: string; quantity: number; unit: string };
 export type PoolConfig = { id:string; name:string; gallons:number; checklist:string[]; required_readings:ReadingKey[]; photo_required:boolean;photo_scope_required?:boolean;reference_ranges?:Partial<Record<ReadingKey,{min:number;max:number}>> };
 export type StopStatus = 'pending' | 'in_progress' | 'completed' | 'skipped';
 export type RouteStop = {
- id:string; technician_id:string; service_date:string; position:number; status:StopStatus;estimated_service_minutes?:number;service_type?:string;
+ id:string; technician_id:string; service_date:string; position:number; status:StopStatus;skip_reason?:string;estimated_service_minutes?:number;service_type?:string;
  property:{id:string; name:string; address:string; gate_notes:string;service_timezone?:string;unit_system?:'inherit'|'imperial'|'metric';location_confirmed?:boolean;country_code?:string;latitude?:number|null;longitude?:number|null};
  customer:{id:string;name:string}; pools:PoolConfig[];
  chemistry_history?:Record<string,import('./chemistry').ChemistryEntry[]>;

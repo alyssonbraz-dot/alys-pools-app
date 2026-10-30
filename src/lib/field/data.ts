@@ -33,6 +33,7 @@ export async function loadRoute(operator:Operator,date:string,timeZone?:string):
   if(rows.length<500)break;
  }
  const chemistry=groupChemistry(history,date,Object.fromEntries(pools.map(pool=>[pool.id,properties.find(p=>p.id===pool.property_id)?.service_timezone??'America/New_York'])));
+ const skipEvents=await forIds(stops.map(s=>s.id),(ids,from,to)=>db.from('route_skip_events').select('stop_id,reason,created_at').in('stop_id',ids).order('created_at',{ascending:false}).order('id').range(from,to));
  const mapped:RouteStop[]=stops.filter(s=>(!timeZone||properties.some(p=>p.id===s.property_id&&p.service_timezone===timeZone))&&(profile.role!=='technician'||properties.some(p=>p.id===s.property_id))).map(s=>{
    const property=properties?.find(p=>p.id===s.property_id);
    const customer=customers?.find(c=>c.id===property?.customer_id);
@@ -45,7 +46,7 @@ export async function loadRoute(operator:Operator,date:string,timeZone?:string):
     const recent=poolHistory[pool.id].find(entry=>Object.keys(entry.readings).length>0);
     if(recent)last[pool.id]={recorded_at:recent.completed_at,readings:recent.readings};
    }
-   return {...s,property:{id:property.id,name:property.name,address:property.address,gate_notes:property.gate_notes,latitude:property.latitude,longitude:property.longitude,service_timezone:property.service_timezone,unit_system:property.unit_system,location_confirmed:property.location_confirmed,country_code:property.country_code},customer,pools:stopPools,last_readings:last,chemistry_history:poolHistory};
+   return {...s,skip_reason:skipEvents.find(event=>event.stop_id===s.id)?.reason,property:{id:property.id,name:property.name,address:property.address,gate_notes:property.gate_notes,latitude:property.latitude,longitude:property.longitude,service_timezone:property.service_timezone,unit_system:property.unit_system,location_confirmed:property.location_confirmed,country_code:property.country_code},customer,pools:stopPools,last_readings:last,chemistry_history:poolHistory};
  });
  const plans=await allRows((from,to)=>db.from('route_plans').select('technician_id,start_latitude,start_longitude,start_time,calculation,fingerprint').eq('service_date',date).order('id').range(from,to));
  return {...preferences,timeZone:timeZone??preferences.timeZone,route_plans:Object.fromEntries((plans??[]).map(p=>{const open=mapped.filter(s=>s.technician_id===p.technician_id&&['pending','in_progress'].includes(s.status));const geo=open.filter(s=>s.property.location_confirmed&&s.property.latitude!=null&&s.property.longitude!=null).map(s=>({id:s.id,latitude:s.property.latitude!,longitude:s.property.longitude!,service_minutes:s.estimated_service_minutes??20}));return [p.technician_id,{...p,calculation:geo.length===open.length&&p.fingerprint===routeFingerprint(geo)&&(p.calculation?.service_timezone??'America/New_York')===(timeZone??preferences.timeZone)?p.calculation:null}];})),userId:user.id,orgId:profile.organization_id,displayName:profile.display_name,role:profile.role,date,stops:mapped,

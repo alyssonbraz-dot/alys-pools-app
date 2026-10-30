@@ -80,7 +80,7 @@ export function CompanySettings({
                   })
                 }
               />
-              {label}
+              <T text={label}/>
             </label>
           ))}
         </div>
