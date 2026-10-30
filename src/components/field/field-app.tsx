@@ -21,7 +21,7 @@ import Link from 'next/link';
 import { useCallback, useEffect, useEffectEvent, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import type { CompletionPayload, PoolConfig, PoolVisit, ReadingKey, RouteData, RouteStop } from '@/lib/field/types';
 import { READING_LABELS } from '@/lib/field/types';
-import { cacheRoute, prepareDraftPhoto, enqueueCompletion, getActiveScope, getCachedRoute, getDraft, getDeviceEpoch, getQueue, listPhotos, removePhoto, releaseRejectedCompletion, saveDraft, savePhoto, syncQueue, type LocalPhoto, type OfflineScope, type QueueItem } from '@/lib/offline/store';
+import { cacheRoute, pauseSynchronization, prepareDraftPhoto, enqueueCompletion, getActiveScope, getCachedRoute, getDraft, getDeviceEpoch, getQueue, listPhotos, removePhoto, releaseRejectedCompletion, saveDraft, savePhoto, syncQueue, type LocalPhoto, type OfflineScope, type QueueItem } from '@/lib/offline/store';
 import { reconcileDraft } from './draft';
 import './field.css';
 import {ChemistryHistory} from './chemistry-history';
@@ -95,18 +95,18 @@ export function FieldApp({initialStopId,initialDate,initialTimeZone="America/New
       const identity=expectedScope??currentScope??await getActiveScope();
       const saved=identity?await getCachedRoute(identity,day,timeZone):null;
       if(version!==latestRequest.current||controller.signal.aborted||day!==selectedDay.current)return null;
-      if(saved&&identity&&(!expectedRole||saved.role===expectedRole)){setScope(identity);setRoute(saved);setCached(true);await refreshQueue(identity);}
-      else setRoute(null);
-      setError(messageOf(cause));return null;
+      if(saved&&identity&&(!expectedRole||saved.role===expectedRole)){setScope(identity);setRoute(saved);setCached(true);await refreshQueue(identity);setError(cause instanceof TypeError?'':messageOf(cause));}
+      else {setRoute(null);setError(messageOf(cause));}
+      return null;
     } finally {if(version===latestRequest.current)setLoading(false);}
   },[refreshQueue,expectedScope,expectedRole,timeZone]);
 
-  const flush=useCallback(async(currentScope:OfflineScope,manual=false)=>{
-    const pending=await getQueue(currentScope);
-    if(!pending.length)return;
-    setSyncing(true);setSyncError('');
+  const flush=useCallback(async(currentScope:OfflineScope,manual=false,resuming=false)=>{
     try {
-      const result=await syncQueue(currentScope,{automatic:!manual});
+      const pending=await getQueue(currentScope);
+      if(!pending.length)return;
+      setSyncing(true);setSyncError('');
+      const result=await syncQueue(currentScope,{automatic:!manual,resuming});
       await refreshQueue(currentScope);
       if(result.authRequired)setSyncError('Sign in again to sync this device. Your queued visits are still saved.');
       else if(result.pending)setNotice('');
@@ -151,6 +151,17 @@ export function FieldApp({initialStopId,initialDate,initialTimeZone="America/New
     // Flushing is tied to reconnection/identity, not to every queue state change.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   },[online,scope?.userId,scope?.organizationId]);
+
+  const resumeField=useEffectEvent(()=>{if(scope){setOnline(navigator.onLine);void flush(scope,false,true);}});
+  useEffect(()=>{
+    if(!scope)return;
+    let timer:ReturnType<typeof setTimeout>|undefined;
+    const pause=()=>{if(timer)clearTimeout(timer);pauseSynchronization(scope);};
+    const resume=()=>{if(document.visibilityState==='hidden')return;if(timer)clearTimeout(timer);timer=setTimeout(resumeField,200);};
+    const visibility=()=>document.visibilityState==='hidden'?pause():resume();
+    document.addEventListener('visibilitychange',visibility);window.addEventListener('pagehide',pause);window.addEventListener('pageshow',resume);window.addEventListener('focus',resume);
+    return()=>{if(timer)clearTimeout(timer);document.removeEventListener('visibilitychange',visibility);window.removeEventListener('pagehide',pause);window.removeEventListener('pageshow',resume);window.removeEventListener('focus',resume);};
+  },[scope]);
 
   function openStop(id:string|null,destination?:'route'|'current'){
     setActiveStopId(id);setError('');
@@ -209,7 +220,7 @@ export function FieldApp({initialStopId,initialDate,initialTimeZone="America/New
 
   const syncPanel=scope&&<SyncNotice scope={scope} queue={queue} syncError={syncError} name={id=>route?.stops.find(s=>s.id===id)?.customer.name??t('Visit')} online={online} syncing={syncing} onRetry={()=>void flush(scope,true)} onChanged={()=>refreshQueue(scope)} onEdit={id=>{void releaseRejectedCompletion(scope,id).then(async()=>{await refreshQueue(scope);await loadRoute(date,scope);openStop(id);}).catch(cause=>setError(messageOf(cause)));}}/>;
   const workspaceAlerts=<>{notice&&!queue.length&&<div className="field-alert" role="status"><T text={notice}/><button className="field-button field-button-quiet field-button-small" onClick={()=>setNotice('')} aria-label={t("Dismiss notification")}>×</button></div>}
-    {error&&<div className="field-alert field-alert-warning" role="alert"><T text={error}/>{error.toLowerCase().includes('sign in')&&<Link className="field-auth-link" href="/login"><T text="Sign in"/></Link>}</div>}
+    {error&&!(queue.some(item=>item.status==='auth_required')&&error.toLowerCase().includes('sign in'))&&<div className="field-alert field-alert-warning" role="alert"><T text={error}/>{error.toLowerCase().includes('sign in')&&<Link className="field-auth-link" href="/login"><T text="Sign in"/></Link>}</div>}
     {cached&&!queue.length&&<p className="field-alert field-alert-warning"><T text="Cached route. Changes and photos stay on this device until a signed-in connection confirms synchronization."/></p>}</>;
   async function skipSelected(){if(!skipTarget||!scope||!skipReason.trim())return;if(!online){setError('Reconnect to skip a stop. Your current draft is preserved.');return;}try{await request('/api/stops',{method:'POST',headers:{'X-ALYS-User-ID':scope.userId,'X-ALYS-Organization-ID':scope.organizationId},body:JSON.stringify({action:'skip',stop_id:skipTarget.id,reason:skipReason.trim(),request_id:skipRequest.current})});setPreferredStop(route?nextAssignedStop(route.stops,skipTarget,queuedIds)?.id??null:null);setSkipTarget(null);setRouteList(false);openStop(null,'current');await loadRoute(date,scope);}catch(cause){setError(messageOf(cause));}}
   return <div className={`field-app ${isDaily?'daily-mode':''}`}>
@@ -264,7 +275,7 @@ function PhotoPreview({photo,onRemove,readonly=false}:{photo:LocalPhoto;onRemove
   const [previewFailed,setPreviewFailed]=useState(false);
   const url=useMemo(()=>URL.createObjectURL(photo.upload_blob??photo.blob),[photo.upload_blob,photo.blob]);
   useEffect(()=>()=>URL.revokeObjectURL(url),[url]);
-  return <figure className="field-photo">{previewFailed?<p><T text="Original photo saved. Preview unavailable until conversion."/></p>:<Image src={url} alt={t("Captured service photo")} width={320} height={240} unoptimized onError={()=>setPreviewFailed(true)}/>}{!readonly&&<button type="button" className="field-button field-button-quiet field-button-small" onClick={onRemove}><T text="Remove / retake"/></button>}</figure>;
+  return <figure className="field-photo">{previewFailed?<p><T text="Original photo saved. Preview unavailable until conversion."/></p>:<Image src={url} alt={t("Captured service photo")} width={320} height={240} unoptimized onError={()=>setPreviewFailed(true)}/>}<figcaption><T text={photo.path?'Uploaded · awaiting visit confirmation':readonly?'Waiting to upload':'Saved locally'}/></figcaption>{!readonly&&<button type="button" className="field-button field-button-quiet field-button-small" onClick={onRemove}><T text="Remove / retake"/></button>}</figure>;
 }
 
 function VisitEditor({stop,index,total,scope,queued,syncPanel,onBack,onPrevious,onNext,onSkip,onComplete,unitSystem='imperial'}:{unitSystem?:UnitSystem;stop:RouteStop;index:number;total:number;scope:OfflineScope;queued:boolean;syncPanel:React.ReactNode;onBack:()=>void;onPrevious?:()=>void;onNext?:()=>void;onSkip:()=>void;onComplete:(payload:CompletionPayload)=>Promise<void>}) {
@@ -327,7 +338,7 @@ function VisitEditor({stop,index,total,scope,queued,syncPanel,onBack,onPrevious,
     <nav className="service-step-nav" aria-label={t('Service sections')}>{[['readings-','Readings'],['chemicals-','Chemicals'],['checklist-','Checklist']].map(([prefix,label])=><a key={prefix} href={'#'+prefix+activePool}><T text={label}/></a>)}<a href="#service-photo"><T text="Photo"/></a></nav>{stop.pools.length>1&&<div className="pool-tabs" role="tablist" aria-label={t('Pool / spa')}>{stop.pools.map((pool,tabIndex)=><button key={pool.id} id={'tab-'+pool.id} type="button" role="tab" aria-selected={activePool===pool.id} aria-controls={'panel-'+pool.id} tabIndex={activePool===pool.id?0:-1} onClick={()=>{setActivePool(pool.id);setPhotoPool(pool.id);}} onKeyDown={event=>{if(!['ArrowRight','ArrowLeft'].includes(event.key))return;event.preventDefault();const next=stop.pools[(tabIndex+(event.key==='ArrowRight'?1:-1)+stop.pools.length)%stop.pools.length];setActivePool(next.id);setPhotoPool(next.id);document.getElementById('tab-'+next.id)?.focus();}}>{pool.name}</button>)}</div>}<div className="service-scroll"><div id="sync-recovery">{syncPanel}</div><div className="service-sequence"><button className="btn btn-secondary" disabled={!onPrevious||busy||photoBusy||saveStatus==='Saving draft…'} onClick={onPrevious}><Icon name="back"/><T text="Previous stop"/></button><button className="btn btn-secondary" disabled={!onNext||busy||photoBusy||saveStatus==='Saving draft…'} onClick={onNext}><T text="Next stop"/><Icon name="arrow"/></button><button className="field-button field-button-quiet field-button-small" disabled={queued||busy||photoBusy||saveStatus==='Saving draft…'} onClick={onSkip}><T text="Skip stop"/></button></div>
     {stop.pools.map(config=>{const pool=visibleDraft.pools.find(p=>p.pool_id===config.id);return pool?<div key={config.id} id={'panel-'+config.id} role={stop.pools.length>1?'tabpanel':undefined} aria-labelledby={stop.pools.length>1?'tab-'+config.id:undefined} hidden={activePool!==config.id}><PoolForm onChemicalPending={pendingChemical} preferenceScope={scope.organizationId+':'+scope.userId} unitSystem={effectiveUnits(stop.property.unit_system,unitSystem)} timeZone={stop.property.service_timezone} key={config.id} config={config} value={pool} history={stop.chemistry_history?.[config.id]??[]} previous={stop.last_readings?.[config.id]} disabled={queued||busy} onChange={next=>updatePool(config.id,next)}/></div>:null;})}
     <details className="field-section" open={!!visibleDraft.issue_flags?.length}><summary><T text="Issue flags"/></summary><div className="field-issue-flags">{ISSUE_FLAGS.map(flag=><button key={flag} type="button" className="field-shortcut" aria-pressed={visibleDraft.issue_flags?.includes(flag)??false} disabled={busy||queued} onClick={()=>update({...visibleDraft,issue_flags:visibleDraft.issue_flags?.includes(flag)?visibleDraft.issue_flags.filter(f=>f!==flag):[...(visibleDraft.issue_flags??[]),flag]})}><T text={ISSUE_LABELS[flag]}/></button>)}</div><p className="field-tiny"><T text="Flags describe issues; they do not complete checklist tasks or waive required readings and photos."/></p></details>
-    <section className="field-section service-anchor" id="service-photo"><p className="field-section-letter"><T text="D · SERVICE PHOTO"/></p><div className="field-section-title"><h2><T text="Show the finished service"/></h2><span className="field-tiny">{photos.length} / 3</span></div>{stop.pools.length>1&&<label className="field-input-label"><T text="Photo for pool / spa"/><LocaleSelect aria-label="Photo for pool / spa" value={photoPool} disabled={photoBusy||queued} onChange={e=>setPhotoPool(e.target.value)}>{stop.pools.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</LocaleSelect></label>}{photos.length<3&&!queued&&<PhotoCapture busy={photoBusy} disabled={busy} required={stop.pools.some(p=>p.photo_required)} onCapture={file=>void capture(file)}/>}<div className="field-photos">{photos.map(photo=><PhotoPreview key={photo.id+(photo.upload_blob?"-prepared":"-source")} photo={photo} readonly={queued||photoBusy||busy} onRemove={()=>{if(queued)return;void removePhoto(scope,photo.id).then(()=>setPhotos(items=>items.filter(item=>item.id!==photo.id))).catch(cause=>setError(messageOf(cause)));}}/>)}</div><p className="field-tiny"><T text="Photo saved on device. Upload starts after Complete & Next; you can continue to the next stop."/></p></section>
+    <section className="field-section service-anchor" id="service-photo"><p className="field-section-letter"><T text="D · SERVICE PHOTO"/></p><div className="field-section-title"><h2><T text="Show the finished service"/></h2><span className="field-tiny">{photos.length} / 3</span></div>{stop.pools.length>1&&<label className="field-input-label"><T text="Photo for pool / spa"/><LocaleSelect aria-label="Photo for pool / spa" value={photoPool} disabled={photoBusy||queued} onChange={e=>setPhotoPool(e.target.value)}>{stop.pools.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</LocaleSelect></label>}{photos.length<3&&!queued&&<PhotoCapture busy={photoBusy} disabled={busy} required={stop.pools.some(p=>p.photo_required)} onCapture={capture}/>}<div className="field-photos">{photos.map(photo=><PhotoPreview key={photo.id+(photo.upload_blob?"-prepared":"-source")} photo={photo} readonly={queued||photoBusy||busy} onRemove={()=>{if(queued)return;void removePhoto(scope,photo.id).then(()=>setPhotos(items=>items.filter(item=>item.id!==photo.id))).catch(cause=>setError(messageOf(cause)));}}/>)}</div><p className="field-tiny"><T text={photos.length?"Photos stay on this device until the server confirms the visit. Upload continues when this app is open.":"Capture a photo to save it locally. A preview does not confirm upload."}/></p></section>
     <details className="field-section"><summary><T text="Customer note"/></summary><label className="field-input-label"><T text="Service note "/><span className="field-reference"><T text="Included in the customer report. Do not add gate codes or private notes."/></span><LocaleTextarea maxLength={2000} value={visibleDraft.notes} disabled={queued||busy} placeholder="Optional service information for the customer" onChange={event=>update({...visibleDraft,notes:event.target.value})}/></label></details>
     <details className="field-section"><summary><T text="Internal service details"/></summary><p className="field-tiny"><T text="For staff only. These details are not included in customer emails."/></p>{([['technician_notes','Technician notes'],['equipment_problems','Equipment problems'],['filter_cleaning','Filter cleaning'],['repairs_performed','Repairs performed']] as const).map(([key,label])=><label className="field-input-label" key={key}><T text={label}/><LocaleTextarea value={visibleDraft.service_details?.[key]??''} disabled={queued||busy} maxLength={2000} onChange={e=>update({...visibleDraft,service_details:{technician_notes:'',equipment_problems:'',filter_cleaning:'',repairs_performed:'',...visibleDraft.service_details,[key]:e.target.value}})}/></label>)}</details>
     </div><div className="field-complete-bar"><button className="field-button" disabled={busy||photoBusy||queued||retiredPools.length>0||chemicalPending} onClick={()=>void complete()}>{queued?<T text={"Saved on device — waiting to sync"}/>:busy?<T text={"Saving visit…"}/>:<T text="Finish & Next"/>}</button><p role="status"><T text={chemicalPending?'Add or cancel the selected chemical before finishing.':saveStatus}/> {!chemicalPending&&<T text="· Only checked tasks and recorded values enter the report."/>}</p></div>

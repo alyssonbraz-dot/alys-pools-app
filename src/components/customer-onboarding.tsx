@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState,useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { T } from "./i18n";
@@ -56,12 +56,26 @@ function newProperty(tech: string): CustomerBundle["properties"][number] {
     ],
   };
 }
+export type CustomerEditFocus={section?:'property'|'pool'|'service';propertyId?:string;poolId?:string;add?:'property'|'pool'|'spa'};
+function focusedBundle(initial:CustomerBundle,focus:CustomerEditFocus|undefined,createProperty:()=>CustomerBundle['properties'][number]):CustomerBundle{
+ const copy=structuredClone(initial);
+ if(focus?.add==='property'&&copy.properties.length<10)copy.properties.push(createProperty());
+ if(focus?.add==='pool'||focus?.add==='spa'){
+  const property=copy.properties.find(p=>p.id===focus.propertyId);
+  if(property&&property.pools.length<30){const pool=createProperty().pools[0];if(focus.add==='spa'){pool.type='spa';pool.name='Spa';pool.gallons=1000;}property.pools.push(pool);}
+ }
+ return copy;
+}
 export function CustomerOnboarding({
   technicians,
   ownerId,
   initial,
   defaults,
+  focus,
+  returnTab,
 }: {
+  returnTab?:'overview'|'properties'|'service';
+  focus?:CustomerEditFocus;
   defaults?: CompanyDefaults;
   technicians: { id: string; display_name: string }[];
   ownerId: string;
@@ -70,7 +84,7 @@ export function CustomerOnboarding({
   const router = useRouter();
   const [data, setData] = useState<CustomerBundle>(
     () =>
-      initial ?? {
+      initial ? focusedBundle(initial,focus,()=>applyDefaults(newProperty(ownerId))) : {
         request_id: crypto.randomUUID(),
         customer: {
           property_id: null,
@@ -134,6 +148,10 @@ export function CustomerOnboarding({
         });
     return p;
   }
+  const focusedProperty=focus?.add==='property'?data.properties.length-1:Math.max(0,data.properties.findIndex(p=>p.id===focus?.propertyId));
+  const focusedPool=focus?.add==='pool'||focus?.add==='spa'?(data.properties[focusedProperty]?.pools.length??1)-1:Math.max(0,data.properties[focusedProperty]?.pools.findIndex(p=>p.id===focus?.poolId)??0);
+  const focusTarget=!focus?'':focus.section==='pool'||focus.add==='pool'||focus.add==='spa'?'customer-pool-'+focusedProperty+'-'+focusedPool:focus.section==='service'?'customer-service-'+focusedProperty:'customer-property-'+focusedProperty;
+  useEffect(()=>{if(!focusTarget)return;const timer=requestAnimationFrame(()=>{const target=document.getElementById(focusTarget);target?.scrollIntoView({block:'start'});target?.querySelector<HTMLInputElement>('input:not([type=checkbox]):not([type=hidden])')?.focus({preventScroll:true});});return()=>cancelAnimationFrame(timer);},[focusTarget]);
   function change(fn: (copy: CustomerBundle) => void) {
     setData((previous) => {
       const copy = structuredClone(previous);
@@ -172,7 +190,7 @@ export function CustomerOnboarding({
       });
       const result = await response.json();
       if (!response.ok){setFieldErrors(result.fieldErrors??[]);if(response.status===422&&!submission.current!.uncertain&&result.code!=='ALYS_REQUEST_REUSED')submission.current!.rejected=true;else submission.current!.uncertain=true;throw new Error(result.error);}
-      router.push("/customers/" + result.id + "?saved=1");
+      router.push("/customers/" + result.id + "?saved=1"+(returnTab?"&tab="+returnTab:""));
       router.refresh();
     } catch (e) {
       if(submission.current&&!submission.current.rejected)submission.current.uncertain=true;
@@ -275,7 +293,7 @@ export function CustomerOnboarding({
 
         </section>
         {data.properties.map((property, pi) => (
-          <section className="panel form-section" key={pi}>
+          <section className="panel form-section customer-edit-property" id={"customer-property-"+pi} key={pi}>
             <h2>
               02 · <T text="Property" /> {pi + 1}
             </h2>
@@ -348,7 +366,7 @@ export function CustomerOnboarding({
               03 · <T text="Pools & spas" />
             </h2>
             {property.pools.map((pool, wi) => (
-              <fieldset className="pool-editor" key={wi}>
+              <fieldset className="pool-editor" id={"customer-pool-"+pi+"-"+wi} key={wi}>
                 <legend>
                   {pool.name || "Pool"} · {wi + 1}
                 </legend>
@@ -389,7 +407,7 @@ export function CustomerOnboarding({
                       }
                     >
                       {["residential", "commercial", "spa"].map((v) => (
-                        <option key={v}>{v}</option>
+                        <option key={v} value={v}><T text={v}/></option>
                       ))}
                     </select>
                   </label>
@@ -405,7 +423,7 @@ export function CustomerOnboarding({
                       }
                     >
                       {["chlorine", "salt", "bromine", "other"].map((v) => (
-                        <option key={v}>{v}</option>
+                        <option key={v} value={v}><T text={v}/></option>
                       ))}
                     </select>
                   </label>
@@ -541,7 +559,8 @@ export function CustomerOnboarding({
             >
               <T text="Add Another Pool / Spa" />
             </button>
-            <h2>
+            <button type="button" className="btn btn-secondary" disabled={property.pools.length>=30} onClick={()=>change(c=>{const pool=applyDefaults(newProperty(ownerId)).pools[0];pool.type='spa';pool.name='Spa';pool.gallons=1000;c.properties[pi].pools.push(pool);})}><T text="Add spa"/></button>
+            <h2 id={"customer-service-"+pi}>
               04 · <T text="Service schedule" />
             </h2>
             {property.schedules.map((sc, si) => (
@@ -669,7 +688,7 @@ export function CustomerOnboarding({
         >
           <T text="Add Another Property" />
         </button>
-        <section className="panel form-section">
+        <section className="panel form-section" id="service-agreement">
           <h2>
             <T text="Service agreement & reports" />
           </h2>
@@ -702,7 +721,7 @@ export function CustomerOnboarding({
                 }
               >
                 {["monthly", "per_visit", "fixed_contract"].map((v) => (
-                  <option key={v}>{v}</option>
+                  <option key={v} value={v}><T text={v}/></option>
                 ))}
               </select>
             </label>

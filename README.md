@@ -9,6 +9,14 @@ Aplicativo da ALYS Pool Services LLC para registrar manutenção de piscinas pel
 Este README é o roteiro de entrega e publicação com **Netlify Free + Supabase Free + Resend Free**, usando o domínio **alyspools.com**, registrado na Hostinger. Não é necessário contratar hospedagem na Hostinger. A renovação do domínio já comprado continua sendo responsabilidade do titular; planos gratuitos têm cotas e não garantem operação ilimitada sem custo.
 
 
+## V2.2.1 — fotos e clientes
+
+Branch de revisão: `fix/alys-v2-2-1-ios-sync-customers`. O patch recupera uploads interrompidos, identifica falta de sessão, preserva fotos/fila e retoma a sincronização ao voltar para o app. Câmera e galeria têm entradas separadas. **Prévia local não confirma upload; Synced depende do servidor.** Não remova a PWA nem limpe dados do Safari para tratar uma pendência.
+
+Customers agora reúne o perfil em Overview, Properties & Pools, Service e History. Adicione/edite imóveis, piscinas e spas no perfil; o cadastro e as agendas continuam transacionais. `/pools` permanece disponível para links antigos.
+
+**Sem migration nova:** requer as migrations 001–025 da V2.2. Consulte [diagnóstico, testes, capturas e aceite no iPhone](docs/V221-IOS-SYNC-CUSTOMERS.md). Safari/iPhone físico ainda precisam de aceite; não há alegação de teste no aparelho. Merge e deploy dependem de aprovação.
+
 ## V2.2 — interface reconstruída para celular
 
 A branch de revisão `feature/alys-v2-2-complete-redesign` traz navegação por perfil, componentes compartilhados e todas as telas na nova identidade visual. O técnico abre a piscina atual, registra leituras e químicos, tira a foto e usa **Finish & Next**; o próximo stop abre após a gravação local, sem esperar upload/e-mail. Proprietário: Dashboard, Customers, Routes e More, com History, Reports, Finance, Team e Settings.
@@ -58,12 +66,12 @@ cp .env.production.example .env.production.local
 Para testar esta entrega antes do merge aprovado, selecione a branch de revisão e reinstale as dependências:
 
 ```bash
-git fetch origin feature/alys-v2-2-complete-redesign
-git switch --track origin/feature/alys-v2-2-complete-redesign
+git fetch origin fix/alys-v2-2-1-ios-sync-customers
+git switch --track origin/fix/alys-v2-2-1-ios-sync-customers
 npm ci
 ```
 
-Se a branch local já existir, use `git switch feature/alys-v2-2-complete-redesign`. Para testar sem publicar, siga [desenvolvimento local](docs/LOCAL-DEVELOPMENT.md); o teste local usa `.env.example`, não credenciais de produção.
+Se a branch local já existir, use `git switch fix/alys-v2-2-1-ios-sync-customers`. Para testar sem publicar, siga [desenvolvimento local](docs/LOCAL-DEVELOPMENT.md); o teste local usa `.env.example`, não credenciais de produção.
 
 Se já tiver o projeto, atualize seu checkout e execute `npm ci`. Preserve arquivos `.env.*.local` existentes: eles são privados e ignorados pelo Git. No Windows, use WSL2/Ubuntu para os comandos de terminal deste guia.
 

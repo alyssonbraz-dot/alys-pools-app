@@ -57,3 +57,5 @@ it('renders controlled issue labels without claiming an issue-free service or in
  const report=createServiceReport({snapshot:{...snapshot,issue_flags:['green_pool','access_denied']},completedAt:'2026-10-27T15:00:00Z',recipient:'test@example.com',from:'reports@example.com'});
  expect(report.html).toContain('Green Pool');expect(report.text).toContain('Access Denied');expect(report.subject).toContain('Visit Recorded');expect(report.html).not.toContain('serviced successfully');expect(report.html).not.toContain('GATE-SECRET');
 });
+
+it('keeps every synchronized service photo as a distinct inline report attachment',()=>{const report=createServiceReport({snapshot,completedAt:'2026-10-30T14:00:00Z',recipient:'nobody@example.test',from:'reports@example.test',photos:[{content:'first-jpeg-base64',filename:'first.jpg'},{content:'second-jpeg-base64',filename:'second.jpg'}]});expect(report.attachments).toHaveLength(2);expect(new Set(report.attachments.map(p=>p.content_id)).size).toBe(2);for(const photo of report.attachments)expect(report.html).toContain('cid:'+photo.content_id);expect(report.html).not.toContain('GATE-SECRET');});

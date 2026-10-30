@@ -101,4 +101,6 @@ Remova os overrides e reinicie `npm start` para operação normal. Não use temp
 - PWA requer HTTPS fora de localhost. Camera real/Safari e restauração após suspensão pelo celular precisam de validação física.
 - Nenhum teste local comprova DNS, certificado, conta gratuita, execução de agenda hospedada ou entrega real de e-mail.
 
+Para a entrega V2.2.1, selecione `fix/alys-v2-2-1-ios-sync-customers` antes de `npm ci`. O banco continua em 025; não há reset/migration nova do dispositivo. Relatório e aceite físico: [V2.2.1](V221-IOS-SYNC-CUSTOMERS.md).
+
 Resultados e histórico: [VALIDATION](VALIDATION.md). Segurança/offline: [Fast Technician Mode](FAST-TECHNICIAN-MODE.md).

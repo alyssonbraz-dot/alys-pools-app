@@ -91,7 +91,7 @@ describe("offline shell installation and recovery", () => {
     expect(h.notifications.at(-1)?.ready).toBe(true);
     expect(
       h.stores
-        .get("alys-field-shell-v21")
+        .get("alys-field-shell-v221")
         ?.has("https://app.example.test/offline"),
     ).toBe(true);
   });

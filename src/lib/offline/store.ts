@@ -1,4 +1,4 @@
-import {compressPhoto} from '@/lib/field/photos';
+import {compressPhoto,snapshotPhoto,isPreparedPhoto} from '@/lib/field/photos';
 import {deviceStorageError} from './errors';
 import {publishSyncProgress,clearSyncProgress} from './progress';
 import {uploadPhoto} from './upload';
@@ -46,45 +46,53 @@ function logoutChannel() {
 }
 
 function database(): Promise<IDBDatabase> {
-  if (typeof indexedDB === 'undefined') return Promise.reject(new Error('Device storage is unavailable. Keep this visit open and reconnect.'));
-  if (!connection) connection = new Promise((resolve, reject) => {
-    const request = indexedDB.open(DATABASE, 1);
-    request.onupgradeneeded = () => request.result.createObjectStore(STORE, { keyPath: 'key' });
-    request.onerror = () => { connection = undefined; reject(request.error); };
-    request.onsuccess = () => {
-      request.result.onversionchange = () => { request.result.close(); connection = undefined; };
-      resolve(request.result);
-    };
+ if(typeof indexedDB==='undefined')return Promise.reject(new Error('Device storage is unavailable. Keep this visit open and reconnect.'));
+ if(!connection){
+  const opening=new Promise<IDBDatabase>((resolve,reject)=>{
+   const request=indexedDB.open(DATABASE,1);let settled=false;
+   const timeout=setTimeout(()=>{settled=true;reject(new Error('Device storage did not respond. Your saved work has not been cleared. Reopen this screen and retry.'));},15000);
+   request.onupgradeneeded=()=>{if(!request.result.objectStoreNames.contains(STORE))request.result.createObjectStore(STORE,{keyPath:'key'});};
+   request.onerror=()=>{clearTimeout(timeout);settled=true;reject(request.error);};
+   request.onsuccess=()=>{
+    clearTimeout(timeout);if(settled){request.result.close();return;}settled=true;
+    const opened=connection,reset=()=>{if(connection===opened)connection=undefined;};
+    request.result.onclose=reset;request.result.onversionchange=()=>{request.result.close();reset();};resolve(request.result);
+   };
   });
-  return connection;
+  connection=opening;void opening.catch(()=>{if(connection===opening)connection=undefined;});
+ }
+ return connection;
+}
+/** Safari may close an idle connection after suspension. Reopen only before
+ * starting a transaction; never replay an ambiguously committed transaction. */
+async function transaction<T>(mode:IDBTransactionMode,begin:(tx:IDBTransaction)=>Promise<T>):Promise<T>{
+ let db=await database();let tx:IDBTransaction;
+ try{tx=db.transaction(STORE,mode);}
+ catch(error){if(!(error instanceof DOMException)||error.name!=='InvalidStateError')throw error;connection=undefined;db=await database();tx=db.transaction(STORE,mode);}
+ // No await between transaction creation and its first request (Safari).
+ return begin(tx);
 }
 function prefix(scope: OfflineScope) {
   return `${encodeURIComponent(scope.organizationId)}:${encodeURIComponent(scope.userId)}:`;
 }
 function scopeKey(scope: OfflineScope, kind: string, id = '') { return `${prefix(scope)}${kind}:${id}`; }
 async function read<T>(key: string): Promise<T | undefined> {
-  const db = await database();
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(STORE, 'readonly');
+  return transaction('readonly', tx => new Promise((resolve, reject) => {
     const req = tx.objectStore(STORE).get(key);
     req.onsuccess = () => resolve((req.result as RecordValue | undefined)?.value as T | undefined);
     req.onerror = () => reject(req.error);
-  });
+  }));
 }
 async function write(key: string, value: unknown) {
-  const db = await database();
-  return new Promise<void>((resolve, reject) => {
-    const tx = db.transaction(STORE, 'readwrite');
+  return transaction('readwrite', tx => new Promise<void>((resolve, reject) => {
     tx.objectStore(STORE).put({ key, value });
     tx.oncomplete = () => resolve();
     tx.onerror = () => reject(deviceStorageError(tx.error));
     tx.onabort = () => reject(deviceStorageError(tx.error ?? new Error('Device storage was interrupted.')));
-  });
+  }));
 }
 async function writeScoped(scope: OfflineScope, key: string, value: unknown,unlockedStop?:string,remove=false) {
-  const db = await database();
-  await new Promise<void>((resolve, reject) => {
-    const tx = db.transaction(STORE, 'readwrite');
+  await transaction('readwrite', tx => new Promise<void>((resolve, reject) => {
     const records = tx.objectStore(STORE);
     const commit=()=>{if(remove)records.delete(key);else records.put({key,value});};
     const active = records.get('active-scope');
@@ -101,16 +109,14 @@ async function writeScoped(scope: OfflineScope, key: string, value: unknown,unlo
     tx.oncomplete = () => resolve();
     tx.onerror = () => reject(deviceStorageError(tx.error));
     tx.onabort = () => reject(deviceStorageError(failure ?? tx.error ?? new Error('Device save was interrupted.')));
-  });
+  }));
 }
 async function entries<T>(keyPrefix: string): Promise<{ key: string; value: T }[]> {
-  const db = await database();
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(STORE, 'readonly');
+  return transaction('readonly', tx => new Promise((resolve, reject) => {
     const req = tx.objectStore(STORE).getAll(IDBKeyRange.bound(keyPrefix, `${keyPrefix}\uffff`));
     req.onsuccess = () => resolve(req.result as { key: string; value: T }[]);
     req.onerror = () => reject(req.error);
-  });
+  }));
 }
 function changed() {
   if (typeof window !== 'undefined') window.dispatchEvent(new Event('alys-device-change'));
@@ -126,9 +132,7 @@ export async function getDeviceEpoch(): Promise<string> {
 export async function cacheRoute(scope: OfflineScope, route: RouteData, expectedEpoch?: string) {
   if (scope.userId !== route.userId || scope.organizationId !== route.orgId) throw new Error('Route account does not match device storage.');
   const epoch = expectedEpoch ?? await getDeviceEpoch();
-  const db = await database();
-  await new Promise<void>((resolve, reject) => {
-    const tx = db.transaction(STORE, 'readwrite');
+  await transaction('readwrite', tx => new Promise<void>((resolve, reject) => {
     const records = tx.objectStore(STORE);
     const request = records.get('device-epoch');
     let failure: Error | undefined;
@@ -145,7 +149,7 @@ export async function cacheRoute(scope: OfflineScope, route: RouteData, expected
     tx.oncomplete = () => resolve();
     tx.onerror = () => reject(deviceStorageError(tx.error));
     tx.onabort = () => reject(failure ?? tx.error ?? new Error('Route cache was interrupted.'));
-  });
+  }));
 }
 export async function getCachedRoute(scope: OfflineScope, date?: string,timeZone='America/New_York'): Promise<RouteData | null> {
   const selected = (date?date+(timeZone!=='America/New_York'?'@'+timeZone:''):undefined) ?? await read<string>(scopeKey(scope, 'latest-route'));
@@ -159,9 +163,10 @@ export async function getDraft(scope: OfflineScope, stopId: string): Promise<Com
   return (await read<CompletionPayload>(scopeKey(scope, 'draft', stopId))) ?? null;
 }
 export async function savePhoto(scope: OfflineScope, stopId: string, blob: Blob, poolId?:string): Promise<LocalPhoto> {
+  const original=await snapshotPhoto(blob);
   const current = await listPhotos(scope, stopId);
   if (current.length >= 3) throw new Error('A visit can have up to three photos.');
-  const photo: LocalPhoto = { id: crypto.randomUUID(), stop_id: stopId, pool_id:poolId, blob, created_at: new Date().toISOString() };
+  const photo: LocalPhoto = { id: crypto.randomUUID(), stop_id: stopId, pool_id:poolId, blob:original, created_at: new Date().toISOString() };
   await writeScoped(scope,scopeKey(scope, 'photo', photo.id), photo,stopId);
   changed();
   return photo;
@@ -188,11 +193,11 @@ export function canReplaceQueuedPhoto(item: QueueItem): boolean {
 /** Serialize with synchronization across tabs. Keep visit ID, timestamps, readings and original photo bytes. */
 export async function replaceQueuedPhoto(scope: OfflineScope, photoId: string, file: Blob) {
   if(typeof navigator==='undefined'||!navigator.locks)throw new Error('Safe photo replacement is unavailable in this browser. Keep the visit and update your browser before replacing the photo.');
-  const prepared = await compressPhoto(file);
+  const original=await snapshotPhoto(file);
+  const prepared = await compressPhoto(original);
   const replace = async () => {
-    const db = await database();
-    await new Promise<void>((resolve, reject) => {
-      const tx = db.transaction(STORE, 'readwrite'), records = tx.objectStore(STORE);
+    await transaction('readwrite', tx => new Promise<void>((resolve, reject) => {
+      const records = tx.objectStore(STORE);
       let failure: Error | undefined;
       const stop = (message:string) => { failure = new Error(message); tx.abort(); };
       const active = records.get('active-scope');
@@ -207,7 +212,7 @@ export async function replaceQueuedPhoto(scope: OfflineScope, photoId: string, f
           queued.onsuccess = () => {
             const item = queued.result?.value as QueueItem | undefined;
             if(!item || !canReplaceQueuedPhoto(item)){stop('The server may already have confirmed this visit. Retry synchronization before replacing its photo.');return;}
-            const replacement:LocalPhoto = {...photo,id:crypto.randomUUID(),blob:file,upload_blob:prepared,path:undefined,replaced_photos:[...(photo.replaced_photos??[]),{id:photo.id,blob:photo.blob,path:photo.path,created_at:photo.created_at}]};
+            const replacement:LocalPhoto = {...photo,id:crypto.randomUUID(),blob:original,upload_blob:prepared,path:undefined,replaced_photos:[...(photo.replaced_photos??[]),{id:photo.id,blob:photo.blob,path:photo.path,created_at:photo.created_at}]};
             records.delete(scopeKey(scope,'photo',photo.id));
             records.put({key:scopeKey(scope,'photo',replacement.id),value:replacement});
             if(photo.path){item.payload.photo_paths=item.payload.photo_paths.filter(path=>path!==photo.path);if(item.payload.photo_assignments)delete item.payload.photo_assignments[photo.path];}
@@ -220,15 +225,13 @@ export async function replaceQueuedPhoto(scope: OfflineScope, photoId: string, f
       tx.oncomplete=()=>resolve();
       tx.onerror=()=>reject(deviceStorageError(tx.error));
       tx.onabort=()=>reject(deviceStorageError(failure??tx.error));
-    });
+    }));
   };
   await navigator.locks.request('alys-device-state',{mode:'shared'},()=>navigator.locks.request(`alys-sync-${prefix(scope)}`,replace));
   changed();
 }
 export async function enqueueCompletion(scope: OfflineScope, payload: CompletionPayload) {
-  const db = await database();
-  await new Promise<void>((resolve, reject) => {
-    const tx = db.transaction(STORE, 'readwrite');
+  await transaction('readwrite', tx => new Promise<void>((resolve, reject) => {
     const records = tx.objectStore(STORE);
     const key = scopeKey(scope, 'queue', payload.stop_id);
     const active = records.get('active-scope');
@@ -250,14 +253,12 @@ export async function enqueueCompletion(scope: OfflineScope, payload: Completion
     tx.oncomplete = () => resolve();
     tx.onerror = () => reject(deviceStorageError(tx.error));
     tx.onabort = () => reject(failure ?? tx.error ?? new Error('Queue save was interrupted.'));
-  });
+  }));
   changed();
 }
 /** Only an explicit validation rejection proves the server transaction did not commit. */
 export async function releaseRejectedCompletion(scope: OfflineScope, stopId: string) {
-  const db = await database();
-  await new Promise<void>((resolve, reject) => {
-    const tx = db.transaction(STORE, 'readwrite');
+  await transaction('readwrite', tx => new Promise<void>((resolve, reject) => {
     const records = tx.objectStore(STORE);
     const key = scopeKey(scope, 'queue', stopId);
     const request = records.get(key);
@@ -274,7 +275,7 @@ export async function releaseRejectedCompletion(scope: OfflineScope, stopId: str
     tx.oncomplete = () => resolve();
     tx.onerror = () => reject(deviceStorageError(tx.error));
     tx.onabort = () => reject(failure ?? tx.error ?? new Error('Unable to unlock the rejected visit.'));
-  });
+  }));
   changed();
 }
 export async function getQueue(scope: OfflineScope): Promise<QueueItem[]> {
@@ -291,16 +292,14 @@ export async function clearDeviceData() {
   runningControllers.forEach(controller => controller.abort());
   await Promise.allSettled([...running.values()]);
   const clear = async () => {
-    const db = await database();
-    await new Promise<void>((resolve, reject) => {
-      const tx = db.transaction(STORE, 'readwrite');
-      const records = tx.objectStore(STORE);
+    await transaction('readwrite', tx => new Promise<void>((resolve, reject) => {
+        const records = tx.objectStore(STORE);
       records.clear();
       // A nonpersonal tombstone prevents an older route request from recaching data after logout.
       records.put({key:'device-epoch',value:crypto.randomUUID()});
       tx.oncomplete = () => resolve();
       tx.onerror = () => reject(deviceStorageError(tx.error));
-    });
+    }));
   };
   if (typeof navigator !== 'undefined' && navigator.locks) {
     await navigator.locks.request('alys-device-state',{mode:'exclusive'},clear);
@@ -310,9 +309,7 @@ export async function clearDeviceData() {
 }
 
 async function confirmLocalCompletion(scope: OfflineScope, item: QueueItem, photos: LocalPhoto[]) {
-  const db = await database();
-  await new Promise<void>((resolve, reject) => {
-    const tx = db.transaction(STORE, 'readwrite');
+  await transaction('readwrite', tx => new Promise<void>((resolve, reject) => {
     const records = tx.objectStore(STORE);
     const routePrefix = scopeKey(scope, 'route');
     const request = records.getAll(IDBKeyRange.bound(routePrefix, `${routePrefix}\uffff`));
@@ -330,7 +327,7 @@ async function confirmLocalCompletion(scope: OfflineScope, item: QueueItem, phot
     tx.oncomplete = () => resolve();
     tx.onerror = () => reject(deviceStorageError(tx.error));
     tx.onabort = () => reject(tx.error ?? new Error('Visit was saved on the server, but device confirmation was interrupted. Retry safely.'));
-  });
+  }));
 }
 
 class ApiFailure extends Error {
@@ -342,7 +339,7 @@ async function responseJson<T>(response: Response): Promise<T> {
     try { const body = await response.json(); if (typeof body.error === 'string') message = body.error; } catch { /* Keep bounded generic message. */ }
     throw new ApiFailure(message, response.status);
   }
-  return response.json() as Promise<T>;
+  try{return await response.json() as T;}catch{throw new Error('Server confirmation could not be read. Saved work remains on this device. Retry sync.');}
 }
 async function networkJson<T>(input: RequestInfo | URL, init: RequestInit, signal: AbortSignal): Promise<T> {
   const controller = new AbortController();
@@ -353,10 +350,10 @@ async function networkJson<T>(input: RequestInfo | URL, init: RequestInit, signa
   try { return await responseJson<T>(await fetch(input,{...init,signal:controller.signal})); }
   finally { clearTimeout(timeout);signal.removeEventListener('abort',abort); }
 }
-async function performSync(scope: OfflineScope, signal: AbortSignal,automatic=false): Promise<SyncResult> {
+async function performSync(scope: OfflineScope, signal: AbortSignal,automatic=false,resuming=false): Promise<SyncResult> {
   const result: SyncResult = { synced: 0, pending: 0, authRequired: false, completions: [] };
   const queue = await getQueue(scope);
-  const due=(item:QueueItem)=>!automatic||(![409,422].includes(item.http_status??0)&&(!item.next_retry_at||Date.parse(item.next_retry_at)<=Date.now()));
+  const due=(item:QueueItem)=>!automatic||(![409,422].includes(item.http_status??0)&&((resuming&&item.status==='auth_required')||!item.next_retry_at||Date.parse(item.next_retry_at)<=Date.now()));
   if (!queue.length) return result;
   if(!queue.some(due))return {...result,pending:queue.length};
   if (typeof navigator !== 'undefined' && !navigator.onLine) return { ...result, pending: queue.length };
@@ -368,6 +365,15 @@ async function performSync(scope: OfflineScope, signal: AbortSignal,automatic=fa
     if (active?.userId !== scope.userId || active.organizationId !== scope.organizationId) throw new ApiFailure('The active account changed. Synchronization paused.', 401);
   } catch (error) {
     result.authRequired = error instanceof ApiFailure && (error.status === 401 || error.status === 403);
+    for(const item of queue.filter(due)){
+      item.status=signal.aborted?'pending':result.authRequired?'auth_required':'failed';
+      item.http_status=error instanceof ApiFailure?error.status:undefined;
+      item.error=signal.aborted?'Synchronization paused while the app was inactive. Return to the app to continue.':result.authRequired?'Sign in again to sync this device. Your queued visits are still saved.':'Connection to the server failed. Saved visits and photos remain on this device. Retry with the app open.';
+      item.next_retry_at=new Date(Date.now()+(result.authRequired?300000:15000)).toISOString();
+      if(signal.aborted)delete item.next_retry_at;
+      try{await writeScoped(scope,scopeKey(scope,'queue',item.payload.stop_id),item);}catch{break;}
+    }
+    changed();
     return { ...result, pending: queue.length };
   }
   const attempted=new Set<string>();
@@ -379,21 +385,24 @@ async function performSync(scope: OfflineScope, signal: AbortSignal,automatic=fa
     try {
       const photos = await listPhotos(scope, item.payload.stop_id);
       const paths = [...item.payload.photo_paths];
+      let repairRejectedPhoto=[400,413].includes(item.http_status??0)&&(item.failure_stage==='photo'||/JPEG|photo|upload/i.test(item.error??''));
       for (const [index,photo] of photos.entries()) {
         if (!photo.path) {
-          if (!photo.upload_blob) {
+          if (repairRejectedPhoto||!await isPreparedPhoto(photo.upload_blob)) {
             publishSyncProgress(scope,{stopId:item.payload.stop_id,phase:'preparing',photo:index+1,photos:photos.length,percent:0});
-            photo.upload_blob = await compressPhoto(photo.blob);
+            photo.upload_blob = await compressPhoto(await snapshotPhoto(photo.blob));
             // Keep the original blob and all legacy record fields; persist conversion before upload.
             await writeScoped(scope,scopeKey(scope, 'photo', photo.id), photo);
           }
+          repairRejectedPhoto=false;
           const form = new FormData();
           form.set('stop_id', item.payload.stop_id);
           form.set('photo_id', photo.id);
-          form.set('file', photo.upload_blob!, `${photo.id}.jpg`);
+          form.set('file', new Blob([photo.upload_blob!],{type:'image/jpeg'}), `${photo.id}.jpg`);
           const progress=(percent:number)=>publishSyncProgress(scope,{stopId:item.payload.stop_id,phase:'uploading',photo:index+1,photos:photos.length,percent});
           progress(0);
           const {path}=await responseJson<{path:string}>(await uploadPhoto(form,{'X-ALYS-User-ID':scope.userId,'X-ALYS-Organization-ID':scope.organizationId},signal,progress));
+          if(path!==scope.organizationId+'/'+item.payload.stop_id+'/'+photo.id.toLowerCase()+'.jpg')throw new Error('Photo confirmation was invalid. Your original photo remains saved. Retry sync.');
           progress(100);
           photo.path = path;
           // Persist each successful upload before continuing; interrupted sync reuses deterministic photo_id.
@@ -411,6 +420,7 @@ async function performSync(scope: OfflineScope, signal: AbortSignal,automatic=fa
       const saved = await networkJson<{visit_id:string;next_stop_id:string|null}>('/api/visits', {
         method:'POST', headers:{'Content-Type':'application/json','X-ALYS-User-ID':scope.userId,'X-ALYS-Organization-ID':scope.organizationId}, body:JSON.stringify(item.payload), credentials:'same-origin'
       },signal);
+      if(saved.visit_id!==item.payload.id)throw new Error('Visit confirmation was invalid. Saved work remains on this device. Retry sync.');
       // Remove local blobs only after the server has confirmed the immutable visit transaction.
       await confirmLocalCompletion(scope,item,photos);
       publishSyncProgress(scope,{stopId:item.payload.stop_id,phase:'synced',photo:photos.length,photos:photos.length,percent:100});
@@ -420,12 +430,13 @@ async function performSync(scope: OfflineScope, signal: AbortSignal,automatic=fa
       const auth = error instanceof ApiFailure && (error.status === 401 || error.status === 403);
       publishSyncProgress(scope,{stopId:item.payload.stop_id,phase:'failed',photo:0,photos:0,percent:0});
       item.failure_stage = stage;
-      item.attempts=(item.attempts??0)+1;
+      item.attempts=(item.attempts??0)+(signal.aborted?0:1);
       item.next_retry_at=new Date(Date.now()+(auth?300000:Math.min(300000,15000*2**Math.min(item.attempts-1,5)))).toISOString();
-      item.status = auth ? 'auth_required' : 'failed';
+      item.status = signal.aborted?'pending':auth ? 'auth_required' : 'failed';
       item.http_status = error instanceof ApiFailure ? error.status : undefined;
       if(stage==='visit' && item.http_status===422)item.completion_attempted=false;
       item.error = error instanceof Error ? error.message.slice(0, 240) : 'Synchronization was interrupted. Please retry.';
+      if(signal.aborted){delete item.next_retry_at;item.error='Synchronization paused while the app was inactive. Return to the app to continue.';}
       try { await writeScoped(scope,scopeKey(scope, 'queue', item.payload.stop_id), item); } catch { break; }
       result.authRequired ||= auth;
       if (auth) break;
@@ -438,25 +449,26 @@ async function performSync(scope: OfflineScope, signal: AbortSignal,automatic=fa
   changed();
   return result;
 }
-export function syncQueue(scope: OfflineScope,options:{automatic?:boolean}={}): Promise<SyncResult> {
+export function pauseSynchronization(scope:OfflineScope){runningControllers.get(prefix(scope))?.abort();}
+export function syncQueue(scope: OfflineScope,options:{automatic?:boolean;resuming?:boolean}={}): Promise<SyncResult> {
   logoutChannel();
   const key = prefix(scope);
   const existing = running.get(key);
-  if (existing) return existing;
+  if (existing){if(options.resuming&&runningControllers.get(key)?.signal.aborted)return existing.catch(()=>undefined).then(()=>syncQueue(scope,options));return existing;}
   const controller = new AbortController();
   runningControllers.set(key,controller);
   const operation = async () => {
     if (typeof navigator !== 'undefined' && navigator.locks) {
-      return navigator.locks.request(`alys-sync-${key}`, () => performSync(scope,controller.signal,options.automatic));
+      return navigator.locks.request(`alys-sync-${key}`, {signal:controller.signal}, () => performSync(scope,controller.signal,options.automatic,options.resuming));
     }
-    return performSync(scope,controller.signal,options.automatic);
+    return performSync(scope,controller.signal,options.automatic,options.resuming);
   };
   const task = (async () => {
     if (typeof navigator !== 'undefined' && navigator.locks) {
-      return navigator.locks.request('alys-device-state',{mode:'shared'},operation);
+      return navigator.locks.request('alys-device-state',{mode:'shared',signal:controller.signal},operation);
     }
     return operation();
-  })().finally(() => {running.delete(key);runningControllers.delete(key);});
+  })().catch(async error=>{if(controller.signal.aborted)return {synced:0,pending:(await getQueue(scope)).length,authRequired:false,completions:[]};throw error;}).finally(() => {running.delete(key);runningControllers.delete(key);});
   running.set(key, task);
   return task;
 }
