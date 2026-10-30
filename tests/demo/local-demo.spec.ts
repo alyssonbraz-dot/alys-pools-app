@@ -56,7 +56,7 @@ test('standalone HTML has no external dependencies, saves photo and draft, compl
  await expect(page.getByRole('heading',{name:'Demo Residence 02',exact:true})).toBeVisible();
  await expect(page.getByLabel('Main pool Free Chlorine',{exact:true})).toHaveValue('');
  await expect(page.getByRole('checkbox',{name:'Brush Pool',exact:true})).not.toBeChecked();
- await page.getByRole('link',{name:'History',exact:true}).click();
+ await page.getByRole('link',{name:'More',exact:true}).click();await page.getByRole('link',{name:'History',exact:true}).click();
  const current=page.locator('.history-record').first();
  await current.locator('summary').click();
  await expect(current).toContainText('PRIVATE TEST NOTE');

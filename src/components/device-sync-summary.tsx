@@ -6,8 +6,9 @@ import {
   getQueue,
   type OfflineScope,
 } from "@/lib/offline/store";
+import {Icon} from "./design/icon";
 import { T } from "./i18n";
-export function DeviceSyncSummary({ scope }: { scope: OfflineScope }) {
+export function DeviceSyncSummary({ scope,compact=false }: { scope: OfflineScope;compact?:boolean }) {
   const [counts, setCounts] = useState<{
     pending: number;
     failed: number;
@@ -37,6 +38,7 @@ export function DeviceSyncSummary({ scope }: { scope: OfflineScope }) {
       clearInterval(timer);
     };
   }, [scope.userId, scope.organizationId, scope]);
+  if(compact)return <Link className={'device-sync-strip '+(counts?.failed?'has-failures':'')} href="/stops"><Icon name="sync"/><span><T text="This device"/> · <T text={counts?`${counts.pending} pending sync · ${counts.failed} failed / sign-in required`:"Checking local storage…"}/></span><Icon name="chevron"/></Link>;
   return (
     <p className="device-sync">
       <T text="This device" />:{" "}

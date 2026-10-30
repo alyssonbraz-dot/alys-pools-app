@@ -252,7 +252,7 @@ export function CustomerOnboarding({
                 }
               >
                 {["active", "lead", "inactive"].map((s) => (
-                  <option key={s}>{s}</option>
+                  <option key={s} value={s}><T text={s}/></option>
                 ))}
               </select>
             </label>
@@ -268,9 +268,11 @@ export function CustomerOnboarding({
                 })
               }
             />
+          </div><details><summary><T text="Billing address & internal notes"/></summary><div className="form-grid">
             {customerField("billing_address", "Billing address (if different)")}
             {customerField("internal_notes", "Internal notes")}
-          </div>
+          </div></details>
+
         </section>
         {data.properties.map((property, pi) => (
           <section className="panel form-section" key={pi}>

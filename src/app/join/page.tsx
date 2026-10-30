@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { T } from "@/components/i18n";
+import { T,LanguageSwitcher } from "@/components/i18n";
 export default function Join() {
   const [link, setLink] = useState({ invitation: "", token_hash: "" }),
     [error, setError] = useState(""),
@@ -33,7 +33,7 @@ export default function Join() {
     }
   }
   return (
-    <main className="panel login-card">
+    <main className="panel login-card"><div className="language-row"><LanguageSwitcher/></div><p className="page-kicker"><T text="ALYS POOL SERVICES"/></p>
       <h1>
         <T text="Join ALYS Pool Services" />
       </h1>

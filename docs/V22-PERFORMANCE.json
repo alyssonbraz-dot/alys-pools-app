@@ -1,0 +1,46 @@
+{
+  "date_local": "2026-10-30",
+  "timezone": "America/New_York",
+  "approved_base": "ee6399d",
+  "conditions": [
+    "Supabase Auth/PostgreSQL/Storage locais, sem envio de email.",
+    "Chromium com perfis iPhone 13 e Pixel 5; não são dispositivos físicos.",
+    "Editor em 390 CSS px; matriz de layout também cobre 320,375,390,430,768,1024.",
+    "Uma adição química, FC/pH por presets, Mark all done, uma seleção de arquivo; câmera e manutenção físicas excluídas.",
+    "Upload suspenso deliberadamente durante Finish & Next; aceitação do servidor conferida separadamente.",
+    "layoutShift reinicia a cada documento: a amostra final cobre retomada/reconexão após reload offline, não CLS agregado de toda sessão.",
+    "Execução sintética única por perfil, sem percentis nem benchmark da versão anterior."
+  ],
+  "full_suite_samples": {
+    "mobile-chromium": {
+      "layoutShift": 0.18401578247664313,
+      "initialRouteReadyMs": 631,
+      "finishNextMs": 102,
+      "chemicalClicks": 3,
+      "routineButtonClicks": 8,
+      "photoFileSelections": 1,
+      "width": 390,
+      "environment": "local Supabase / Chromium emulation; camera OS interactions excluded"
+    },
+    "android-chromium": {
+      "layoutShift": 0,
+      "initialRouteReadyMs": 216,
+      "finishNextMs": 120,
+      "chemicalClicks": 3,
+      "routineButtonClicks": 8,
+      "photoFileSelections": 1,
+      "width": 390,
+      "environment": "local Supabase / Chromium emulation; camera OS interactions excluded"
+    }
+  },
+  "final_build_mobile_followup": {
+    "layoutShift": 0,
+    "initialRouteReadyMs": 295,
+    "finishNextMs": 91,
+    "chemicalClicks": 3,
+    "routineButtonClicks": 8,
+    "photoFileSelections": 1,
+    "width": 390,
+    "environment": "local Supabase / Chromium emulation; camera OS interactions excluded"
+  }
+}

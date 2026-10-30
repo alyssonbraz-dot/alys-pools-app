@@ -75,7 +75,7 @@ export const stopMutationSchema = z.discriminatedUnion("action", [
     technician_id: z.uuid(),
   }),
   z.object({ action: z.literal("start"), stop_id: z.uuid() }),
-  z.object({ action: z.literal("skip"), stop_id: z.uuid() }),
+  z.object({ action: z.literal("skip"), stop_id: z.uuid(),reason:z.string().trim().min(1).max(500),request_id:z.uuid() }),
   z.object({ action: z.literal("restore"), stop_id: z.uuid() }),
   z.object({
     action: z.literal("reorder"),

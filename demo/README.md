@@ -1,6 +1,6 @@
 # ALYS Fast Route — demonstração local
 
-Esta é a demonstração **do fluxo atual**, em inglês, azul-escuro, com dados fictícios. Não precisa instalar Node, Docker ou Supabase.
+Esta é a demonstração local com a identidade visual V2.2, em inglês, azul-escuro, com dados fictícios. Não precisa instalar Node, Docker ou Supabase.
 
 Cloro livre possui atalhos de **1, 3 e 5 ppm**; pH tem **7.0, 7.2, 7.4, 7.6, 7.8 e 8.0**. Também é possível digitar valores diferentes. São leituras da água; produtos aplicados continuam registrados separadamente com quantidade e unidade.
 
@@ -60,3 +60,5 @@ Testes automatizados em Chromium com viewport mobile verificam ausência de depe
 O idioma inicial é inglês. Use o seletor no cabeçalho para português ou espanhol; a escolha fica salva neste navegador. As leituras e notas são preservadas ao trocar o idioma. O tema padrão é azul-escuro. Inclui calendário semanal e cadastro local, mas não mapa online, roteamento viário ou convites. Os detalhes internos da visita aparecem no histórico e ficam fora da prévia do relatório do cliente.
 
 A aba **Stops** mostra os atendimentos do dia atual, com filtros Remaining/Completed/All e início rápido de serviço. **Route** mantém o calendário e a reordenação.
+
+Na navegação V2.2, **Customers** abre o cadastro e **More** dá acesso a History. A demonstração conserva seu fluxo local simplificado; autenticação, modo sequencial e sincronização de produção são testados no aplicativo Next/Supabase.

@@ -1,7 +1,8 @@
+import {PageHeader} from './design/primitives';
 import {LocaleInput,T,LocaleSelect} from '@/components/i18n';
 import type { ReactNode } from 'react';
-export function Heading({title,description}:{title:string;description:string}) { return <><div className="page-kicker"><T text={"ALYS POOL SERVICES"}/></div><div className="page-header"><div><h1><T text={title}/></h1><p><T text={description}/></p></div></div></>; }
-export function Panel({title,children}:{title:string;children:ReactNode}) { return <section className="panel mb-5"><div className="panel-top"><h2><T text={title}/></h2></div><div className="p-5">{children}</div></section>; }
+export function Heading({title,description}:{title:string;description:string}) {return <PageHeader title={title} description={description}/>;}
+export function Panel({title,children}:{title:string;children:ReactNode}) {return <section className="panel mb-5"><div className="panel-top"><h2><T text={title}/></h2></div><div className="panel-body">{children}</div></section>;}
 export function Field({label,name,type='text',value='',required=false}:{label:string;name:string;type?:string;value?:string|number;required?:boolean}) {return <label className="form-field"><T text={label}/><LocaleInput name={name} type={type} defaultValue={value} required={required} maxLength={type==='number'?undefined:300} min={type==='number'?1:undefined} step={type==='number'?'any':undefined}/></label>;}
 export function Status({value='active'}:{value?:string}){return <label className="form-field"><T text="Status"/><LocaleSelect name="status" defaultValue={value}><option value="active"><T text="Active"/></option><option value="inactive"><T text="Inactive"/></option></LocaleSelect></label>;}
 export function Feedback({message}:{message?:string}) { const messages:Record<string,string>={inprogress:'Finish or skip the in-progress stop before changing its schedule.',saved:'Changes saved.',invalid:'Check the fields and try again.',failed:'Unable to save. Check linked records and your permissions.'};return message&&messages[message]?<p role="status" className="notice mb-5"><T text={messages[message]}/></p>:null; }

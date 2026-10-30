@@ -1,0 +1,6 @@
+'use client';
+import {useEffect,useRef,type ReactNode} from 'react';
+import {T,useLanguage} from '@/components/i18n';
+import {Icon} from './icon';
+export function BottomSheet({open,title,onClose,children}:{open:boolean;title:string;onClose:()=>void;children:ReactNode}){const dialog=useRef<HTMLDialogElement>(null);const {t}=useLanguage();useEffect(()=>{const node=dialog.current;if(open&&!node?.open)node?.showModal();else if(!open&&node?.open)node.close();},[open]);return <dialog className="bottom-sheet" ref={dialog} aria-label={t(title)} onCancel={onClose} onClose={onClose}><div className="bottom-sheet-handle"/><header><h2><T text={title}/></h2><button className="icon-button" type="button" aria-label={t('Close')} onClick={onClose}><Icon name="close"/></button></header>{children}</dialog>;}
+export function ConfirmationDialog({open,title,children,onCancel,onConfirm,confirmLabel='Confirm',busy=false}:{open:boolean;title:string;children:ReactNode;onCancel:()=>void;onConfirm:()=>void;confirmLabel?:string;busy?:boolean}){return <BottomSheet open={open} title={title} onClose={onCancel}>{children}<div className="sheet-actions"><button className="btn btn-secondary" onClick={onCancel} disabled={busy}><T text="Cancel"/></button><button className="btn btn-primary" onClick={onConfirm} disabled={busy}><T text={confirmLabel}/></button></div></BottomSheet>;}

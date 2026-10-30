@@ -2,26 +2,24 @@
 
 Aplicativo da ALYS Pool Services LLC para registrar manutenção de piscinas pelo celular. Inglês por padrão, com português e espanhol; tema azul-escuro, USD e ppm. Unidades imperiais/métricas e fusos `America/New_York`/`America/Sao_Paulo` são configuráveis por empresa/imóvel.
 
-**Fluxo do técnico:** Stops → Start Service → Readings → Chemicals → Checklist → Photo → Complete & Next. A visita fica salva no aparelho primeiro; **Synced** confirma que o servidor a registrou. O relatório é processado depois, sem bloquear o próximo cliente.
+**Fluxo do técnico:** Current Pool → Start Service → Readings → Chemicals → Checklist → Photo → Finish & Next. A visita fica salva no aparelho primeiro; **Synced** confirma que o servidor a registrou. O relatório é processado depois, sem bloquear o próximo cliente.
 
 **Celular como interface principal:** navegação inferior fixa, calendário diário compacto, botões de pelo menos 44 px nos atalhos de campo e formulários em uma coluna. Clientes e equipe aparecem como cartões em telas pequenas. Salvar/concluir fica acima da navegação inferior, com espaço para a área segura do aparelho. O tema azul-escuro e os três idiomas foram preservados.
 
 Este README é o roteiro de entrega e publicação com **Netlify Free + Supabase Free + Resend Free**, usando o domínio **alyspools.com**, registrado na Hostinger. Não é necessário contratar hospedagem na Hostinger. A renovação do domínio já comprado continua sendo responsabilidade do titular; planos gratuitos têm cotas e não garantem operação ilimitada sem custo.
 
 
-## Atualização V2.1.2 mobile
+## V2.2 — interface reconstruída para celular
 
-A branch `fix/alys-v2-1-2-mobile-hotfix` recupera fotos da fila antiga, converte HEIC/HEIF localmente, comprime JPEG até 2 MiB e permite trocar uma foto sem recriar a visita quando a conclusão ainda não foi enviada/aceita. Corrige as cinco abas em telas pequenas e reúne falhas de sincronização em uma notificação. Consulte [diagnóstico, recuperação no iPhone e testes](docs/V212-MOBILE-HOTFIX.md).
+A branch de revisão `feature/alys-v2-2-complete-redesign` traz navegação por perfil, componentes compartilhados e todas as telas na nova identidade visual. O técnico abre a piscina atual, registra leituras e químicos, tira a foto e usa **Finish & Next**; o próximo stop abre após a gravação local, sem esperar upload/e-mail. Proprietário: Dashboard, Customers, Routes e More, com History, Reports, Finance, Team e Settings.
 
-**Não limpe os dados do app enquanto houver visitas pendentes.** Depois do deploy aprovado, use a mesma conta/aparelho e tente sincronizar; o IndexedDB existente é preservado. V2.1.2 não adiciona migrations: instalações V2.1.1 continuam no schema 24. Merge/deploy dependem de aprovação.
+Consulte a [entrega V2.2](docs/V22-REDESIGN.md) para inventário, capturas antes/depois, benchmarks, testes e aceite em aparelho físico. A V2.1.2 de fotos continua preservada, incluindo a fila antiga do IndexedDB.
 
-## Atualização V2.1.1 de uma instalação existente
+**Atualização de V2.1.2:** a migration aditiva **025** registra motivos de skip e é necessária antes do frontend V2.2. Não altera visitas existentes. A aplicação remota, merge e deploy exigem autorização; não execute seeds nem `db reset` em produção. Instalações novas usam migrations 001–025. O roteiro gratuito de Netlify, Supabase, Resend e DNS Hostinger abaixo continua válido.
 
-Hotfix na branch **`fix/alys-v2-1-1-customer-route`**, criada do `main` `f7c01d3`. Corrige a edição independente de clientes, adiciona navegação diária para técnicos e completa os catálogos EN/PT/ES. Consulte [diagnóstico, testes e publicação V2.1.1](docs/V211-HOTFIX.md) e [cobertura de traduções](docs/V211-LOCALIZATION.md).
+## Atualizações anteriores
 
-Em produção V2.1 com migrations 001–023, revise e aplique **somente 024** antes do merge/deploy. Não recrie o projeto, proprietário ou clientes. Ordem: **revisão → migration 024 → merge → deploy Netlify → aceite**. Nenhuma migration remota, deploy ou e-mail real é executado automaticamente.
-
-Para atualização de uma versão mais antiga, consulte também o [guia V2.1](docs/V21-DELIVERY.md) antes do hotfix. Instalações novas usam todas as migrations 001–024.
+Os diagnósticos e históricos continuam em [V2.1.2 — fotos e recuperação](docs/V212-MOBILE-HOTFIX.md) e [V2.1.1 — clientes, datas e idiomas](docs/V211-HOTFIX.md). Para publicar a versão atual, siga a entrega V2.2 e aplique todas as migrations pendentes até 025, com backup e aprovação. Não recrie empresa, proprietário ou clientes existentes.
 
 ## O que está incluído
 
@@ -57,6 +55,16 @@ npm ci
 cp .env.production.example .env.production.local
 ```
 
+Para testar esta entrega antes do merge aprovado, selecione a branch de revisão e reinstale as dependências:
+
+```bash
+git fetch origin feature/alys-v2-2-complete-redesign
+git switch --track origin/feature/alys-v2-2-complete-redesign
+npm ci
+```
+
+Se a branch local já existir, use `git switch feature/alys-v2-2-complete-redesign`. Para testar sem publicar, siga [desenvolvimento local](docs/LOCAL-DEVELOPMENT.md); o teste local usa `.env.example`, não credenciais de produção.
+
 Se já tiver o projeto, atualize seu checkout e execute `npm ci`. Preserve arquivos `.env.*.local` existentes: eles são privados e ignorados pelo Git. No Windows, use WSL2/Ubuntu para os comandos de terminal deste guia.
 
 ## 3. Criar o Supabase e aplicar o banco
@@ -76,7 +84,7 @@ npx --yes supabase@2.121.0 migration list --linked
 
 `SEU_PROJECT_REF` é o identificador no painel/URL do projeto Supabase. Confira que o projeto vinculado é o correto antes de confirmar `db push`. Em banco já utilizado, faça backup antes da atualização e revise as migrations pendentes.
 
-A lista remota deve incluir **001 a 024**, terminando em `202610290024_customer_schedule_edit.sql`. Elas criam tabelas, políticas RLS, bucket privado, fila de relatórios e provisionamento do proprietário. Não copie somente a última migration e não torne o bucket `visit-photos` público.
+A lista remota deve incluir **001 a 025**, terminando em `202610300025_route_skip_events.sql`. Elas criam tabelas, políticas RLS, bucket privado, fila de relatórios e provisionamento do proprietário. Não copie somente a última migration e não torne o bucket `visit-photos` público.
 
 **Nunca execute `db reset`, `supabase/seed.dev.sql` ou `tests/integration/setup.mjs` na produção.** Não há seed automático de clientes reais ou fictícios no deploy.
 
