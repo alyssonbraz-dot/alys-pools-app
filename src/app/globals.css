@@ -39,3 +39,14 @@
  .customer-dialog{width:calc(100% - 20px);max-width:560px;max-height:calc(100dvh - 24px);padding:16px}.customer-dialog-head{position:sticky;top:-16px;background:#fff;z-index:2;padding-block:10px;gap:8px}.customer-dialog form>.btn-primary{position:sticky;bottom:0;z-index:1;width:100%;box-shadow:0 -6px 16px #fff}
 }
 @media(max-width:770px){.range-editor{grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px}.range-editor>:first-child{grid-column:1/-1}.range-editor .form-field{min-width:0}.form-section{scroll-margin-top:80px}.onboarding input:focus,.onboarding select:focus,.onboarding textarea:focus,.settings-editor input:focus{scroll-margin-block:90px 160px}}
+
+/* V2.1.2: equal-width mobile tabs with bounded translated labels and iPhone safe areas. */
+@media(max-width:770px){
+ .mobile-tabbar{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:2px;padding:6px max(4px,env(safe-area-inset-right)) calc(6px + env(safe-area-inset-bottom)) max(4px,env(safe-area-inset-left));align-items:stretch}
+ .mobile-tabbar:has(a:nth-child(3):last-child){grid-template-columns:repeat(3,minmax(0,1fr))}
+ .mobile-tabbar a{display:grid;grid-template-rows:24px minmax(28px,auto);align-content:center;justify-items:center;gap:4px;min-width:0;min-height:60px;padding:4px 1px;text-align:center}
+ .mobile-tabbar .mobile-nav-icon{font-size:22px;line-height:24px;height:24px}
+ .mobile-tabbar .mobile-nav-label{display:block;width:100%;min-width:0;font-size:11px;line-height:14px;font-weight:700;overflow-wrap:anywhere;hyphens:auto}
+ .content{padding-bottom:calc(124px + env(safe-area-inset-bottom))}
+ .save-service,.field-complete-bar{bottom:calc(92px + env(safe-area-inset-bottom))}
+}

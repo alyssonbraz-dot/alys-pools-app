@@ -1,6 +1,6 @@
 {
   "name": "alys-pool-manager",
-  "version": "2.1.1",
+  "version": "2.1.2",
   "private": true,
   "engines": {
     "node": ">=22.0.0"
@@ -17,6 +17,7 @@
   "dependencies": {
     "@supabase/ssr": "0.12.7",
     "@supabase/supabase-js": "^2.0.0",
+    "heic-to": "1.6.7",
     "leaflet": "^1.9.4",
     "next": "16.4.2",
     "react": "^19.2.0",

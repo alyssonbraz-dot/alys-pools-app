@@ -89,9 +89,9 @@ test('mobile service persists JPEG, snapshot and one outbox; offline visit survi
   await context.setOffline(true);
   await page.getByRole('button',{name:'COMPLETE & NEXT →',exact:true}).click();
   await expect(page.getByRole('heading',{name:'Test Property 3',exact:true})).toBeVisible();
-  await expect(page.getByText('1 visit waiting to sync',{exact:true})).toBeVisible();
+  await expect(page.getByText('1 pending visit',{exact:true})).toBeVisible();
   await page.reload();
-  await expect(page.getByText('1 visit waiting to sync',{exact:true})).toBeVisible({timeout:30000});
+  await expect(page.getByText('1 pending visit',{exact:true})).toBeVisible({timeout:30000});
   const {count:before}=await admin.from('visits').select('id',{count:'exact',head:true}).eq('route_stop_id',fixture.stops[1].id);expect(before).toBe(0);
   await context.setOffline(false);
   await expect.poll(async()=>{const {count,error}=await admin.from('visits').select('id',{count:'exact',head:true}).eq('route_stop_id',fixture.stops[1].id);if(error)throw error;return count;},{timeout:30000}).toBe(1);

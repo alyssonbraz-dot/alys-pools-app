@@ -9,6 +9,12 @@ Aplicativo da ALYS Pool Services LLC para registrar manutenção de piscinas pel
 Este README é o roteiro de entrega e publicação com **Netlify Free + Supabase Free + Resend Free**, usando o domínio **alyspools.com**, registrado na Hostinger. Não é necessário contratar hospedagem na Hostinger. A renovação do domínio já comprado continua sendo responsabilidade do titular; planos gratuitos têm cotas e não garantem operação ilimitada sem custo.
 
 
+## Atualização V2.1.2 mobile
+
+A branch `fix/alys-v2-1-2-mobile-hotfix` recupera fotos da fila antiga, converte HEIC/HEIF localmente, comprime JPEG até 2 MiB e permite trocar uma foto sem recriar a visita quando a conclusão ainda não foi enviada/aceita. Corrige as cinco abas em telas pequenas e reúne falhas de sincronização em uma notificação. Consulte [diagnóstico, recuperação no iPhone e testes](docs/V212-MOBILE-HOTFIX.md).
+
+**Não limpe os dados do app enquanto houver visitas pendentes.** Depois do deploy aprovado, use a mesma conta/aparelho e tente sincronizar; o IndexedDB existente é preservado. V2.1.2 não adiciona migrations: instalações V2.1.1 continuam no schema 24. Merge/deploy dependem de aprovação.
+
 ## Atualização V2.1.1 de uma instalação existente
 
 Hotfix na branch **`fix/alys-v2-1-1-customer-route`**, criada do `main` `f7c01d3`. Corrige a edição independente de clientes, adiciona navegação diária para técnicos e completa os catálogos EN/PT/ES. Consulte [diagnóstico, testes e publicação V2.1.1](docs/V211-HOTFIX.md) e [cobertura de traduções](docs/V211-LOCALIZATION.md).

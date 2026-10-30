@@ -9,14 +9,13 @@ import Image from 'next/image';
 import dynamic from 'next/dynamic';
 import {WeekCalendar,Arrival} from '@/components/route-calendar';
 import {ISSUE_FLAGS,ISSUE_LABELS} from '@/lib/field/issues';
-import {SyncProgress} from './sync-progress';
+import {SyncNotice} from './sync-notice';
 const RoutePlanner=dynamic(()=>import('@/components/route-planner').then(m=>m.RoutePlanner),{ssr:false});
 import Link from 'next/link';
 import { useCallback, useEffect, useEffectEvent, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import type { CompletionPayload, Dosage, PoolConfig, PoolVisit, ReadingKey, RouteData, RouteStop } from '@/lib/field/types';
 import { READING_LABELS } from '@/lib/field/types';
-import { compressPhoto } from '@/lib/field/photos';
-import { cacheRoute, enqueueCompletion, getActiveScope, getCachedRoute, getDraft, getDeviceEpoch, getQueue, listPhotos, removePhoto, releaseRejectedCompletion, saveDraft, savePhoto, syncQueue, type LocalPhoto, type OfflineScope, type QueueItem } from '@/lib/offline/store';
+import { cacheRoute, prepareDraftPhoto, enqueueCompletion, getActiveScope, getCachedRoute, getDraft, getDeviceEpoch, getQueue, listPhotos, removePhoto, releaseRejectedCompletion, saveDraft, savePhoto, syncQueue, type LocalPhoto, type OfflineScope, type QueueItem } from '@/lib/offline/store';
 import { reconcileDraft } from './draft';
 import './field.css';
 import {ChemistryHistory} from './chemistry-history';
@@ -53,6 +52,7 @@ export function FieldApp({initialStopId,initialDate,initialTimeZone="America/New
   const [online,setOnline]=useState(!offline);
   const [loading,setLoading]=useState(!initialRoute);
   const [syncing,setSyncing]=useState(false);
+  const [syncError,setSyncError]=useState('');
   const [error,setError]=useState('');
   const [notice,setNotice]=useState('');
   const [cached,setCached]=useState(false);
@@ -93,15 +93,15 @@ export function FieldApp({initialStopId,initialDate,initialTimeZone="America/New
   const flush=useCallback(async(currentScope:OfflineScope,manual=false)=>{
     const pending=await getQueue(currentScope);
     if(!pending.length)return;
-    setSyncing(true);
+    setSyncing(true);setSyncError('');
     try {
       const result=await syncQueue(currentScope,{automatic:!manual});
       await refreshQueue(currentScope);
-      if(result.authRequired)setError('Sign in again to sync this device. Your queued visits are still saved.');
-      else if(result.pending)setNotice(`${result.pending} visit${result.pending===1?' is':'s are'} still saved on this device and waiting to sync.`);
+      if(result.authRequired)setSyncError('Sign in again to sync this device. Your queued visits are still saved.');
+      else if(result.pending)setNotice('');
       else if(result.synced)setNotice(`${result.synced} visit${result.synced===1?'':'s'} synced. Email delivery is tracked separately in History.`);
       if(result.synced){const saved=await getCachedRoute(currentScope,date,timeZone);if(selectedDay.current===date)setRoute(current=>current&&current.userId===currentScope.userId&&current.orgId===currentScope.organizationId&&current.date===date?{...current,stops:current.stops.map(stop=>saved?.stops.some(s=>s.id===stop.id&&s.status==='completed')?{...stop,status:'completed'}:stop)}:current);}
-    } catch(cause){setError(messageOf(cause));}
+    } catch(cause){setSyncError(messageOf(cause));}
     finally {setSyncing(false);}
   },[date,refreshQueue,timeZone]);
 
@@ -185,7 +185,7 @@ export function FieldApp({initialStopId,initialDate,initialTimeZone="America/New
     const completion={...payload,completed_at:payload.completed_at??new Date().toISOString()};
     await enqueueCompletion(scope,completion);
     await refreshQueue(scope);
-    setNotice('Visit saved on this device. Waiting for a confirmed sync.');
+    setNotice('');
     const completedStop=route.stops.find(s=>s.id===payload.stop_id);
     const ids=new Set([...queuedIds,payload.stop_id]);
     const candidates=route.stops.filter(s=>s.technician_id===completedStop?.technician_id&&!ids.has(s.id)&&!['completed','skipped'].includes(s.status));
@@ -196,11 +196,11 @@ export function FieldApp({initialStopId,initialDate,initialTimeZone="America/New
 
   return <div className={`field-app ${isDaily?'daily-mode':''}`}>
     <div className="field-row-between"><span className="field-kicker"><T text="FAST ROUTE"/></span><span className="field-tiny"><span className={`field-network-dot ${online?'':'field-network-dot-offline'}`}/> {online?<T text={"Online"}/>:<T text={"Offline"}/>}{syncing?<T text={" · Syncing…"}/>:''}</span></div>
-    {scope&&<SyncProgress scope={scope} name={id=>route?.stops.find(s=>s.id===id)?.property.name??'Visit'}/>}
-    {notice&&<div className="field-alert" role="status"><T text={notice}/><button className="field-button field-button-quiet field-button-small" onClick={()=>setNotice('')} aria-label={t("Dismiss notification")}>×</button></div>}
+    {scope&&<SyncNotice scope={scope} queue={queue} syncError={syncError} name={id=>route?.stops.find(s=>s.id===id)?.customer.name??t('Visit')} online={online} syncing={syncing} onRetry={()=>void flush(scope,true)} onChanged={()=>refreshQueue(scope)} onEdit={id=>{void releaseRejectedCompletion(scope,id).then(async()=>{await refreshQueue(scope);await loadRoute(date,scope);openStop(id);}).catch(cause=>setError(messageOf(cause)));}}/>}
+    {notice&&!queue.length&&<div className="field-alert" role="status"><T text={notice}/><button className="field-button field-button-quiet field-button-small" onClick={()=>setNotice('')} aria-label={t("Dismiss notification")}>×</button></div>}
     {error&&<div className="field-alert field-alert-warning" role="alert"><T text={error}/>{error.toLowerCase().includes('sign in')&&<Link className="field-auth-link" href="/login"><T text="Sign in"/></Link>}</div>}
-    {cached&&<p className="field-alert field-alert-warning"><T text="Cached route. Changes and photos stay on this device until a signed-in connection confirms synchronization."/></p>}
-    {queue.length>0&&<div className="field-alert field-alert-warning"><div className="field-grow"><strong>{queue.length} <T text="visit"/>{queue.length===1?'':<T text={'s'}/>} <T text="waiting to sync"/></strong><ul className="field-queue-list">{queue.map(item=><li key={item.id}><strong><T text={item.status==='pending'?'Pending Sync':item.status==='auth_required'?'Sign in to sync':'Failed'}/></strong> · {route?.stops.find(s=>s.id===item.payload.stop_id)?.property.name||'Visit'}{item.error?<>: <T text={item.error}/></>:<T text={": stored on this device"}/>}{item.http_status===422&&scope&&<button className="field-button field-button-secondary field-button-small" onClick={()=>{void releaseRejectedCompletion(scope,item.payload.stop_id).then(async()=>{await refreshQueue(scope);await loadRoute(date,scope);openStop(item.payload.stop_id);}).catch(cause=>setError(messageOf(cause)));}}><T text="Edit rejected visit"/></button>}</li>)}</ul></div><button className="field-button field-button-secondary field-button-small" disabled={!online||syncing||!scope} onClick={()=>scope&&void flush(scope,true)}><T text="Retry sync"/></button></div>}
+    {cached&&!queue.length&&<p className="field-alert field-alert-warning"><T text="Cached route. Changes and photos stay on this device until a signed-in connection confirms synchronization."/></p>}
+
     {loading&&!route?<><h1 className="field-heading"><T text="Loading your route…"/></h1><div className="field-skeleton"/><div className="field-skeleton"/></>:null}
     {!loading&&!route?<div className="field-empty"><h1 className="field-heading"><T text="Your route is unavailable"/></h1><p><T text="Connect and sign in to save today’s route for field use."/></p><Link className="field-button" href="/login"><T text="Sign in"/></Link><button className="field-button field-button-secondary" onClick={()=>void loadRoute(date,scope)}><T text="Try again"/></button></div>:null}
     {route&&scope&&(stop?<VisitEditor unitSystem={route?.unitSystem} key={stop.id} stop={stop} index={serviceStops.indexOf(stop)+1} total={serviceStops.length} scope={scope} queued={queuedIds.has(stop.id)} onBack={()=>openStop(null)} onComplete={completed}/>:<>
@@ -246,9 +246,10 @@ function validateDraft(draft:CompletionPayload,stop:RouteStop,photos:LocalPhoto[
 }
 function PhotoPreview({photo,onRemove,readonly=false}:{photo:LocalPhoto;onRemove:()=>void;readonly?:boolean}) {
   const {t}=useLanguage();
-  const url=useMemo(()=>URL.createObjectURL(photo.blob),[photo.blob]);
+  const [previewFailed,setPreviewFailed]=useState(false);
+  const url=useMemo(()=>URL.createObjectURL(photo.upload_blob??photo.blob),[photo.upload_blob,photo.blob]);
   useEffect(()=>()=>URL.revokeObjectURL(url),[url]);
-  return <figure className="field-photo"><Image src={url} alt={t("Captured service photo")} width={320} height={240} unoptimized/>{!readonly&&<button type="button" className="field-button field-button-quiet field-button-small" onClick={onRemove}><T text="Remove / retake"/></button>}</figure>;
+  return <figure className="field-photo">{previewFailed?<p><T text="Original photo saved. Preview unavailable until conversion."/></p>:<Image src={url} alt={t("Captured service photo")} width={320} height={240} unoptimized onError={()=>setPreviewFailed(true)}/>}{!readonly&&<button type="button" className="field-button field-button-quiet field-button-small" onClick={onRemove}><T text="Remove / retake"/></button>}</figure>;
 }
 
 function VisitEditor({stop,index,total,scope,queued,onBack,onComplete,unitSystem='imperial'}:{unitSystem?:UnitSystem;stop:RouteStop;index:number;total:number;scope:OfflineScope;queued:boolean;onBack:()=>void;onComplete:(payload:CompletionPayload)=>Promise<void>}) {
@@ -287,9 +288,10 @@ function VisitEditor({stop,index,total,scope,queued,onBack,onComplete,unitSystem
     if(photos.length>=3){setError('A visit can have up to three photos.');return;}
     setPhotoBusy(true);setError('');
     try{
-      const compressed=await compressPhoto(file);
-      const photo=await savePhoto(scope,stop.id,compressed,photoPool);
+      const photo=await savePhoto(scope,stop.id,file,photoPool);
       setPhotos(previous=>[...previous,photo]);
+      const prepared=await prepareDraftPhoto(scope,photo);
+      setPhotos(previous=>previous.map(item=>item.id===photo.id?prepared:item));
     }catch(cause){setError(messageOf(cause));}
     finally{setPhotoBusy(false);}
   }
@@ -305,7 +307,7 @@ function VisitEditor({stop,index,total,scope,queued,onBack,onComplete,unitSystem
   return <div className="field-service"><button className="field-back" onClick={onBack}><T text="← Back to route"/></button><header className="field-top field-service-header"><div><h1 className="field-heading">{stop.property.name||stop.customer.name}</h1><p className="field-subtitle"><T text="Stop "/>{index} / {total} · {stop.property.address}</p></div><span className="field-badge field-badge-in_progress"><T text="Fast Technician Mode"/></span></header>{stop.property.gate_notes&&<p className="field-access"><strong><T text="Internal access notes:"/></strong> {stop.property.gate_notes}</p>}{error&&<p className="field-alert field-alert-error" role="alert"><T text={error}/></p>}{queued&&<p className="field-alert field-alert-warning"><T text="This visit is queued. Retry sync from the route to preserve the saved submission."/></p>}{retiredPools.length>0&&<p className="field-alert field-alert-error" role="alert"><T text="Pool setup changed. This draft retains work for "/>{retiredPools.length} <T text="pool"/>{retiredPools.length===1?'':<T text={'s'}/>} <T text="no longer active at this property. Ask an administrator to restore or review the pool before completing; saved measurements are preserved."/></p>}{!visibleDraft?<div className="field-skeleton"/>:<>
     {stop.pools.map(config=>{const pool=visibleDraft.pools.find(p=>p.pool_id===config.id);return pool?<PoolForm unitSystem={effectiveUnits(stop.property.unit_system,unitSystem)} timeZone={stop.property.service_timezone} key={config.id} config={config} value={pool} history={stop.chemistry_history?.[config.id]??[]} previous={stop.last_readings?.[config.id]} disabled={queued||busy} onChange={next=>updatePool(config.id,next)}/>:null;})}
     <section className="field-section" aria-label={t("Service issues")}><h2><T text="Issue flags"/></h2><div className="field-issue-flags">{ISSUE_FLAGS.map(flag=><button key={flag} type="button" className="field-shortcut" aria-pressed={visibleDraft.issue_flags?.includes(flag)??false} disabled={busy||queued} onClick={()=>update({...visibleDraft,issue_flags:visibleDraft.issue_flags?.includes(flag)?visibleDraft.issue_flags.filter(f=>f!==flag):[...(visibleDraft.issue_flags??[]),flag]})}><T text={ISSUE_LABELS[flag]}/></button>)}</div><p className="field-tiny"><T text="Flags describe issues; they do not complete checklist tasks or waive required readings and photos."/></p></section>
-    <section className="field-section"><p className="field-section-letter"><T text="D · SERVICE PHOTO"/></p><div className="field-section-title"><h2><T text="Show the finished service"/></h2><span className="field-tiny">{photos.length} / 3</span></div>{stop.pools.length>1&&<label className="field-input-label"><T text="Photo for pool / spa"/><select value={photoPool} disabled={photoBusy||queued} onChange={e=>setPhotoPool(e.target.value)}>{stop.pools.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</select></label>}{photos.length<3&&!queued&&<label className="field-photo-control">{photoBusy?<T text={"Preparing photo…"}/>:<T text={"▧ TAKE PHOTO"}/>}<small>{stop.pools.some(p=>p.photo_required)?<T text={"At least one photo is required"}/>:<T text={"Optional · up to three photos"}/>}</small><LocaleInput type="file" accept="image/*" capture="environment" disabled={photoBusy||busy} onChange={event=>{const file=event.target.files?.[0];if(file)void capture(file);event.currentTarget.value='';}}/></label>}<div className="field-photos">{photos.map(photo=><PhotoPreview key={photo.id} photo={photo} readonly={queued} onRemove={()=>{if(queued)return;void removePhoto(scope,photo.id).then(()=>setPhotos(items=>items.filter(item=>item.id!==photo.id))).catch(cause=>setError(messageOf(cause)));}}/>)}</div><p className="field-tiny"><T text="Photo saved on device. Upload starts after Complete & Next; you can continue to the next stop."/></p></section>
+    <section className="field-section"><p className="field-section-letter"><T text="D · SERVICE PHOTO"/></p><div className="field-section-title"><h2><T text="Show the finished service"/></h2><span className="field-tiny">{photos.length} / 3</span></div>{stop.pools.length>1&&<label className="field-input-label"><T text="Photo for pool / spa"/><select value={photoPool} disabled={photoBusy||queued} onChange={e=>setPhotoPool(e.target.value)}>{stop.pools.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</select></label>}{photos.length<3&&!queued&&<label className="field-photo-control">{photoBusy?<T text={"Preparing photo…"}/>:<T text={"▧ TAKE PHOTO"}/>}<small>{stop.pools.some(p=>p.photo_required)?<T text={"At least one photo is required"}/>:<T text={"Optional · up to three photos"}/>}</small><LocaleInput type="file" accept="image/*" capture="environment" disabled={photoBusy||busy} onChange={event=>{const file=event.target.files?.[0];if(file)void capture(file);event.currentTarget.value='';}}/></label>}<div className="field-photos">{photos.map(photo=><PhotoPreview key={photo.id+(photo.upload_blob?"-prepared":"-source")} photo={photo} readonly={queued||photoBusy||busy} onRemove={()=>{if(queued)return;void removePhoto(scope,photo.id).then(()=>setPhotos(items=>items.filter(item=>item.id!==photo.id))).catch(cause=>setError(messageOf(cause)));}}/>)}</div><p className="field-tiny"><T text="Photo saved on device. Upload starts after Complete & Next; you can continue to the next stop."/></p></section>
     <section className="field-section"><label className="field-input-label"><T text="Service note "/><span className="field-reference"><T text="Included in the customer report. Do not add gate codes or private notes."/></span><LocaleTextarea maxLength={2000} value={visibleDraft.notes} disabled={queued||busy} placeholder="Optional service information for the customer" onChange={event=>update({...visibleDraft,notes:event.target.value})}/></label></section>
     <details className="field-section"><summary><T text="Internal service details"/></summary><p className="field-tiny"><T text="For staff only. These details are not included in customer emails."/></p>{([['technician_notes','Technician notes'],['equipment_problems','Equipment problems'],['filter_cleaning','Filter cleaning'],['repairs_performed','Repairs performed']] as const).map(([key,label])=><label className="field-input-label" key={key}><T text={label}/><LocaleTextarea value={visibleDraft.service_details?.[key]??''} disabled={queued||busy} maxLength={2000} onChange={e=>update({...visibleDraft,service_details:{technician_notes:'',equipment_problems:'',filter_cleaning:'',repairs_performed:'',...visibleDraft.service_details,[key]:e.target.value}})}/></label>)}</details>
     <div className="field-complete-bar"><button className="field-button" disabled={busy||photoBusy||queued||retiredPools.length>0} onClick={()=>void complete()}>{queued?<T text={"Saved on device — waiting to sync"}/>:busy?<T text={"Saving visit…"}/>:<T text={"COMPLETE & NEXT →"}/>}</button><p role="status"><T text={saveStatus}/> <T text="· Only checked tasks and recorded values enter the report."/></p></div>
