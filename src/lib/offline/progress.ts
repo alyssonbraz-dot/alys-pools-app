@@ -1,5 +1,5 @@
 import type {OfflineScope} from './store';
-export type SyncProgress={stopId:string;phase:'uploading'|'confirming'|'synced'|'failed';photo:number;photos:number;percent:number};
+export type SyncProgress={stopId:string;phase:'preparing'|'uploading'|'confirming'|'synced'|'failed';photo:number;photos:number;percent:number};
 const state=new Map<string,SyncProgress>();
 const listeners=new Set<()=>void>();
 const key=(scope:OfflineScope)=>`${scope.organizationId}:${scope.userId}`;

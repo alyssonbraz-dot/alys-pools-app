@@ -2,12 +2,13 @@ import 'fake-indexeddb/auto';
 import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest';
 import type { CompletionPayload, RouteData } from '../src/lib/field/types';
 import * as device from '../src/lib/offline/store';
+vi.mock('../src/lib/field/photos',()=>({compressPhoto:vi.fn(async(blob:Blob)=>new File([blob],'prepared.jpg',{type:'image/jpeg'}))}));
 const scope={userId:'user-a',organizationId:'org-a'};
 const route:RouteData={userId:'user-a',orgId:'org-a',displayName:'Test technician',role:'technician',date:'2026-10-22',stops:[]};
 const draft:CompletionPayload={id:'visit-a',stop_id:'stop-a',notes:'Only public notes',pools:[{pool_id:'pool-a',tasks:['Test Water'],readings:{fc:3,ph:7.4},dosages:[{product:'Salt',quantity:2,unit:'lb'}]}],photo_paths:[]};
 const json=(value:unknown,status=200)=>new Response(JSON.stringify(value),{status,headers:{'Content-Type':'application/json'}});
 
-beforeEach(async()=>{await device.clearDeviceData();vi.stubGlobal('navigator',{onLine:true});await device.cacheRoute(scope,route);});
+beforeEach(async()=>{await device.clearDeviceData();vi.stubGlobal('navigator',{onLine:true,locks:{request:async(_name:string,optionsOrCallback:unknown,callback?:()=>Promise<unknown>)=>callback?callback():(optionsOrCallback as ()=>Promise<unknown>)()}});await device.cacheRoute(scope,route);});
 afterEach(()=>vi.unstubAllGlobals());
 
 describe('device persistence and scope',()=>{
@@ -219,3 +220,47 @@ it('preserves body-of-water photo associations across reload and safe retry',asy
 });
 
 it('keeps same-day routes for New York and Brazil separately without clearing a queued visit',async()=>{await device.enqueueCompletion(scope,draft);const br={...route,timeZone:'America/Sao_Paulo',displayName:'Brazil route'};await device.cacheRoute(scope,br);expect((await device.getCachedRoute(scope,route.date))?.displayName).toBe('Test technician');expect((await device.getCachedRoute(scope,route.date,'America/Sao_Paulo'))?.displayName).toBe('Brazil route');expect((await device.getCachedRoute(scope))?.timeZone).toBe('America/Sao_Paulo');expect((await device.getQueue(scope))[0].payload.id).toBe(draft.id);});
+
+async function seedLegacyFailure(photo:device.LocalPhoto,payload:CompletionPayload={...draft,completed_at:'2026-10-22T16:20:00.000Z'}){
+ const db=await new Promise<IDBDatabase>((resolve,reject)=>{const r=indexedDB.open('alys-field-device-v1',1);r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error);});
+ const prefix=scope.organizationId+':'+scope.userId+':';
+ await new Promise<void>((resolve,reject)=>{const tx=db.transaction('records','readwrite'),records=tx.objectStore('records');records.put({key:prefix+'queue:'+payload.stop_id,value:{id:payload.id,payload,status:'failed',error:'Upload a JPEG up to 2 MB.',http_status:400,attempts:1,updated_at:'2026-10-22T16:21:00.000Z'}});records.put({key:prefix+'draft:'+payload.stop_id,value:payload});records.put({key:prefix+'photo:'+photo.id,value:photo});tx.oncomplete=()=>resolve();tx.onerror=()=>reject(tx.error);});db.close();
+}
+it('recovers a pre-upgrade failed queue record, preserves raw photo bytes and retries the same completion after lost acknowledgement',async()=>{
+ const original=new Blob(['original HEIC'],{type:'image/heic'});
+ await seedLegacyFailure({id:'legacy-photo',stop_id:draft.stop_id,pool_id:'pool-a',blob:original,created_at:'2026-10-22T16:19:00.000Z'});
+ const ids:string[]=[],visits=new Set<string>();let lost=true;
+ vi.stubGlobal('fetch',vi.fn(async(input:RequestInfo|URL,init?:RequestInit)=>{
+  if(input==='/api/session')return json(route);
+  if(input==='/api/photos'){const f=init?.body as FormData;ids.push(String(f.get('photo_id')));expect((f.get('file') as File).type).toBe('image/jpeg');return json({path:'org-a/stop-a/legacy-photo.jpg'});}
+  const payload=JSON.parse(String(init?.body));expect(payload.pools).toEqual(draft.pools);expect(payload.completed_at).toBe('2026-10-22T16:20:00.000Z');visits.add(payload.id);if(lost){lost=false;throw new TypeError('lost acknowledgement');}return json({visit_id:payload.id,next_stop_id:null});
+ }));
+ expect((await device.syncQueue(scope)).pending).toBe(1);
+ const photo=(await device.listPhotos(scope,draft.stop_id))[0];expect(await photo.blob.text()).toBe('original HEIC');expect(photo.upload_blob?.type).toBe('image/jpeg');
+ expect((await device.syncQueue(scope)).synced).toBe(1);expect(ids).toEqual(['legacy-photo']);expect([...visits]).toEqual([draft.id]);
+});
+it('keeps an old failed queue intact on conversion failure and replaces only its photo atomically before retry',async()=>{
+ const {compressPhoto}=await import('../src/lib/field/photos');
+ await seedLegacyFailure({id:'bad-photo',stop_id:draft.stop_id,pool_id:'pool-a',blob:new Blob(['broken HEIF'],{type:'image/heif'}),created_at:'2026-10-22T16:19:00.000Z'});
+ const before=(await device.getQueue(scope))[0].payload;
+ vi.mocked(compressPhoto).mockRejectedValueOnce(new Error('HEIC conversion failed'));
+ const network=vi.fn(async(input:RequestInfo|URL)=>input==='/api/session'?json(route):json({visit_id:draft.id,next_stop_id:null}));vi.stubGlobal('fetch',network);
+ expect((await device.syncQueue(scope)).pending).toBe(1);expect(network).toHaveBeenCalledTimes(1);
+ expect((await device.getQueue(scope))[0]).toMatchObject({error:'HEIC conversion failed',failure_stage:'photo'});
+ expect(await (await device.listPhotos(scope,draft.stop_id))[0].blob.text()).toBe('broken HEIF');
+ await device.replaceQueuedPhoto(scope,'bad-photo',new Blob(['replacement JPEG'],{type:'image/jpeg'}));
+ expect((await device.getQueue(scope))[0].payload).toEqual(before);expect(await device.getDraft(scope,draft.stop_id)).toEqual(before);
+ const photo=(await device.listPhotos(scope,draft.stop_id))[0];expect(photo.id).not.toBe('bad-photo');expect(photo.pool_id).toBe('pool-a');expect(await photo.replaced_photos![0].blob.text()).toBe('broken HEIF');expect(photo.created_at).toBe('2026-10-22T16:19:00.000Z');
+});
+it('refuses to change a photo after ambiguous visit acknowledgement and through another account',async()=>{
+ const photo=await device.savePhoto(scope,draft.stop_id,new Blob(['original']));await device.enqueueCompletion(scope,draft);
+ vi.stubGlobal('fetch',vi.fn(async(input:RequestInfo|URL)=>input==='/api/session'?json(route):input==='/api/photos'?json({path:'org-a/stop-a/photo.jpg'}):json({error:'Response interrupted'},503)));
+ await device.syncQueue(scope);expect((await device.getQueue(scope))[0].completion_attempted).toBe(true);
+ await expect(device.replaceQueuedPhoto(scope,photo.id,new Blob(['new']))).rejects.toThrow('may already have confirmed');expect(await (await device.listPhotos(scope,draft.stop_id))[0].blob.text()).toBe('original');
+ await device.setActiveScope({userId:'other',organizationId:'org-a'});
+ await expect(device.replaceQueuedPhoto(scope,photo.id,new Blob(['new']))).rejects.toThrow('active account changed');
+});
+it('preserves photos instead of allowing unsafe cross-tab replacement on browsers without Web Locks',async()=>{
+ const photo=await device.savePhoto(scope,draft.stop_id,new Blob(['original']));await device.enqueueCompletion(scope,draft);vi.stubGlobal('navigator',{onLine:true});
+ await expect(device.replaceQueuedPhoto(scope,photo.id,new Blob(['new']))).rejects.toThrow('Safe photo replacement is unavailable');expect(await (await device.listPhotos(scope,draft.stop_id))[0].blob.text()).toBe('original');expect((await device.getQueue(scope))[0].payload.id).toBe(draft.id);
+});

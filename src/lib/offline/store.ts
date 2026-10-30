@@ -1,16 +1,20 @@
+import {compressPhoto} from '@/lib/field/photos';
 import {deviceStorageError} from './errors';
 import {publishSyncProgress,clearSyncProgress} from './progress';
 import {uploadPhoto} from './upload';
 import type { CompletionPayload, RouteData } from '@/lib/field/types';
 
 export type OfflineScope = { userId: string; organizationId: string };
-export type LocalPhoto = { id: string; stop_id: string; pool_id?:string; blob: Blob; path?: string; created_at: string };
+export type LocalPhoto = { id: string; stop_id: string; pool_id?:string; blob: Blob; upload_blob?: Blob; replaced_photos?: {id:string;blob:Blob;path?:string;created_at:string}[]; path?: string; created_at: string };
 export type QueueItem = {
   id: string;
+  label?: string;
   payload: CompletionPayload;
   status: 'pending' | 'failed' | 'auth_required';
   error?: string;
   http_status?: number;
+  failure_stage?: 'photo' | 'visit';
+  completion_attempted?: boolean;
   attempts?:number;
   next_retry_at?:string;
   updated_at: string;
@@ -162,12 +166,64 @@ export async function savePhoto(scope: OfflineScope, stopId: string, blob: Blob,
   changed();
   return photo;
 }
+export async function prepareDraftPhoto(scope:OfflineScope, photo:LocalPhoto):Promise<LocalPhoto>{
+  const prepared={...photo,upload_blob:await compressPhoto(photo.blob)};
+  await writeScoped(scope,scopeKey(scope,'photo',photo.id),prepared,photo.stop_id);
+  changed();return prepared;
+}
 export async function listPhotos(scope: OfflineScope, stopId: string): Promise<LocalPhoto[]> {
   return (await entries<LocalPhoto>(scopeKey(scope, 'photo'))).map(x => x.value).filter(photo => photo.stop_id === stopId).sort((a,b) => a.created_at.localeCompare(b.created_at));
 }
 export async function removePhoto(scope: OfflineScope, photoId: string) {
   const key=scopeKey(scope,'photo',photoId);const photo=await read<LocalPhoto>(key);
   if(photo)await writeScoped(scope,key,undefined,photo.stop_id,true);changed();
+}
+/** Legacy 400/413 photo rejections happened before any visit POST. Unknown outcomes stay immutable. */
+export function canReplaceQueuedPhoto(item: QueueItem): boolean {
+  if (item.completion_attempted) return false;
+  if (item.failure_stage === 'photo' || (item.failure_stage === 'visit' && item.http_status === 422)) return true;
+  if (item.status === 'pending' && !item.attempts) return true;
+  return !item.failure_stage && [400,413].includes(item.http_status ?? 0) && /JPEG|photo.*(decoded|upload)|upload.*(JPEG|2 MB)/i.test(item.error ?? '');
+}
+/** Serialize with synchronization across tabs. Keep visit ID, timestamps, readings and original photo bytes. */
+export async function replaceQueuedPhoto(scope: OfflineScope, photoId: string, file: Blob) {
+  if(typeof navigator==='undefined'||!navigator.locks)throw new Error('Safe photo replacement is unavailable in this browser. Keep the visit and update your browser before replacing the photo.');
+  const prepared = await compressPhoto(file);
+  const replace = async () => {
+    const db = await database();
+    await new Promise<void>((resolve, reject) => {
+      const tx = db.transaction(STORE, 'readwrite'), records = tx.objectStore(STORE);
+      let failure: Error | undefined;
+      const stop = (message:string) => { failure = new Error(message); tx.abort(); };
+      const active = records.get('active-scope');
+      active.onsuccess = () => {
+        const identity = active.result?.value as OfflineScope | undefined;
+        if(identity?.userId!==scope.userId || identity.organizationId!==scope.organizationId){stop('The active account changed. Reconnect and sign in before saving local changes.');return;}
+        const found = records.get(scopeKey(scope,'photo',photoId));
+        found.onsuccess = () => {
+          const photo = found.result?.value as LocalPhoto | undefined;
+          if(!photo){stop('This photo is no longer pending. Refresh synchronization status.');return;}
+          const queued = records.get(scopeKey(scope,'queue',photo.stop_id));
+          queued.onsuccess = () => {
+            const item = queued.result?.value as QueueItem | undefined;
+            if(!item || !canReplaceQueuedPhoto(item)){stop('The server may already have confirmed this visit. Retry synchronization before replacing its photo.');return;}
+            const replacement:LocalPhoto = {...photo,id:crypto.randomUUID(),blob:file,upload_blob:prepared,path:undefined,replaced_photos:[...(photo.replaced_photos??[]),{id:photo.id,blob:photo.blob,path:photo.path,created_at:photo.created_at}]};
+            records.delete(scopeKey(scope,'photo',photo.id));
+            records.put({key:scopeKey(scope,'photo',replacement.id),value:replacement});
+            if(photo.path){item.payload.photo_paths=item.payload.photo_paths.filter(path=>path!==photo.path);if(item.payload.photo_assignments)delete item.payload.photo_assignments[photo.path];}
+            item.status='pending';delete item.error;delete item.http_status;delete item.next_retry_at;
+            records.put({key:scopeKey(scope,'queue',photo.stop_id),value:item});
+            records.put({key:scopeKey(scope,'draft',photo.stop_id),value:item.payload});
+          };
+        };
+      };
+      tx.oncomplete=()=>resolve();
+      tx.onerror=()=>reject(deviceStorageError(tx.error));
+      tx.onabort=()=>reject(deviceStorageError(failure??tx.error));
+    });
+  };
+  await navigator.locks.request('alys-device-state',{mode:'shared'},()=>navigator.locks.request(`alys-sync-${prefix(scope)}`,replace));
+  changed();
 }
 export async function enqueueCompletion(scope: OfflineScope, payload: CompletionPayload) {
   const db = await database();
@@ -222,7 +278,8 @@ export async function releaseRejectedCompletion(scope: OfflineScope, stopId: str
   changed();
 }
 export async function getQueue(scope: OfflineScope): Promise<QueueItem[]> {
-  return (await entries<QueueItem>(scopeKey(scope, 'queue'))).map(x => x.value).sort((a,b) => a.updated_at.localeCompare(b.updated_at));
+  const [queued,routes]=await Promise.all([entries<QueueItem>(scopeKey(scope,'queue')),entries<RouteData>(scopeKey(scope,'route'))]);
+  return queued.map(({value:item})=>{const stop=routes.flatMap(r=>r.value.stops).find(stop=>stop.id===item.payload.stop_id);return {...item,label:item.label??stop?.customer.name};}).sort((a,b)=>a.updated_at.localeCompare(b.updated_at));
 }
 export async function getLocalWorkCount() {
   const all = await entries<unknown>('');
@@ -318,15 +375,22 @@ async function performSync(scope: OfflineScope, signal: AbortSignal,automatic=fa
   while(batch.length&&!signal.aborted){
   for (const item of batch) {
     attempted.add(item.payload.stop_id);
+    let stage: 'photo' | 'visit' = 'photo';
     try {
       const photos = await listPhotos(scope, item.payload.stop_id);
       const paths = [...item.payload.photo_paths];
       for (const [index,photo] of photos.entries()) {
         if (!photo.path) {
+          if (!photo.upload_blob) {
+            publishSyncProgress(scope,{stopId:item.payload.stop_id,phase:'preparing',photo:index+1,photos:photos.length,percent:0});
+            photo.upload_blob = await compressPhoto(photo.blob);
+            // Keep the original blob and all legacy record fields; persist conversion before upload.
+            await writeScoped(scope,scopeKey(scope, 'photo', photo.id), photo);
+          }
           const form = new FormData();
           form.set('stop_id', item.payload.stop_id);
           form.set('photo_id', photo.id);
-          form.set('file', photo.blob, `${photo.id}.jpg`);
+          form.set('file', photo.upload_blob!, `${photo.id}.jpg`);
           const progress=(percent:number)=>publishSyncProgress(scope,{stopId:item.payload.stop_id,phase:'uploading',photo:index+1,photos:photos.length,percent});
           progress(0);
           const {path}=await responseJson<{path:string}>(await uploadPhoto(form,{'X-ALYS-User-ID':scope.userId,'X-ALYS-Organization-ID':scope.organizationId},signal,progress));
@@ -340,6 +404,8 @@ async function performSync(scope: OfflineScope, signal: AbortSignal,automatic=fa
       item.payload.photo_paths = paths;
       const mappings={...(item.payload.photo_assignments??{})};for(const photo of photos)if(photo.path&&photo.pool_id)mappings[photo.path]=photo.pool_id;
       if(Object.keys(mappings).length)item.payload.photo_assignments=mappings;
+      stage = 'visit';
+      item.completion_attempted = true;
       await writeScoped(scope,scopeKey(scope, 'queue', item.payload.stop_id), item);
       publishSyncProgress(scope,{stopId:item.payload.stop_id,phase:'confirming',photo:photos.length,photos:photos.length,percent:100});
       const saved = await networkJson<{visit_id:string;next_stop_id:string|null}>('/api/visits', {
@@ -353,10 +419,12 @@ async function performSync(scope: OfflineScope, signal: AbortSignal,automatic=fa
     } catch (error) {
       const auth = error instanceof ApiFailure && (error.status === 401 || error.status === 403);
       publishSyncProgress(scope,{stopId:item.payload.stop_id,phase:'failed',photo:0,photos:0,percent:0});
+      item.failure_stage = stage;
       item.attempts=(item.attempts??0)+1;
       item.next_retry_at=new Date(Date.now()+(auth?300000:Math.min(300000,15000*2**Math.min(item.attempts-1,5)))).toISOString();
       item.status = auth ? 'auth_required' : 'failed';
       item.http_status = error instanceof ApiFailure ? error.status : undefined;
+      if(stage==='visit' && item.http_status===422)item.completion_attempted=false;
       item.error = error instanceof Error ? error.message.slice(0, 240) : 'Synchronization was interrupted. Please retry.';
       try { await writeScoped(scope,scopeKey(scope, 'queue', item.payload.stop_id), item); } catch { break; }
       result.authRequired ||= auth;

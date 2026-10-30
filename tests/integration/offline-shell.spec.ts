@@ -47,7 +47,7 @@ test('public shell reopens scoped route and draft after offline tab closure', as
   await expect(reopened.getByRole('checkbox',{name:'Test Water',exact:true})).toBeChecked();
   await reopened.getByRole('button',{name:'COMPLETE & NEXT →'}).click();
   await expect(reopened.getByRole('heading',{name:'Fictional Next Stop'})).toBeVisible();
-  await expect(reopened.getByText('1 visit waiting to sync',{exact:true})).toBeVisible();
+  await expect(reopened.getByText('1 pending visit',{exact:true})).toBeVisible();
   const cachedPaths=await reopened.evaluate(async()=>{
     const cache=await caches.open('alys-field-shell-v21');return (await cache.keys()).map(request=>new URL(request.url).pathname);
   });
