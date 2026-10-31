@@ -71,3 +71,15 @@ TEST_BASE_URL=http://127.0.0.1:3006 npx --no-install playwright test \
 Última captura e gate: `v23-mobile.spec.ts --project=mobile-chromium`, aprovado. Os seis PNGs acima correspondem a capturas efetivamente renderizadas; não foram gerados por ferramenta de criação de imagens nem editados para representar uma interface inexistente.
 
 As capturas AFTER finais foram repetidas em um contexto novo de 390 × 844, sem redimensionamento entre larguras, e esperaram dois frames de renderização antes de salvar. Dashboard, rota e visita apresentaram `innerWidth=390`, `innerHeight=844` e navegação inferior iniciando em y=772. Na visita, o rodapé e a navegação foram verificados dentro do viewport.
+
+## Revisão operacional posterior
+
+Correções encontradas na revisão da reconstrução:
+
+- O atalho Today’s Route do Dashboard ignorava o dia selecionado no calendário. Agora ele e os cartões dos técnicos carregam a mesma data e fuso na URL.
+- O estado de erro/dados de uma consulta anterior podia aparecer ao trocar de dia ou repetir uma requisição. Agora cada resultado pertence ao usuário, organização, dia, fuso e tentativa esperados; respostas atrasadas são descartadas e há Retry explícito. O cliente também recusa respostas com escopo inconsistente, sem substituir a autorização/RLS do servidor. Quando o nome de um técnico não vem na resposta, usa um rótulo genérico em vez de atribuir a rota ao Owner.
+- Trocar o fuso em Maps mudava a URL para `/route`. O destino `/maps` agora é mantido.
+
+Arquivos: `src/components/mobile/dashboard.tsx`, `src/components/field/field-app.tsx` e `tests/integration/v23-review.spec.ts`.
+
+Validação desta revisão: lint, typecheck e build aprovados; 139 testes unitários e cinco testes mobile/offline aprovados. Os três testes novos verificam respostas com usuário/organização/data/fuso incorretos (simulados), retry, resposta atrasada, manutenção da data nos links e troca de fuso no mapa. A rodada inclui também o cenário visual EN/PT/ES em 320/390/430 px e a reabertura offline. Nenhum backend, schema, RLS ou formato da fila foi alterado; o aceite físico no iPhone permanece pendente.
