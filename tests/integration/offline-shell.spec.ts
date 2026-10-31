@@ -26,9 +26,9 @@ test('public shell reopens scoped route and draft after offline tab closure', as
   await context.setOffline(true);
   await page.goto(baseURL+'/');
   await page.getByRole('button',{name:'View all stops',exact:true}).click();await expect(page.getByRole('heading',{name:'Today’s Stops'})).toBeVisible();
-  await expect(page.getByRole('heading',{name:'Fictional Offline Residence'})).toBeVisible();
+  await expect(page.getByRole('heading',{name:'Fictional Test Customer'})).toBeVisible();
   await page.getByRole('button',{name:'Start service →'}).first().click();
-  await expect(page.getByRole('heading',{name:'Fictional Offline Residence'})).toBeVisible();
+  await expect(page.getByRole('heading',{name:'Fictional Test Customer'})).toBeVisible();
   await page.getByRole('checkbox',{name:'Test Water',exact:true}).check();
   await page.getByRole('button',{name:'Fictional pool FC 5 ppm',exact:true}).click();
   await expect(page.getByRole('spinbutton',{name:'Fictional pool Free Chlorine (ppm)'})).toHaveValue('5');
@@ -55,6 +55,6 @@ test('public shell reopens scoped route and draft after offline tab closure', as
   expect(cachedPaths.some(path=>path.startsWith('/api/')||path==='/login'||path==='/')).toBe(false);
   await reopened.goto(baseURL+'/stops');
   await expect(reopened.getByRole('heading',{name:'Today’s Stops',exact:true})).toBeVisible();
-  await expect(reopened.getByRole('heading',{name:'Fictional Next Stop',exact:true})).toBeVisible();
+  await expect(reopened.getByRole('heading',{name:'Fictional Other Customer',exact:true})).toBeVisible();
   await context.close();
 });

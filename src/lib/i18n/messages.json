@@ -1232,7 +1232,17 @@
     "Info": "Informações",
     "Map": "Mapa",
     "Satellite": "Satélite",
-    "Server-confirmed visits are saved independently of email.": "Visitas confirmadas pelo servidor são salvas independentemente do e-mail."
+    "Server-confirmed visits are saved independently of email.": "Visitas confirmadas pelo servidor são salvas independentemente do e-mail.",
+    "Recent Activity": "Atividade recente",
+    "Pool Info": "Informações da piscina",
+    "Equipment": "Equipamentos",
+    "Dosages": "Dosagens",
+    "Photos": "Fotos",
+    "Notes": "Notas",
+    "No equipment issues recorded for this visit.": "Nenhum problema de equipamento registrado nesta visita.",
+    "Checklist": "Checklist",
+    "Readings": "Leituras",
+    "Route options": "Opções da rota"
   },
   "es": {
     "Language": "Idioma",
@@ -2467,7 +2477,17 @@
     "Info": "Información",
     "Map": "Mapa",
     "Satellite": "Satélite",
-    "Server-confirmed visits are saved independently of email.": "Las visitas confirmadas por el servidor se guardan independientemente del correo."
+    "Server-confirmed visits are saved independently of email.": "Las visitas confirmadas por el servidor se guardan independientemente del correo.",
+    "Recent Activity": "Actividad reciente",
+    "Pool Info": "Información de la piscina",
+    "Equipment": "Equipos",
+    "Dosages": "Dosificaciones",
+    "Photos": "Fotos",
+    "Notes": "Notas",
+    "No equipment issues recorded for this visit.": "No hay problemas de equipos registrados en esta visita.",
+    "Checklist": "Lista de tareas",
+    "Readings": "Lecturas",
+    "Route options": "Opciones de ruta"
   },
   "en": {
     "(my route)": "(my route)",
@@ -3702,6 +3722,16 @@
     "Info": "Info",
     "Map": "Map",
     "Satellite": "Satellite",
-    "Server-confirmed visits are saved independently of email.": "Server-confirmed visits are saved independently of email."
+    "Server-confirmed visits are saved independently of email.": "Server-confirmed visits are saved independently of email.",
+    "Recent Activity": "Recent Activity",
+    "Pool Info": "Pool Info",
+    "Equipment": "Equipment",
+    "Dosages": "Dosages",
+    "Photos": "Photos",
+    "Notes": "Notes",
+    "No equipment issues recorded for this visit.": "No equipment issues recorded for this visit.",
+    "Checklist": "Checklist",
+    "Readings": "Readings",
+    "Route options": "Route options"
   }
 }

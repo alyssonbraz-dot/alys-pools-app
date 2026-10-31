@@ -9,6 +9,10 @@ Aplicativo da ALYS Pool Services LLC para registrar manutenção de piscinas pel
 Este README é o roteiro de entrega e publicação com **Netlify Free + Supabase Free + Resend Free**, usando o domínio **alyspools.com**, registrado na Hostinger. Não é necessário contratar hospedagem na Hostinger. A renovação do domínio já comprado continua sendo responsabilidade do titular; planos gratuitos têm cotas e não garantem operação ilimitada sem custo.
 
 
+## Reconstrução visual V2.3 — três telas
+
+Branch de revisão `feature/alys-v2-3-mobile-rebuild`, continuando a V2.3 anterior. Dashboard, Today’s Route e Service Visit têm novas composições JSX e componentes mobile reutilizáveis. O [relatório de reconstrução](docs/V23-ACTUAL-REBUILD.md) contém comparações BEFORE/AFTER em 390 px, arquivos e limitações. Backend, contratos de API, schema e fila offline permanecem os mesmos. Não execute reset, migration remota ou publicação para revisar a interface.
+
 ## V2.3 — mobile UX
 
 Branch `feature/alys-v2-3-mobile-ux`, baseada no último merge `67c6415`. Cabeçalho azul ALYS, cartões brancos, calendário semanal, progresso circular, cinco destinos mobile por função e mapa com alternância mapa/satélite. A visita conserva FC/pH rápidos, favoritos, checklist, fotos e Finish & Next; Info e os corpos d’água ficam no topo. Clientes continuam reunindo endereços/piscinas.
@@ -84,12 +88,12 @@ cp .env.production.example .env.production.local
 Para testar esta entrega antes do merge aprovado, selecione a branch de revisão e reinstale as dependências:
 
 ```bash
-git fetch origin feature/alys-v2-3-mobile-ux
-git switch --track origin/feature/alys-v2-3-mobile-ux
+git fetch origin feature/alys-v2-3-mobile-rebuild
+git switch --track origin/feature/alys-v2-3-mobile-rebuild
 npm ci
 ```
 
-Se a branch local já existir, use `git switch feature/alys-v2-3-mobile-ux`. Para testar sem publicar, siga [desenvolvimento local](docs/LOCAL-DEVELOPMENT.md); o teste local usa `.env.example`, não credenciais de produção.
+Se a branch local já existir, use `git switch feature/alys-v2-3-mobile-rebuild`. Para testar sem publicar, siga [desenvolvimento local](docs/LOCAL-DEVELOPMENT.md); o teste local usa `.env.example`, não credenciais de produção.
 
 Se já tiver o projeto, atualize seu checkout e execute `npm ci`. Preserve arquivos `.env.*.local` existentes: eles são privados e ignorados pelo Git. No Windows, use WSL2/Ubuntu para os comandos de terminal deste guia.
 
