@@ -75,3 +75,13 @@ Capturas reais do teste, com dados fictícios:
 | Sessão ausente | [sync-auth-required](screenshots/v23/sync-auth-required.png) |
 | Foto pendente com falha | [sync-failed-photo](screenshots/v23/sync-failed-photo.png) |
 | Histórico confirmado | [sync-confirmed-history](screenshots/v23/sync-confirmed-history.png) |
+
+## Refinamento com as dez referências
+
+Nesta revisão foram analisadas as dez imagens anexadas na conversa, incluindo as telas adicionais de Settings e Customers. O diretório solicitado `docs/ux-references/v23` não existe no checkout nem na branch remota consultada; não foram inventados arquivos de referência ou inseridas imagens codificadas.
+
+O resumo da rota agora é um cartão horizontal compacto, com anel e contadores; a barra duplicada continua disponível para tecnologia assistiva. Info/Pool/Spa aparecem antes dos atalhos da visita. Todos os painéis dos corpos d’água têm semântica de tabpanel, inclusive quando há apenas um. O checklist mostra tarefas marcadas/total e mantém seleção de um toque. Químicos, quantidades e captura/galeria têm espaçamento e estados visuais consistentes. O cabeçalho de Maps foi corrigido para identificar a tela.
+
+O refinamento modifica somente apresentação/componentes de campo e o teste visual. Nenhuma mudança em APIs de negócio, banco, RLS, IndexedDB, uploads, idempotência ou relatórios. O teste visual agora confere também a ordem das abas e o contador após marcar uma tarefa. As capturas abaixo são atualizadas com os resultados desta rodada, sempre com dados fictícios. O aceite físico no iPhone e a disponibilidade dos tiles externos continuam pendentes conforme a lista anterior.
+
+Validação desta revisão: lint, typecheck e build aprovados; 139 testes unitários e 10 cenários mobile/offline aprovados (sem retries), incluindo a nova checagem de hierarquia das abas e contador do checklist. EN/PT/ES em 320, 390 e 430 px. Screenshots atualizadas em `docs/screenshots/v23`. Não houve teste em aparelho físico, merge, deploy ou migration remota.
