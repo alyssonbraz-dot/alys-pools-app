@@ -1228,7 +1228,11 @@
     "Only accepted technician accounts in your organization can be edited.": "Somente contas de técnicos que já aceitaram o convite da sua empresa podem ser editadas.",
     "Account was not changed. Check server administration and retry.": "A conta não foi alterada. Verifique a administração do servidor e tente novamente.",
     "Login was not changed. Check the email, password policy and server administration.": "O login não foi alterado. Verifique o e-mail, a política de senhas e a administração do servidor.",
-    "Check the coordinates before saving your route starting location.": "Confira as coordenadas antes de salvar o ponto de partida da rota."
+    "Check the coordinates before saving your route starting location.": "Confira as coordenadas antes de salvar o ponto de partida da rota.",
+    "Info": "Informações",
+    "Map": "Mapa",
+    "Satellite": "Satélite",
+    "Server-confirmed visits are saved independently of email.": "Visitas confirmadas pelo servidor são salvas independentemente do e-mail."
   },
   "es": {
     "Language": "Idioma",
@@ -2459,7 +2463,11 @@
     "Only accepted technician accounts in your organization can be edited.": "Solo se pueden editar cuentas de técnicos que ya aceptaron la invitación de su empresa.",
     "Account was not changed. Check server administration and retry.": "La cuenta no se cambió. Revise la administración del servidor e inténtelo de nuevo.",
     "Login was not changed. Check the email, password policy and server administration.": "El acceso no se cambió. Revise el correo, la política de contraseñas y la administración del servidor.",
-    "Check the coordinates before saving your route starting location.": "Revise las coordenadas antes de guardar el punto de partida de la ruta."
+    "Check the coordinates before saving your route starting location.": "Revise las coordenadas antes de guardar el punto de partida de la ruta.",
+    "Info": "Información",
+    "Map": "Mapa",
+    "Satellite": "Satélite",
+    "Server-confirmed visits are saved independently of email.": "Las visitas confirmadas por el servidor se guardan independientemente del correo."
   },
   "en": {
     "(my route)": "(my route)",
@@ -3690,6 +3698,10 @@
     "Only accepted technician accounts in your organization can be edited.": "Only accepted technician accounts in your organization can be edited.",
     "Account was not changed. Check server administration and retry.": "Account was not changed. Check server administration and retry.",
     "Login was not changed. Check the email, password policy and server administration.": "Login was not changed. Check the email, password policy and server administration.",
-    "Check the coordinates before saving your route starting location.": "Check the coordinates before saving your route starting location."
+    "Check the coordinates before saving your route starting location.": "Check the coordinates before saving your route starting location.",
+    "Info": "Info",
+    "Map": "Map",
+    "Satellite": "Satellite",
+    "Server-confirmed visits are saved independently of email.": "Server-confirmed visits are saved independently of email."
   }
 }
