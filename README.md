@@ -9,6 +9,12 @@ Aplicativo da ALYS Pool Services LLC para registrar manutenção de piscinas pel
 Este README é o roteiro de entrega e publicação com **Netlify Free + Supabase Free + Resend Free**, usando o domínio **alyspools.com**, registrado na Hostinger. Não é necessário contratar hospedagem na Hostinger. A renovação do domínio já comprado continua sendo responsabilidade do titular; planos gratuitos têm cotas e não garantem operação ilimitada sem custo.
 
 
+## V2.4 — Profitability & Business Costs
+
+Nova branch de revisão `feature/alys-v2-4-profitability`: Owner → More → **Business Costs** para custos, responsabilidades e condições de pagamento; **Finance / Profit Result** para resultado consolidado; **Pool Profitability** dentro de Properties & Pools no cliente. Previsões, recebimentos registrados e pagamentos devidos ficam separados. Campos ausentes não viram custo zero.
+
+A entrega exige a migration aditiva **026** em instalações que já possuem 001–025. Consulte [uso, cálculos, segurança, testes, screenshots e limitações V2.4](docs/V24-PROFITABILITY.md). A migration foi validada somente localmente. Não aplique em produção, faça merge ou publique esta branch sem aprovação.
+
 ## Reconstrução visual V2.3 — três telas
 
 Branch de revisão `feature/alys-v2-3-mobile-rebuild`, continuando a V2.3 anterior. Dashboard, Today’s Route e Service Visit têm novas composições JSX e componentes mobile reutilizáveis. O [relatório de reconstrução](docs/V23-ACTUAL-REBUILD.md) contém comparações BEFORE/AFTER em 390 px, arquivos e limitações. Backend, contratos de API, schema e fila offline permanecem os mesmos. Não execute reset, migration remota ou publicação para revisar a interface.
@@ -45,11 +51,11 @@ A branch de revisão `feature/alys-v2-2-complete-redesign` traz navegação por 
 
 Consulte a [entrega V2.2](docs/V22-REDESIGN.md) para inventário, capturas antes/depois, benchmarks, testes e aceite em aparelho físico. A V2.1.2 de fotos continua preservada, incluindo a fila antiga do IndexedDB.
 
-**Atualização de V2.1.2:** a migration aditiva **025** registra motivos de skip e é necessária antes do frontend V2.2. Não altera visitas existentes. A aplicação remota, merge e deploy exigem autorização; não execute seeds nem `db reset` em produção. Instalações novas usam migrations 001–025. O roteiro gratuito de Netlify, Supabase, Resend e DNS Hostinger abaixo continua válido.
+**Atualização de V2.1.2:** a migration aditiva **025** registra motivos de skip e é necessária antes do frontend V2.2. Não altera visitas existentes. A aplicação remota, merge e deploy exigem autorização; não execute seeds nem `db reset` em produção. Instalações novas da V2.4 usam migrations 001–026. O roteiro gratuito de Netlify, Supabase, Resend e DNS Hostinger abaixo continua válido.
 
 ## Atualizações anteriores
 
-Os diagnósticos e históricos continuam em [V2.1.2 — fotos e recuperação](docs/V212-MOBILE-HOTFIX.md) e [V2.1.1 — clientes, datas e idiomas](docs/V211-HOTFIX.md). Para publicar a versão atual, siga a entrega V2.2 e aplique todas as migrations pendentes até 025, com backup e aprovação. Não recrie empresa, proprietário ou clientes existentes.
+Os diagnósticos e históricos continuam em [V2.1.2 — fotos e recuperação](docs/V212-MOBILE-HOTFIX.md) e [V2.1.1 — clientes, datas e idiomas](docs/V211-HOTFIX.md). Para uma futura publicação aprovada da V2.4, consulte a entrega V2.4 e aplique todas as migrations pendentes até 026, com backup e aprovação. Não recrie empresa, proprietário ou clientes existentes.
 
 ## O que está incluído
 
@@ -61,7 +67,7 @@ Os diagnósticos e históricos continuam em [V2.1.2 — fotos e recuperação](d
 - Histórico, fotos privadas e relatório por e-mail com foto. Relatórios respeitam a opção de envio de cada cliente.
 - PWA instalável no celular. O app precisa permanecer aberto ou ser reaberto para sincronizar pendências locais.
 
-Financeiro completo, cobrança, inventário e portal de clientes não fazem parte desta entrega. Mapas/otimização são opcionais; o fluxo de visitas funciona sem contratar provedor de mapas.
+A V2.4 inclui estimativas de lucratividade, custos e valores devidos. Cobrança, pagamentos bancários, contabilidade fiscal, inventário e portal de clientes não fazem parte desta entrega. Mapas/otimização são opcionais; o fluxo de visitas funciona sem contratar provedor de mapas.
 
 ## 1. Preparar as contas gratuitas
 
@@ -88,12 +94,12 @@ cp .env.production.example .env.production.local
 Para testar esta entrega antes do merge aprovado, selecione a branch de revisão e reinstale as dependências:
 
 ```bash
-git fetch origin feature/alys-v2-3-mobile-rebuild
-git switch --track origin/feature/alys-v2-3-mobile-rebuild
+git fetch origin feature/alys-v2-4-profitability
+git switch --track origin/feature/alys-v2-4-profitability
 npm ci
 ```
 
-Se a branch local já existir, use `git switch feature/alys-v2-3-mobile-rebuild`. Para testar sem publicar, siga [desenvolvimento local](docs/LOCAL-DEVELOPMENT.md); o teste local usa `.env.example`, não credenciais de produção.
+Se a branch local já existir, use `git switch feature/alys-v2-4-profitability`. Para testar sem publicar, siga [desenvolvimento local](docs/LOCAL-DEVELOPMENT.md); o teste local usa `.env.example`, não credenciais de produção.
 
 Se já tiver o projeto, atualize seu checkout e execute `npm ci`. Preserve arquivos `.env.*.local` existentes: eles são privados e ignorados pelo Git. No Windows, use WSL2/Ubuntu para os comandos de terminal deste guia.
 

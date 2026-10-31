@@ -1,7 +1,8 @@
-import Link from 'next/link';
-import {redirect} from 'next/navigation';
-import {requireOperator} from '@/lib/auth';
-import {allRows} from '@/lib/pagination';
-import {PageHeader,Card,StatCard,SectionHeader,MobileDataCard} from '@/components/design/primitives';
-import {T,CurrencyText} from '@/components/i18n';
-export default async function Finance(){const {profile,db}=await requireOperator();if(profile.role!=='owner')redirect('/stops');const {data,error}=await db.rpc('owner_overview');if(error)throw new Error('Finance unavailable.');const contracts=await allRows((from,to)=>db.from('contracts').select('id,customer_id,source,billing_model,price_cents,status').eq('source','subcontract').eq('status','active').order('id').range(from,to));const customers=await allRows((from,to)=>db.from('customers').select('id,name').order('id').range(from,to));return <><PageHeader title="Finance" description="Contracted revenue, clearly separated by business model."/><div className="stat-grid"><StatCard label="Own-customer MRR" value={<CurrencyText value={(data?.mrr_cents??0)/100}/>} icon="finance"/><StatCard label="Active subcontract agreements" value={contracts.length} icon="reports"/></div><Card><h2><T text="Revenue is not profit"/></h2><p className="note"><T text="Own-customer MRR includes active monthly agreements with recurring service. Subcontract rates are listed separately. Payments collected, expenses and net profit are not calculated here."/></p></Card><SectionHeader title="Subcontract agreements"/><div className="more-grid">{contracts.map(c=><MobileDataCard key={c.id} title={customers.find(v=>v.id===c.customer_id)?.name??'—'} subtitle={<T text={c.billing_model}/>} actions={<Link className="btn btn-secondary" href={'/customers/'+c.customer_id}><T text="View customer"/></Link>}><strong className="display-number"><CurrencyText value={c.price_cents/100}/></strong><p className="note"><T text="Agreement rate · excluded from own-customer MRR"/></p></MobileDataCard>)}</div>{!contracts.length&&<p className="note"><T text="No active subcontract agreements."/></p>}</>;}
+import { redirect } from "next/navigation";
+import { requireOperator } from "@/lib/auth";
+import { FinanceApp } from "@/components/finance/finance-app";
+export default async function Finance() {
+  const { profile } = await requireOperator();
+  if (profile.role !== "owner") redirect("/stops");
+  return <FinanceApp screen="result" />;
+}
