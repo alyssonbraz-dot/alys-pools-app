@@ -281,6 +281,7 @@ export function TeamManager() {
                             onAction={action}
                           />
                         </details>
+                        {p.role==='technician'&&p.access_state!=='invited'&&<details><summary><T text="Manage technician login"/></summary><TechnicianCredentials person={p} onSaved={reload}/></details>}
                       </td>
                     </tr>
                   );
@@ -335,6 +336,23 @@ export function TeamManager() {
       )}
     </>
   );
+}
+function TechnicianCredentials({person,onSaved}:{person:Person;onSaved:()=>Promise<void>}){
+ const [email,setEmail]=useState(person.email??''),[password,setPassword]=useState(''),[confirmation,setConfirmation]=useState(''),[ownerPassword,setOwnerPassword]=useState(''),[busy,setBusy]=useState(false),[message,setMessage]=useState(''),[error,setError]=useState('');
+ async function save(event:React.FormEvent<HTMLFormElement>){
+  event.preventDefault();setError('');setMessage('');
+  if(password!==confirmation){setError('Passwords do not match.');return;}
+  setBusy(true);
+  try{
+   const response=await fetch('/api/team/credentials',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:person.id,current_password:ownerPassword,...(email.trim().toLowerCase()!==person.email?.toLowerCase()?{email:email.trim()}:{}),...(password?{password}:{})})});
+   const data=await response.json();if(!response.ok)throw new Error(data.error);
+   setPassword('');setConfirmation('');setOwnerPassword('');
+   setMessage(data.audit_pending?'Login saved. Audit confirmation needs review in server administration.':'Technician login updated. Share the new credentials securely.');
+   await onSaved();
+  }catch(failure){setError(failure instanceof Error?failure.message:'Unable to save.');}
+  finally{setBusy(false);}
+ }
+ return <form className="team-editor" onSubmit={save}><p className="note"><T text="Existing passwords cannot be viewed. Set a new password or edit the technician login email."/></p><Input label="Login email" type="email" required maxLength={254} autoComplete="off" disabled={busy} value={email} onChange={setEmail}/><Input label="New password (at least 16 characters)" type="password" minLength={16} maxLength={128} autoComplete="new-password" disabled={busy} value={password} onChange={setPassword}/><Input label="Confirm new password" type="password" minLength={16} maxLength={128} autoComplete="new-password" required={!!password} disabled={busy} value={confirmation} onChange={setConfirmation}/><Input label="Your current administrator password" type="password" required maxLength={128} autoComplete="current-password" disabled={busy} value={ownerPassword} onChange={setOwnerPassword}/><p className="note"><T text="No email is sent. This changes future sign-ins; suspend access to block an existing session."/></p>{error&&<p className="notice" role="alert"><T text={error}/></p>}{message&&<p className="notice" role="status"><T text={message}/></p>}<button className="btn btn-primary" disabled={busy||(!password&&email.trim().toLowerCase()===person.email?.toLowerCase())}><T text={busy?'Saving…':'Save technician login'}/></button></form>;
 }
 function TechnicianEditor({
   person,

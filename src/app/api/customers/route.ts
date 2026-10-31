@@ -11,14 +11,14 @@ export async function GET(){
   const technicians=(people??[]).filter(t=>['owner','admin','technician'].includes(t.role));
   const owner=op.profile.role==='owner',customers:unknown[]=[],now=new Date();
   for(let offset=0;;offset+=500){
-   const {data:page,error}=await op.db.from('customers').select('id,name,first_name,last_name,email,phone,status,created_at,service_frequency,assigned_technician_id,email_reports_enabled,customer_tags(tag),customer_details(billing_address,monthly_price_cents,internal_notes),contracts(source,billing_model,status,price_cents),properties(id,name,address,latitude,longitude,created_at,service_timezone,pools(id,status),recurring_schedules(active,start_on,end_on,days_of_week,technician_id))').is('archived_at',null).order('name').order('id').range(offset,offset+499);
+   const {data:page,error}=await op.db.from('customers').select('id,name,first_name,last_name,email,phone,status,created_at,service_frequency,assigned_technician_id,email_reports_enabled,customer_tags(tag),customer_details(billing_address,monthly_price_cents,internal_notes),contracts(source,billing_model,status,price_cents),properties(id,name,address,latitude,longitude,location_confirmed,created_at,service_timezone,pools(id,status),recurring_schedules(active,start_on,end_on,days_of_week,technician_id))').is('archived_at',null).order('name').order('id').range(offset,offset+499);
    if(error)throw error;
    for(const c of page??[]){
     c.properties.sort((a,b)=>a.created_at.localeCompare(b.created_at)||a.id.localeCompare(b.id));
     const {contracts,properties,...contact}=c;
     customers.push({...contact,customer_details:Array.isArray(c.customer_details)?c.customer_details[0]??null:c.customer_details,
      summary:customerSummary({...c,contracts},technicians,owner,now),
-     properties:properties.map(({id,name,address,latitude,longitude})=>({id,name,address,latitude,longitude}))});
+     properties:properties.map(({id,name,address,latitude,longitude,location_confirmed})=>({id,name,address,latitude,longitude,location_confirmed}))});
    }
    if(!page||page.length<500)break;
   }

@@ -9,11 +9,23 @@ Aplicativo da ALYS Pool Services LLC para registrar manutenção de piscinas pel
 Este README é o roteiro de entrega e publicação com **Netlify Free + Supabase Free + Resend Free**, usando o domínio **alyspools.com**, registrado na Hostinger. Não é necessário contratar hospedagem na Hostinger. A renovação do domínio já comprado continua sendo responsabilidade do titular; planos gratuitos têm cotas e não garantem operação ilimitada sem custo.
 
 
+## Clientes, GPS e acesso dos técnicos
+
+Branch de revisão: `fix/customer-gps-team-credentials` (base V2.2.1). Endereços, piscinas e spas são gerenciados em **Customers → cliente → Properties & Pools**. Não há seção independente no menu; favoritos antigos `/pools` e `/locations` redirecionam para Customers. No Dashboard, Missing coordinates abre a lista de clientes filtrada, incluindo locais ainda não confirmados.
+
+**GPS:** no endereço do cliente, toque em **Use current GPS location**, permita a localização, confira o pino e marque **I confirm this service location**; depois salve o cadastro. Este botão usa a posição do aparelho: use-o estando no imóvel correto. Latitude/longitude manuais continuam disponíveis. HTTPS é obrigatório em produção (localhost funciona no desenvolvimento). O GPS é uma captura pontual, sem rastreamento contínuo e sem chave de API. Navegar usa as coordenadas confirmadas; caso contrário, o endereço. Em Routes → Route map & planning → Starting location & time, o GPS também pode preencher a origem; **Save starting location** confirma a alteração. Mapas, geocodificação de texto e estimativas viárias mantêm seus provedores e cotas já documentados abaixo; capturar GPS não ativa nenhum plano.
+
+**Credenciais:** o Owner (Administrador) abre **Team & Technicians → técnico → Manage technician login** para editar o e-mail de login e/ou definir uma senha de pelo menos 16 caracteres. Confirme sua própria senha de administrador. A conta do técnico deve ter aceitado o convite. Nenhum e-mail é enviado por essa ação; compartilhe as novas credenciais por um meio seguro. Senhas existentes não são recuperáveis nem exibidas. Técnicos, administradores legados de função `admin`, contas de outra organização e contas Owner não podem usar esse endpoint para alterar credenciais. A verificação é no servidor, com leitura RLS e revalidação de organização/função antes do acesso privilegiado ao Supabase Auth. A auditoria registra somente os tipos de alteração, nunca senhas ou hashes.
+
+Alterar a senha afeta novos logins; para bloquear sessões já abertas, use **Suspend Access**. A sessão do Owner permanece conectada após confirmar sua senha. `SUPABASE_SERVICE_ROLE_KEY` continua exclusivamente no servidor, como na configuração existente; não há nova variável ou migration. Fotos, visitas, relatórios e a fila IndexedDB não são alterados.
+
+Detalhes e comandos de validação: [Clientes, acesso e GPS](docs/CUSTOMERS-GPS-ACCESS.md). Merge, migrations remotas e publicação continuam dependentes de aprovação.
+
 ## V2.2.1 — fotos e clientes
 
 Branch de revisão: `fix/alys-v2-2-1-ios-sync-customers`. O patch recupera uploads interrompidos, identifica falta de sessão, preserva fotos/fila e retoma a sincronização ao voltar para o app. Câmera e galeria têm entradas separadas. **Prévia local não confirma upload; Synced depende do servidor.** Não remova a PWA nem limpe dados do Safari para tratar uma pendência.
 
-Customers agora reúne o perfil em Overview, Properties & Pools, Service e History. Adicione/edite imóveis, piscinas e spas no perfil; o cadastro e as agendas continuam transacionais. `/pools` permanece disponível para links antigos.
+Customers agora reúne o perfil em Overview, Properties & Pools, Service e History. Adicione/edite imóveis, piscinas e spas no perfil; o cadastro e as agendas continuam transacionais. Os links antigos `/pools` e `/locations` agora redirecionam para Customers.
 
 **Sem migration nova:** requer as migrations 001–025 da V2.2. Consulte [diagnóstico, testes, capturas e aceite no iPhone](docs/V221-IOS-SYNC-CUSTOMERS.md). Safari/iPhone físico ainda precisam de aceite; não há alegação de teste no aparelho. Merge e deploy dependem de aprovação.
 
@@ -66,12 +78,12 @@ cp .env.production.example .env.production.local
 Para testar esta entrega antes do merge aprovado, selecione a branch de revisão e reinstale as dependências:
 
 ```bash
-git fetch origin fix/alys-v2-2-1-ios-sync-customers
-git switch --track origin/fix/alys-v2-2-1-ios-sync-customers
+git fetch origin fix/customer-gps-team-credentials
+git switch --track origin/fix/customer-gps-team-credentials
 npm ci
 ```
 
-Se a branch local já existir, use `git switch fix/alys-v2-2-1-ios-sync-customers`. Para testar sem publicar, siga [desenvolvimento local](docs/LOCAL-DEVELOPMENT.md); o teste local usa `.env.example`, não credenciais de produção.
+Se a branch local já existir, use `git switch fix/customer-gps-team-credentials`. Para testar sem publicar, siga [desenvolvimento local](docs/LOCAL-DEVELOPMENT.md); o teste local usa `.env.example`, não credenciais de produção.
 
 Se já tiver o projeto, atualize seu checkout e execute `npm ci`. Preserve arquivos `.env.*.local` existentes: eles são privados e ignorados pelo Git. No Windows, use WSL2/Ubuntu para os comandos de terminal deste guia.
 
