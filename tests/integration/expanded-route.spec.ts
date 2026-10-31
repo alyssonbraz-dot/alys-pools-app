@@ -19,7 +19,7 @@ test('weekly routes and authorized road optimization persist, with manual overri
  await expect.poll(async()=>{const {data}=await admin.from('route_stops').select('id').eq('technician_id',technician).eq('service_date',fixture.date).order('position');return data!.map(s=>s.id);}).toEqual([ids[0],ids[2],ids[1]]);
  await expect(page.locator('.route-summary-grid')).toContainText('1.3 mi');
  await expect(page.locator('.route-planner')).toContainText('Estimated completion time');
- await page.getByRole('button',{name:'Move Routing Stop 2 up',exact:true}).click();
+ await page.locator('.route-stop-card').filter({hasText:'Routing Stop 2'}).locator('.route-secondary-actions>summary').click();await page.getByRole('button',{name:'Move Routing Stop 2 up',exact:true}).click();
  await expect.poll(async()=>{const {data}=await admin.from('route_stops').select('id').eq('technician_id',technician).eq('service_date',fixture.date).order('position');return data!.map(s=>s.id);}).toEqual(ids);
  await expect(page.locator('.route-summary-grid')).toContainText('Not calculated');
  await page.getByRole('button',{name:'Next week →',exact:true}).click();await expect(page.getByText('A clear route, ready to plan.',{exact:true})).toBeVisible();await page.getByRole('button',{name:'Today',exact:true}).click();await expect(page.getByRole('heading',{name:'Routing Stop 1',exact:true})).toBeVisible();

@@ -83,3 +83,16 @@ Correções encontradas na revisão da reconstrução:
 Arquivos: `src/components/mobile/dashboard.tsx`, `src/components/field/field-app.tsx` e `tests/integration/v23-review.spec.ts`.
 
 Validação desta revisão: lint, typecheck e build aprovados; 139 testes unitários e cinco testes mobile/offline aprovados. Os três testes novos verificam respostas com usuário/organização/data/fuso incorretos (simulados), retry, resposta atrasada, manutenção da data nos links e troca de fuso no mapa. A rodada inclui também o cenário visual EN/PT/ES em 320/390/430 px e a reabertura offline. Nenhum backend, schema, RLS ou formato da fila foi alterado; o aceite físico no iPhone permanece pendente.
+
+## Continuidade visual — foco em produtividade
+
+- Calendário horizontal de domingo a sábado, com mês/ano central e setas de semana com alvos de 44 px; os nomes acessíveis continuam traduzidos.
+- Cartões de parada mostram cliente, endereço, status, ação principal e GPS. Metadados, Apple Maps, Skip, reatribuição e ordenação continuam acessíveis em More, sem disputar espaço com Start Service.
+- Histórico dos últimos 30 dias mostra a tabela diretamente quando há registros. Ausência de dados continua explícita; valores anteriores não são copiados para as novas medições.
+- Cabeçalho e cartões de técnicos ficaram mais compactos. A seta de navegação usa o ícone SVG ALYS, evitando depender de glifos de fonte.
+
+Componentes alterados nesta etapa: `src/components/route-calendar.tsx`, `src/components/mobile/field-layout.tsx`, `src/components/mobile/rebuild.css`, `src/components/field/chemistry-history.tsx` e `src/components/field/field-app.tsx`. Testes de interface atualizados para histórico aberto e ordenação em More. As capturas AFTER permanecem nos caminhos da tabela acima; as capturas BEFORE são preservadas.
+
+Inspeção visual realizada nas três telas em 390 CSS px. Validação: lint, typecheck, build e 139 testes unitários aprovados; sete cenários selecionados mobile/offline aprovados, incluindo navegação EN/PT/ES, abertura das ações secundárias, troca de mapa/fuso, respostas atrasadas, visitas e fotos pendentes e reabertura offline. Após substituir a seta textual por SVG, o cenário visual final foi repetido e aprovado; essa repetição não representa um cenário adicional distinto.
+
+As referências usadas continuam sendo as dez imagens disponíveis na conversa, não arquivos locais inexistentes. Sem mudança de backend, RLS, migrations, schema IndexedDB, relatórios ou contratos. Sem envio real de e-mail, merge, deploy ou banco remoto. O aceite de câmera/GPS/Safari e área segura no iPhone físico continua pendente.

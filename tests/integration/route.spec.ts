@@ -36,7 +36,7 @@ test('mobile service persists JPEG, snapshot and one outbox; offline visit survi
   await expect(page.getByRole('heading',{name:'Test Property 1',exact:true})).toBeVisible();
   await expect(page.getByLabel('Pool 1 Free Chlorine (ppm)',{exact:true})).toHaveValue('');
   await expect(page.getByLabel('Pool 1 pH',{exact:true})).toHaveValue('');
-  await page.getByText('View chemical history',{exact:true}).first().click();const chemistry=page.getByRole('region',{name:'Pool 1 chemical history'});
+  const chemistry=page.getByRole('region',{name:'Pool 1 chemical history'});
   await expect(chemistry.getByRole('heading',{name:'Chemical history',exact:true})).toBeVisible();
   await expect(chemistry).toContainText('Last 30 days');
   await expect(chemistry.getByRole('cell',{name:'0',exact:true})).toBeVisible();
