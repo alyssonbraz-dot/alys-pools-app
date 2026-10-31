@@ -15,24 +15,29 @@ const defaults:ProfitCosts={visits_per_month:4.33,technician_cost_per_visit_cent
 const money=(cents:number)=>new Intl.NumberFormat('en-US',{style:'currency',currency:'USD'}).format(cents/100);
 export function ProfitEditor({customerId,customerName,revenueCents,initial}:Props){
  const router=useRouter();
- const [values,setValues]=useState<ProfitCosts>(initial??defaults);
- const [saved,setSaved]=useState(!!initial),[busy,setBusy]=useState(false),[error,setError]=useState(''),[message,setMessage]=useState('');
- const estimate=saved?profitEstimate(revenueCents,values):null;
- async function save(event:React.FormEvent){
+ const [busy,setBusy]=useState(false),[error,setError]=useState(''),[message,setMessage]=useState('');
+ const estimate=initial?profitEstimate(revenueCents,initial):null;
+ async function save(event:React.FormEvent<HTMLFormElement>){
   event.preventDefault();setBusy(true);setError('');setMessage('');
+  const form=new FormData(event.currentTarget);
+  const values:Record<string,number>={};
+  for(const [key,,isMoney] of fields){
+   const raw=String(form.get(key)??'');
+   if(!raw.trim()||!Number.isFinite(Number(raw))||Number(raw)<0){setError('Enter a valid non-negative number for each cost.');setBusy(false);return;}
+   values[key]=isMoney?Math.round(Number(raw)*100):Math.round(Number(raw)*100)/100;
+  }
   try{
    const response=await fetch('/api/profitability',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({customer_id:customerId,...values})});
    if(!response.ok){const data=await response.json();throw new Error(data.error||'Could not save costs.');}
-   setSaved(true);setMessage('Cost assumptions saved.');router.refresh();
+   setMessage('Cost assumptions saved.');router.refresh();
   }catch(cause){setError(cause instanceof Error?cause.message:'Could not save costs.');}finally{setBusy(false);}
  }
  return <section className="panel" style={{padding:16,marginBottom:14}}>
   <details><summary style={{cursor:'pointer',minHeight:44}}><strong>{customerName}</strong> · Monthly contract {money(revenueCents)} · {estimate?<span style={{color:estimate.contributionCents<0?'#b42318':'#16805a'}}>{money(estimate.contributionCents)} estimated contribution ({estimate.marginPct?.toFixed(1)??'—'}%)</span>:'Costs not configured'}</summary>
-   <p className="note">Estimates use your assumptions, not recorded expenses or collected payments. Enter 0 only when the company actually has no cost in that category.</p>
+   <p className="note">Estimates use assumptions, not recorded expenses or collected payments. Enter 0 only if the company pays nothing for that category.</p>
    <form onSubmit={save}>
     <div className="form-grid">{fields.map(([key,label,isMoney])=><label className="form-field" key={key}>{label}
-     <input type="number" min="0" max={isMoney?100000:62} step={isMoney?'0.01':'0.01'} required value={isMoney?(values[key]/100).toFixed(2):values[key]}
-      onChange={e=>{const n=Number(e.target.value);if(Number.isFinite(n))setValues(v=>({...v,[key]:isMoney?Math.round(n*100):n}));}}/>
+     <input name={key} type="number" inputMode="decimal" min="0" max={isMoney?100000:62} step="0.01" required defaultValue={isMoney?((initial??defaults)[key]/100).toFixed(2):(initial??defaults)[key]}/>
     </label>)}</div>
     {error&&<p role="alert" className="notice">{error}</p>}{message&&<p role="status" className="note">{message}</p>}
     <button className="btn btn-primary" type="submit" disabled={busy}>{busy?'Saving…':'Save cost assumptions'}</button>
