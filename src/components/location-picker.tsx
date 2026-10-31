@@ -2,6 +2,7 @@
 import dynamic from "next/dynamic";
 import { useEffect, useRef,useState } from "react";
 import { T } from "./i18n";
+import {GpsCapture} from './gps-capture';
 const PinMap = dynamic(() => import("./pin-map"), {
   ssr: false,
   loading: () => <p role="status"><T text={"Loading map…"}/></p>,
@@ -98,6 +99,7 @@ export function LocationPicker({
   }
   return (
     <div className="location-picker">
+      <GpsCapture onPosition={(lat,lng)=>{onChange(lat,lng,false);setSuggestions([]);setError('');}}/>
       <button
         type="button"
         className="btn btn-secondary"

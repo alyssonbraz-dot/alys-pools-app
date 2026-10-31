@@ -1,267 +1,54 @@
-import Link from "next/link";
-import { notFound } from "next/navigation";
-import { requireManager } from "@/lib/auth";
-import { CustomerOnboarding } from "@/components/customer-onboarding";
-import { ChemicalLedger } from "@/components/chemical-ledger";
-import { History } from "@/components/field/history";
-import { Panel } from "@/components/ui";
-import { T, DateText,CurrencyText,NumberText } from "@/components/i18n";
-import type { CustomerBundle } from "@/lib/onboarding";
-import { serviceDay } from "@/lib/service-time";
-export default async function CustomerProfile({
-  params,
-  searchParams,
-}: {
-  params: Promise<{ id: string }>;
-  searchParams: Promise<{ edit?: string; saved?: string }>;
-}) {
-  const { id } = await params;
-  const query = await searchParams;
-  const { db, user } = await requireManager();
-  const { data: c } = await db
-    .from("customers")
-    .select("*,customer_details(*),customer_tags(tag)")
-    .eq("id", id)
-    .maybeSingle();
-  if (!c) notFound();
-  const { data: properties, error } = await db
-    .from("properties")
-    .select("*,pools(*),recurring_schedules(*)")
-    .eq("customer_id", id);
-  if (error)
-    throw new Error(
-      "Customer configuration unavailable. Apply pending migrations first.",
-    );
-  const { data: contracts } = await db
-    .from("contracts")
-    .select("*")
-    .eq("customer_id", id)
-    .order("created_at");
-  const { data: technicians } = await db
-    .from("profiles")
-    .select("id,display_name")
-    .in("role", ["owner", "admin", "technician"]);
-  const propertyIds = (properties ?? []).map((p) => p.id);
-  const { data: upcoming } = propertyIds.length
-    ? await db
-        .from("route_stops")
-        .select("id,property_id,service_date,status,technician_id")
-        .in("property_id", propertyIds)
-        .gte("service_date", (properties??[]).map(p=>serviceDay(new Date(),p.service_timezone)).sort()[0]??serviceDay(new Date()))
-        .order("service_date")
-        .limit(30)
-    : { data: [] };
-  const details = Array.isArray(c.customer_details)
-    ? c.customer_details[0]
-    : c.customer_details;
-  const first = properties?.[0];
-  const contract = contracts?.[0];
-  const bundle = {
-    request_id: crypto.randomUUID(),
-    customer: {
-      ...c,
-      property_id: first?.id ?? null,
-      service_address: first?.address ?? "",
-      property_name: first?.name ?? "",
-      latitude: first?.latitude ?? null,
-      longitude: first?.longitude ?? null,
-      tags: c.customer_tags.map((t: { tag: string }) => t.tag),
-      billing_address: details?.billing_address ?? "",
-      internal_notes: details?.internal_notes ?? "",
-      monthly_price_cents: details?.monthly_price_cents ?? 0,
-    },
-    properties: (properties ?? []).map((p) => ({
-      ...p,
-      pools: p.pools,
-      schedules: p.recurring_schedules.map((s: { end_on: string | null }) => ({
-        ...s,
-        end_on: s.end_on ?? "",
-      })),
-    })),
-    agreement: contract ?? {
-      source: "own",
-      billing_model: "monthly",
-      price_cents: details?.monthly_price_cents ?? 0,
-      status: "active",
-    },
-  } as CustomerBundle;
-  if (query.edit)
-    return (
-      <CustomerOnboarding
-        initial={bundle}
-        ownerId={user.id}
-        technicians={technicians ?? []}
-      />
-    );
-  return (
-    <>
-      {c.email_delivery_state!=="unknown"&&c.email_delivery_state&&<p className="notice" role="alert"><T text="This address was bounced or reported as spam. Confirm and correct the customer email before further delivery."/></p>}
-      <div className="page-header">
-        <div>
-          <div className="page-kicker"><T text={"CUSTOMER PROFILE"}/></div>
-          <h1>{c.name}</h1>
-          <p>
-            {c.email || "—"} · {c.phone || "—"}
-          </p>
-        </div>
-        <div className="header-actions">
-          <Link
-            href={"/customers/" + id + "?edit=1"}
-            className="btn btn-primary"
-          >
-            <T text="Edit customer & service" />
-          </Link>
-          <Link href="/customers" className="btn btn-secondary">
-            <T text="All customers" />
-          </Link>
-        </div>
-      </div>
-      {query.saved && (
-        <p className="notice" role="status">
-          <T text="Customer and service saved successfully." />
-        </p>
-      )}
-      <div className="profile-grid">
-        <Panel title="Contact & agreement">
-          <p>
-            <T text={c.status}/> ·{" "}
-            {c.customer_tags.map((t: { tag: string }) => t.tag).join(", ")}
-          </p>
-          <p>{details?.billing_address || first?.address}</p>
-          {(contracts ?? []).map((a) => (
-            <p key={a.id}>
-              <T text={a.source === "own" ? "Own customer" : "Subcontract"}/> ·{" "}
-              <T text={a.billing_model}/> · <CurrencyText value={a.price_cents/100}/><T text={" USD ·"}/>{" "}
-              <T text={a.status}/>
-            </p>
-          ))}
-          {!contracts?.length && (
-            <p className="note">
-              <T text="No service agreement recorded. Profile price is not counted as verified MRR." />
-            </p>
-          )}
-          <p>
-            <T text="Email reports" />:{" "}
-            <T text={c.email_reports_enabled ? "Enabled" : "Disabled"}/>
-          </p>
-          <p className="note">
-            {details?.internal_notes || "No internal notes."}
-          </p>
-        </Panel>
-        <Panel title="Upcoming visits">
-          {upcoming?.length ? (
-            <>
-              {upcoming.slice(0, 6).map((s) => (
-                <p key={s.id}>
-                  <DateText
-                    value={s.service_date + "T12:00:00Z"}
-                    options={{ dateStyle: "medium" }}
-                  />{" "}
-                  ·{" "}
-                  {properties?.find((p) => p.id === s.property_id)?.name ||
-                    "Property"}{" "}
-                  ·{" "}
-                  {
-                    technicians?.find((t) => t.id === s.technician_id)
-                      ?.display_name
-                  }{" "}
-                  · <T text={s.status}/>
-                </p>
-              ))}
-              {upcoming.length > 6 && (
-                <details>
-                  <summary>
-                    <T text="More upcoming visits (up to 30)" />
-                  </summary>
-                  {upcoming.slice(6).map((s) => (
-                    <p key={s.id}>
-                      <Link
-                        href={
-                          "/route?date=" +
-                          s.service_date +
-                          "&technician=" +
-                          s.technician_id
-                        }
-                      >
-                        <DateText value={s.service_date}/> · <T text={s.status}/>
-                      </Link>
-                    </p>
-                  ))}
-                </details>
-              )}
-            </>
-          ) : (
-            <p>
-              <T text="No upcoming visits." />
-            </p>
-          )}
-        </Panel>
-      </div>
-      {properties?.map((p) => (
-        <Panel key={p.id} title={p.name || p.address}>
-          <p>
-            {p.address} · {p.service_timezone}
-          </p>
-          <p className="note">{p.gate_notes}</p>
-          <p className="note">
-            {p.latitude==null?<T text="Missing coordinates"/>:<>{p.latitude}, {p.longitude} · <T text={p.location_confirmed?'Confirmed':'Not confirmed'}/></>}
-          </p>
-          <div className="profile-grid">
-            {p.pools.map(
-              (pool: {
-                id: string;
-                name: string;
-                gallons: number;
-                water_type: string;
-                equipment_notes: string;
-                checklist: string[];
-              }) => (
-                <div key={pool.id} className="info-box">
-                  <strong>{pool.name}</strong>
-                  <p>
-                    <NumberText value={pool.gallons}/><T text={" gal · "}/><T text={pool.water_type}/>
-                  </p>
-                  <p className="note">{pool.equipment_notes}</p>
-                  <p className="note">{pool.checklist.join(" · ")}</p>
-                </div>
-              ),
-            )}
-          </div>
-          {p.recurring_schedules.map(
-            (s: {
-              id: string;
-              active: boolean;
-              technician_id: string;
-              days_of_week: number[];
-              start_on: string;
-              end_on: string | null;
-              service_notes: string;
-            }) => (
-              <p key={s.id}>
-                <T text={s.active ? "Active" : "Paused"}/> ·{" "}
-                {
-                  technicians?.find((t) => t.id === s.technician_id)
-                    ?.display_name
-                }{" "}
-                ·{" "}
-                {s.days_of_week.map((d,i)=><span key={d}>{i?', ':''}<T text={["Sun","Mon","Tue","Wed","Thu","Fri","Sat"][d]}/></span>)}{" "}
-                · <DateText value={s.start_on}/> → {s.end_on?<DateText value={s.end_on}/>:<T text="No end date"/>} · {s.service_notes}
-              </p>
-            ),
-          )}
-          <ChemicalLedger propertyId={p.id} pools={p.pools} />
-          <Link
-            href={"/customers/" + id + "?edit=1"}
-            className="btn btn-secondary"
-          >
-            <T text="Edit pools & schedules" />
-          </Link>
-        </Panel>
-      ))}
-      <History customerId={id} />
-      <Link href="/pools" className="btn btn-secondary">
-        <T text="Advanced Properties & Pools" />
-      </Link>
-    </>
-  );
+import {navigationHref,validCoordinates} from '@/lib/location';
+import {CustomerTabs} from '@/components/customer-tabs';
+import Link from 'next/link';
+import {notFound} from 'next/navigation';
+import {requireManager} from '@/lib/auth';
+import {CustomerOnboarding,type CustomerEditFocus} from '@/components/customer-onboarding';
+import {ChemicalLedger} from '@/components/chemical-ledger';
+import {History} from '@/components/field/history';
+import {Panel} from '@/components/ui';
+import {T,DateText,CurrencyText,NumberText} from '@/components/i18n';
+import {Icon} from '@/components/design/icon';
+import {defaultsSchema} from '@/lib/company-settings';
+import type {CustomerBundle} from '@/lib/onboarding';
+import {serviceDay} from '@/lib/service-time';
+import {customerSummary,type ServiceProperty} from '@/lib/customer-summary';
+import {allRows,forIds} from '@/lib/pagination';
+const tabs=['overview','properties','service','history'] as const;
+type Tab=typeof tabs[number];
+type Query={edit?:string;saved?:string;tab?:string;section?:string;property?:string;pool?:string;add?:string;contract?:string;reports?:string};
+export default async function CustomerProfile({params,searchParams}:{params:Promise<{id:string}>;searchParams:Promise<Query>}){
+ const {id}=await params,query=await searchParams;
+ const {db,user,profile}=await requireManager();
+ const {data:c,error:customerError}=await db.from('customers').select('*,customer_details(*),customer_tags(tag)').eq('id',id).maybeSingle();
+ if(customerError)throw new Error('Customer unavailable.');if(!c)notFound();
+ const [properties,contracts,technicians,{data:company}]=await Promise.all([
+  allRows((from,to)=>db.from('properties').select('*,pools(*),recurring_schedules(*)').eq('customer_id',id).order('created_at').order('id').range(from,to)),
+  allRows((from,to)=>db.from('contracts').select('*').eq('customer_id',id).order('created_at').order('id').range(from,to)),
+  allRows((from,to)=>db.from('profiles').select('id,display_name').in('role',['owner','admin','technician']).order('id').range(from,to)),
+  db.from('organizations').select('settings').eq('id',profile.organization_id).single()
+ ]);
+ const tab:Tab=tabs.includes(query.tab as Tab)?query.tab as Tab:'overview';
+ const details=Array.isArray(c.customer_details)?c.customer_details[0]:c.customer_details;
+ const first=properties[0],agreement=contracts.find(a=>a.id===query.contract)??contracts.find(a=>a.status==='active')??contracts[0];
+ const bundle={request_id:crypto.randomUUID(),customer:{...c,property_id:first?.id??null,service_address:first?.address??'',property_name:first?.name??'',latitude:first?.latitude??null,longitude:first?.longitude??null,tags:c.customer_tags.map((t:{tag:string})=>t.tag),billing_address:details?.billing_address??'',internal_notes:details?.internal_notes??'',monthly_price_cents:details?.monthly_price_cents??0},properties:properties.map(p=>({...p,pools:p.pools,schedules:p.recurring_schedules.map((s:{end_on:string|null})=>({...s,end_on:s.end_on??''}))})),agreement:agreement??{source:'own',billing_model:'monthly',price_cents:details?.monthly_price_cents??0,status:'active'}} as CustomerBundle;
+ if(query.edit){
+  const focus:CustomerEditFocus={section:['property','pool','service'].includes(query.section??'')?query.section as CustomerEditFocus['section']:undefined,propertyId:properties.some(p=>p.id===query.property)?query.property:undefined,poolId:query.pool,add:['property','pool','spa'].includes(query.add??'')?query.add as CustomerEditFocus['add']:undefined};
+  return <CustomerOnboarding returnTab={query.section==='service'||query.contract?'service':query.section||query.add?'properties':'overview'} initial={bundle} focus={query.section||query.add?focus:undefined} defaults={defaultsSchema.parse(company?.settings?.service_defaults??{})} ownerId={user.id} technicians={technicians}/>;
+ }
+ const href=(section:Tab)=>'/customers/'+id+'?tab='+section;
+ const edit=(section:'property'|'pool'|'service',propertyId?:string,poolId?:string,add?:string)=>'/customers/'+id+'?'+new URLSearchParams({edit:'1',section,...(propertyId?{property:propertyId}:{}),...(poolId?{pool:poolId}:{}),...(add?{add}:{})});
+ const summary=customerSummary({status:c.status,properties:properties as ServiceProperty[],contracts},technicians,profile.role==='owner');
+ const upcoming=(tab==='overview'||tab==='service')?await forIds(properties.map(p=>p.id),(ids,from,to)=>db.from('route_stops').select('id,property_id,service_date,status,technician_id').in('property_id',ids).gte('service_date',properties.map(p=>serviceDay(new Date(),p.service_timezone)).sort()[0]??serviceDay(new Date())).order('service_date').order('id').range(from,to)):[];
+ const upcomingCard=<Panel title="Upcoming visits">{upcoming.length?upcoming.slice(0,6).map(stop=><Link className="customer-visit-link" key={stop.id} href={'/route?'+new URLSearchParams({date:stop.service_date,technician:stop.technician_id,timezone:properties.find(p=>p.id===stop.property_id)?.service_timezone??'America/New_York'})}><DateText value={stop.service_date}/><span>{properties.find(p=>p.id===stop.property_id)?.name||<T text="Property"/>} · {technicians.find(t=>t.id===stop.technician_id)?.display_name} · <T text={stop.status}/></span><Icon name="chevron"/></Link>):<p className="note"><T text="No upcoming visits."/></p>}</Panel>;
+ return <>
+  <header className="page-header"><div><p className="page-kicker"><T text="CUSTOMER PROFILE"/></p><h1>{c.name}</h1><p><T text={c.status}/> · {properties.length} <T text="Properties"/> · {summary.water_body_count} <T text="Pools / spas"/></p></div><div className="header-actions"><Link className="btn btn-primary" href={'/customers/'+id+'?edit=1'}><T text="Edit customer & service"/></Link><Link href="/customers" className="btn btn-secondary"><T text="All customers"/></Link></div></header>
+  <CustomerTabs id={id} selected={tab}/>
+  {query.saved&&<p className="notice" role="status"><T text="Customer and service saved successfully."/></p>}
+  {c.email_delivery_state&&c.email_delivery_state!=='unknown'&&<p className="notice" role="alert"><T text="This address was bounced or reported as spam. Confirm and correct the customer email before further delivery."/></p>}
+  {tab==='overview'&&<><div className="profile-grid"><Panel title="Contact information"><dl className="profile-contact"><div><dt><T text="Email"/></dt><dd>{c.email?<a href={'mailto:'+encodeURIComponent(c.email)}>{c.email}</a>:'—'}</dd></div><div><dt><T text="Phone"/></dt><dd>{c.phone?<a href={'tel:'+encodeURIComponent(c.phone)}>{c.phone}</a>:'—'}</dd></div><div><dt><T text="Billing address"/></dt><dd>{details?.billing_address||first?.address||'—'}</dd></div></dl><p className="note">{c.customer_tags.map((tag:{tag:string})=>tag.tag).join(' · ')}</p>{details?.internal_notes&&<details><summary><T text="Internal notes"/></summary><p>{details.internal_notes}</p></details>}<p className="note"><T text="Email reports"/>: <T text={c.email_reports_enabled?'Enabled':'Disabled'}/></p></Panel>{upcomingCard}</div><div className="stat-grid"><Link className="surface customer-shortcut" href={href('properties')}><Icon name="pool"/><strong>{properties.length} <T text="Properties"/> · {summary.water_body_count} <T text="Pools / spas"/></strong><T text="Manage properties and water bodies"/></Link><Link className="surface customer-shortcut" href={href('service')}><Icon name="route"/><strong><T text="Contracts & schedules"/></strong><span>{summary.technician_names.join(', ')||<T text="Unassigned"/>}</span></Link>{summary.own_mrr_cents!==undefined&&<section className="surface"><p className="note"><T text="Own-customer MRR"/></p><strong className="display-number"><CurrencyText value={summary.own_mrr_cents/100}/></strong><p className="note"><T text="Subcontracts are excluded. Revenue is not profit."/></p></section>}</div></>}
+  {tab==='properties'&&<><div className="section-header"><h2><T text="Properties & Pools"/></h2><Link className="btn btn-primary" href={edit('property',undefined,undefined,'property')}><Icon name="plus"/><T text="Add property"/></Link></div>{!properties.length&&<p className="empty"><T text="No property yet"/></p>}{properties.map(property=><Panel key={property.id} title={property.name||property.address}><p>{property.address}</p><p className="note">{property.service_timezone} · <T text={property.location_confirmed?'Confirmed':'Missing coordinates'}/></p>{validCoordinates(property.latitude,property.longitude)&&<p className="note"><T text="Latitude"/>: {property.latitude} · <T text="Longitude"/>: {property.longitude}</p>}<a className="btn btn-secondary" href={navigationHref(property)} target="_blank" rel="noopener noreferrer"><Icon name="pin"/><T text="Navigate"/></a><div className="card-actions"><Link className="btn btn-secondary" href={edit('property',property.id)}><T text="Edit property"/></Link><Link className="btn btn-secondary" href={edit('pool',property.id,undefined,'pool')}><T text="Add pool"/></Link><Link className="btn btn-secondary" href={edit('pool',property.id,undefined,'spa')}><T text="Add spa"/></Link></div>{property.gate_notes&&<details><summary><T text="Access & service instructions"/></summary><p>{property.gate_notes}</p></details>}<div className="customer-water-bodies">{property.pools.map((pool:CustomerBundle['properties'][number]['pools'][number])=><article className="water-body-card" key={pool.id}><div className="field-row-between"><h3>{pool.name}</h3><span className="status"><T text={pool.status}/></span></div><p><T text={pool.type}/> · <NumberText value={pool.gallons}/> <T text="gal"/> · <T text={pool.water_type}/></p><details><summary><T text="Equipment and service notes"/></summary><p>{pool.equipment_notes||<T text="No equipment notes."/>}</p><p className="note">{pool.checklist.map((task,index)=><span key={index}>{index?' · ':''}<T text={task}/></span>)}</p></details><Link className="btn btn-secondary" href={edit('pool',property.id,pool.id)}><T text="Edit water body"/></Link></article>)}</div></Panel>)}</>}
+  {tab==='service'&&<><Panel title="Service agreement & reports">{contracts.length?contracts.map(contract=><div className="contract-summary" key={contract.id}><strong><T text={contract.source==='own'?'Own customer':'Subcontract'}/></strong><span><T text={contract.billing_model}/> · <CurrencyText value={contract.price_cents/100}/> · <T text={contract.status}/></span><Link className="btn btn-secondary" href={'/customers/'+id+'?edit=1&contract='+contract.id+'#service-agreement'}><T text="Edit agreement"/></Link></div>):<p className="note"><T text="No service agreement recorded. Profile price is not counted as verified MRR."/></p>}<p className="note"><T text="Subcontracts are excluded. Revenue is not profit."/></p><Link className="btn btn-secondary" href={'/customers/'+id+'?edit=1#service-agreement'}><T text="Edit customer & service"/></Link><Link className="btn btn-secondary" href={href('history')+'&reports=1'}><T text="Reports"/></Link></Panel>{properties.map(property=><Panel key={property.id} title={property.name||property.address}>{property.recurring_schedules.map((schedule:CustomerBundle['properties'][number]['schedules'][number])=><div className="contract-summary" key={schedule.id}><strong>{technicians.find(t=>t.id===schedule.technician_id)?.display_name||<T text="Unassigned"/>}</strong><span><T text={schedule.active?'Active':'Paused'}/> · {schedule.days_of_week.map((day,index)=><span key={day}>{index?', ':''}<T text={['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][day]}/></span>)} · <DateText value={schedule.start_on}/> → {schedule.end_on?<DateText value={schedule.end_on}/>:<T text="No end date"/>}</span><p className="note">{schedule.service_notes}</p></div>)}<Link className="btn btn-secondary" href={edit('service',property.id)}><T text="Edit pools & schedules"/></Link></Panel>)}{upcomingCard}</>}
+  {tab==='history'&&<><div className="card-actions"><Link className="btn btn-secondary" href={href('history')}><T text="All visits"/></Link><Link className="btn btn-secondary" href={href('history')+'&reports=1'}><T text="Reports"/></Link></div><History customerId={id} reports={query.reports==='1'}/>{properties.map(property=><details className="surface" key={property.id}><summary><T text="Chemical history"/> · {property.name||property.address}</summary><ChemicalLedger propertyId={property.id} pools={property.pools}/></details>)}</>}
+ </>;
 }

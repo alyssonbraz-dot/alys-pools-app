@@ -1,5 +1,5 @@
 /* Public assets only. Device drafts/photos remain in their existing IndexedDB. */
-const VERSION = 'alys-field-shell-v21';
+const VERSION = 'alys-field-shell-v221';
 const META = '/__alys_offline_resources__';
 const ICONS = ['/icons/icon-192.png', '/icons/icon-512.png', '/icons/maskable-512.png'];
 let warming;

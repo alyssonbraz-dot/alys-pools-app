@@ -53,7 +53,7 @@ test('mobile service persists JPEG, snapshot and one outbox; offline visit survi
   await page.getByLabel('Liquid Chlorine amount',{exact:true}).fill('1');await page.getByRole('button',{name:'Add chemical',exact:true}).click();
   await page.getByRole('button',{name:'Muriatic Acid',exact:true}).click();
   await page.getByLabel('Muriatic Acid amount',{exact:true}).fill('12');await page.getByRole('button',{name:'Add chemical',exact:true}).click();
-  await page.locator('input[type=file]').setInputFiles('/tmp/alys-test-photo.jpg');
+  await page.getByLabel('Take service photo',{exact:true}).setInputFiles('/tmp/alys-test-photo.jpg');
   await expect(page.getByAltText('Captured service photo')).toHaveCount(1);
   await page.screenshot({path:'/tmp/alys-service-mobile.png',fullPage:true});
   const submitted=page.waitForRequest(request=>request.url().endsWith('/api/visits')&&request.method()==='POST');
@@ -83,7 +83,7 @@ test('mobile service persists JPEG, snapshot and one outbox; offline visit survi
   await page.getByLabel('Pool 2 Free Chlorine (ppm)',{exact:true}).fill('2.5');
   await page.getByLabel('Pool 2 pH',{exact:true}).fill('7.4');
   await page.getByRole('button',{name:'Mark all done',exact:true}).click();
-  await page.locator('input[type=file]').setInputFiles('/tmp/alys-test-photo.jpg');
+  await page.getByLabel('Take service photo',{exact:true}).setInputFiles('/tmp/alys-test-photo.jpg');
   await expect(page.getByAltText('Captured service photo')).toHaveCount(1);
   await page.waitForFunction(()=>navigator.serviceWorker.controller!==null);
   await context.setOffline(true);
@@ -120,7 +120,7 @@ test('manager customer table supports search, lead status, confirmed bulk action
  // Managed Chromium may disable filesystem downloads. Verify the actual CSV blob and link instead.
  await page.evaluate(()=>{let exported:Blob;const originalUrl=URL.createObjectURL;URL.createObjectURL=function(blob){if(blob instanceof Blob)exported=blob;return originalUrl(blob);};const original=HTMLAnchorElement.prototype.click;HTMLAnchorElement.prototype.click=function(){if(this.download){void exported.text().then(csv=>{document.body.dataset.exportCsv=csv;document.body.dataset.exportName=this.download;});}else original.call(this);};});
  await page.getByRole('button',{name:'Export CSV',exact:true}).click();await expect(page.locator('body')).toHaveAttribute('data-export-name','alys-customers.csv');await expect(page.locator('body')).toHaveAttribute('data-export-csv',new RegExp(name));
- await row.getByRole('checkbox').check();await page.getByRole('combobox',{name:'New status',exact:true}).selectOption('active');page.once('dialog',d=>d.accept());await page.getByRole('button',{name:'Apply',exact:true}).click();await expect(row).toContainText('Active');
+ await row.getByRole('checkbox').check();await page.getByRole('combobox',{name:'New status',exact:true}).selectOption('active');page.once('dialog',d=>d.accept());await page.getByRole('button',{name:'Apply',exact:true}).click();await expect(row.locator('.status')).toHaveText('Active');
  await row.getByRole('checkbox').check();await page.getByRole('combobox',{name:'Bulk action',exact:true}).selectOption('add_tag');await page.getByRole('textbox',{name:'Tag',exact:true}).fill('priority');page.once('dialog',d=>d.accept());await page.getByRole('button',{name:'Apply',exact:true}).click();await expect(row).toContainText('priority');
  await row.getByRole('button',{name:'Edit',exact:true}).click();await dialog.getByLabel('Last name',{exact:true}).fill(last+' Edited');await dialog.getByRole('button',{name:'Save client',exact:true}).click();await expect(dialog).not.toBeVisible();await page.getByRole('searchbox').fill(name+' Edited');row=page.locator('tbody tr').filter({hasText:name+' Edited'});await expect(row).toHaveCount(1);
  const {data:record,error}=await admin.from('customers').select('id,status,first_name,last_name,customer_tags(tag),customer_details(monthly_price_cents)').eq('organization_id',fixture.orgId).eq('name',name+' Edited').single();expect(error).toBeNull();expect(record!.status).toBe('active');expect(record!.customer_tags.map((v:{tag:string})=>v.tag)).toContain('priority');
