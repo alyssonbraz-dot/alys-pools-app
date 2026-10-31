@@ -9,6 +9,12 @@ Aplicativo da ALYS Pool Services LLC para registrar manutenção de piscinas pel
 Este README é o roteiro de entrega e publicação com **Netlify Free + Supabase Free + Resend Free**, usando o domínio **alyspools.com**, registrado na Hostinger. Não é necessário contratar hospedagem na Hostinger. A renovação do domínio já comprado continua sendo responsabilidade do titular; planos gratuitos têm cotas e não garantem operação ilimitada sem custo.
 
 
+## V2.3 — mobile UX
+
+Branch `feature/alys-v2-3-mobile-ux`, baseada no último merge `67c6415`. Cabeçalho azul ALYS, cartões brancos, calendário semanal, progresso circular, cinco destinos mobile por função e mapa com alternância mapa/satélite. A visita conserva FC/pH rápidos, favoritos, checklist, fotos e Finish & Next; Info e os corpos d’água ficam no topo. Clientes continuam reunindo endereços/piscinas.
+
+Não há migration nova nem alteração da fila IndexedDB. Veja [entrega V2.3, screenshots e aceite no iPhone](docs/V23-MOBILE-UX.md). O satélite usa tiles públicos Esri sob seus termos e disponibilidade; `NEXT_PUBLIC_SATELLITE_TILE_URL` permite configurar outro fornecedor autorizado. Não foi contratado nenhum serviço. GPS e trajetos mantêm a configuração existente. Publicação e merge continuam dependentes de aprovação.
+
 ## Clientes, GPS e acesso dos técnicos
 
 Branch de revisão: `fix/customer-gps-team-credentials` (base V2.2.1). Endereços, piscinas e spas são gerenciados em **Customers → cliente → Properties & Pools**. Não há seção independente no menu; favoritos antigos `/pools` e `/locations` redirecionam para Customers. No Dashboard, Missing coordinates abre a lista de clientes filtrada, incluindo locais ainda não confirmados.
@@ -78,12 +84,12 @@ cp .env.production.example .env.production.local
 Para testar esta entrega antes do merge aprovado, selecione a branch de revisão e reinstale as dependências:
 
 ```bash
-git fetch origin fix/customer-gps-team-credentials
-git switch --track origin/fix/customer-gps-team-credentials
+git fetch origin feature/alys-v2-3-mobile-ux
+git switch --track origin/feature/alys-v2-3-mobile-ux
 npm ci
 ```
 
-Se a branch local já existir, use `git switch fix/customer-gps-team-credentials`. Para testar sem publicar, siga [desenvolvimento local](docs/LOCAL-DEVELOPMENT.md); o teste local usa `.env.example`, não credenciais de produção.
+Se a branch local já existir, use `git switch feature/alys-v2-3-mobile-ux`. Para testar sem publicar, siga [desenvolvimento local](docs/LOCAL-DEVELOPMENT.md); o teste local usa `.env.example`, não credenciais de produção.
 
 Se já tiver o projeto, atualize seu checkout e execute `npm ci`. Preserve arquivos `.env.*.local` existentes: eles são privados e ignorados pelo Git. No Windows, use WSL2/Ubuntu para os comandos de terminal deste guia.
 
