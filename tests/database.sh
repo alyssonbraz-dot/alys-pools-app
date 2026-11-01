@@ -33,6 +33,15 @@ SQL
 docker exec -i "$name" psql -v ON_ERROR_STOP=1 -U postgres < supabase/migrations/202610230001_foundation.sql
 docker exec -i "$name" psql -v ON_ERROR_STOP=1 -U postgres < supabase/tests/rls.sql
 for migration in supabase/migrations/*.sql; do
+  if [[ "${ALYS_TEST_V1_BRIDGE:-0}" == 1 && "$migration" == *202610310026_profitability.sql ]]; then
+    docker exec -i "$name" psql -v ON_ERROR_STOP=1 -U postgres < tests/fixtures/profitability-v1-schema.sql
+    docker exec -i "$name" psql -v ON_ERROR_STOP=1 -U postgres <<'V3SEED'
+insert into public.organizations(id,name) values('37000000-0000-4000-8000-000000000001','Fictional pre-bridge V1');
+insert into public.customers(id,organization_id,name) values('37000000-0000-4000-8000-000000000002','37000000-0000-4000-8000-000000000001','Fictional existing V1 customer');
+insert into public.customer_profit_costs(customer_id,organization_id,technician_cost_per_visit_cents,chemicals_per_visit_cents,monthly_overhead_cents) values('37000000-0000-4000-8000-000000000002','37000000-0000-4000-8000-000000000001',2800,123,789);
+V3SEED
+    continue
+  fi
   if [[ "$migration" != *202610230001_foundation.sql ]]; then
     docker exec -i "$name" psql -v ON_ERROR_STOP=1 -U postgres < "$migration"
   fi

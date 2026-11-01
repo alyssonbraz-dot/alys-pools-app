@@ -43,6 +43,7 @@ export type Completed = {
   technician_id: string;
   terms?: FinanceConfig["terms"][number];
   termsKnown?: boolean;
+  finance_config_id?: string;
 };
 export type Input = {
   month: string;

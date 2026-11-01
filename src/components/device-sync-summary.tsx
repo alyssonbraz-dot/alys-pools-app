@@ -38,7 +38,7 @@ export function DeviceSyncSummary({ scope,compact=false }: { scope: OfflineScope
       clearInterval(timer);
     };
   }, [scope.userId, scope.organizationId, scope]);
-  if(compact)return <Link className={'device-sync-strip '+(counts?.failed?'has-failures':'')} href="/stops"><Icon name="sync"/><span><T text="This device"/> · <T text={counts?`${counts.pending} pending sync · ${counts.failed} failed / sign-in required`:"Checking local storage…"}/></span><Icon name="chevron"/></Link>;
+  if(compact)return <Link className={'device-sync-strip '+(counts?.failed?'has-failures':'')} href="/stops"><Icon name="sync"/><span><T text="This device"/> · <T text={counts?(counts.pending?`${counts.pending} pending sync · ${counts.failed} need attention`:"No visits pending sync"):"Checking local storage…"}/></span><Icon name="chevron"/></Link>;
   return (
     <p className="device-sync">
       <T text="This device" />:{" "}

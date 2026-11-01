@@ -1,3 +1,4 @@
+import {isLegacy} from '@/lib/business/contribution';
 import {customerSummary} from '@/lib/customer-summary';
 import {customerValidationMessage} from '@/lib/customer-errors';
 import {getOperator} from '@/lib/auth';
@@ -16,7 +17,7 @@ export async function GET(){
    for(const c of page??[]){
     c.properties.sort((a,b)=>a.created_at.localeCompare(b.created_at)||a.id.localeCompare(b.id));
     const {contracts,properties,...contact}=c;
-    customers.push({...contact,customer_details:Array.isArray(c.customer_details)?c.customer_details[0]??null:c.customer_details,
+    customers.push({...contact,business_source:isLegacy(contracts)?'legacy':'own',customer_details:Array.isArray(c.customer_details)?c.customer_details[0]??null:c.customer_details,
      summary:customerSummary({...c,contracts},technicians,owner,now),
      properties:properties.map(({id,name,address,latitude,longitude,location_confirmed})=>({id,name,address,latitude,longitude,location_confirmed}))});
    }

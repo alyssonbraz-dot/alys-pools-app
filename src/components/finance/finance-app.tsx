@@ -991,7 +991,7 @@ export function FinanceApp({
                     <Link
                       className="finance-pool-link"
                       key={p.id}
-                      href={"/finance/pools/" + p.id + "?month=" + month}
+                      href={"/finance/advanced/pools/" + p.id + "?month=" + month}
                     >
                       <div>
                         <strong>{p.customer}</strong>
@@ -1219,7 +1219,7 @@ function PoolDetail({
         {previous ? (
           <Link
             className="btn btn-secondary"
-            href={"/finance/pools/" + p.id + "?month=" + previous.month}
+            href={"/finance/advanced/pools/" + p.id + "?month=" + previous.month}
           >
             <T text="Previous closed period" /> · {previous.month}
           </Link>

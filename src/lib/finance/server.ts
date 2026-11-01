@@ -165,7 +165,7 @@ export async function loadFinance(db: SupabaseClient, month: string) {
     (ids, a, b) =>
       db
         .from("finance_visit_terms")
-        .select("visit_id,payload")
+        .select("visit_id,payload,config_id")
         .in("visit_id", ids)
         .order("visit_id")
         .range(a, b),
@@ -173,7 +173,7 @@ export async function loadFinance(db: SupabaseClient, month: string) {
   for (const visit of visits) {
     const snapshot = terms.find((t) => t.visit_id === visit.id);
     visit.termsKnown = !!snapshot;
-    if (snapshot) visit.terms = termSchema.parse(snapshot.payload);
+    if (snapshot) {visit.terms = termSchema.parse(snapshot.payload);visit.finance_config_id=snapshot.config_id;}
   }
   const report =
     (closed.data?.payload?.report as Report) ??

@@ -9,6 +9,18 @@ Aplicativo da ALYS Pool Services LLC para registrar manutenção de piscinas pel
 Este README é o roteiro de entrega e publicação com **Netlify Free + Supabase Free + Resend Free**, usando o domínio **alyspools.com**, registrado na Hostinger. Não é necessário contratar hospedagem na Hostinger. A renovação do domínio já comprado continua sendo responsabilidade do titular; planos gratuitos têm cotas e não garantem operação ilimitada sem custo.
 
 
+## V3.0 — operação simples, pronta para crescer
+
+**From Pool Technician to Pool Business Owner.** Branch de revisão `feature/alys-v3-simplification`.
+
+- Owner: **Home · Customers · Route · Team · More**. Técnico: **Today · History · More**.
+- Clientes, imóveis, piscinas/spas, agenda, contrato e histórico reunidos no cliente; edição por um único formulário integrado.
+- FC/pH, dosagens, checklist e fotos antes dos detalhes técnicos. Finish & Next salva localmente e abre a próxima visita sem aguardar upload.
+- Financeiro padrão: **receita mensal − pagamentos aos técnicos = contribuição estimada**. Sem cadastro obrigatório de químicos, combustível ou despesas gerais. Mão de obra própria fica sem preço até ser configurada, e contribuição não é lucro líquido.
+- Configurações financeiras antigas e subcontratos existentes continuam em **More → Advanced & legacy**.
+
+Consulte [auditoria de todas as páginas, reconciliação da PR #7, BEFORE/AFTER e testes V3](docs/V30-SIMPLIFICATION.md). A migration **027** é uma ponte aditiva para os dois históricos diferentes de migration 026; não apaga configurações V1/V2.4. Foi validada somente localmente. Publicação, merge e migrations remotas continuam sujeitos à aprovação separada.
+
 ## V2.4 — Profitability & Business Costs
 
 Nova branch de revisão `feature/alys-v2-4-profitability`: Owner → More → **Business Costs** para custos, responsabilidades e condições de pagamento; **Finance / Profit Result** para resultado consolidado; **Pool Profitability** dentro de Properties & Pools no cliente. Previsões, recebimentos registrados e pagamentos devidos ficam separados. Campos ausentes não viram custo zero.
@@ -51,11 +63,11 @@ A branch de revisão `feature/alys-v2-2-complete-redesign` traz navegação por 
 
 Consulte a [entrega V2.2](docs/V22-REDESIGN.md) para inventário, capturas antes/depois, benchmarks, testes e aceite em aparelho físico. A V2.1.2 de fotos continua preservada, incluindo a fila antiga do IndexedDB.
 
-**Atualização de V2.1.2:** a migration aditiva **025** registra motivos de skip e é necessária antes do frontend V2.2. Não altera visitas existentes. A aplicação remota, merge e deploy exigem autorização; não execute seeds nem `db reset` em produção. Instalações novas da V2.4 usam migrations 001–026. O roteiro gratuito de Netlify, Supabase, Resend e DNS Hostinger abaixo continua válido.
+**Atualização de V2.1.2:** a migration aditiva **025** registra motivos de skip e é necessária antes do frontend V2.2. Não altera visitas existentes. A aplicação remota, merge e deploy exigem autorização; não execute seeds nem `db reset` em produção. Instalações novas da V3 usam migrations 001–027. O roteiro gratuito de Netlify, Supabase, Resend e DNS Hostinger abaixo continua válido.
 
 ## Atualizações anteriores
 
-Os diagnósticos e históricos continuam em [V2.1.2 — fotos e recuperação](docs/V212-MOBILE-HOTFIX.md) e [V2.1.1 — clientes, datas e idiomas](docs/V211-HOTFIX.md). Para uma futura publicação aprovada da V2.4, consulte a entrega V2.4 e aplique todas as migrations pendentes até 026, com backup e aprovação. Não recrie empresa, proprietário ou clientes existentes.
+Os diagnósticos e históricos continuam em [V2.1.2 — fotos e recuperação](docs/V212-MOBILE-HOTFIX.md) e [V2.1.1 — clientes, datas e idiomas](docs/V211-HOTFIX.md). Para uma futura publicação aprovada da V3, revise as migrations pendentes até 027, com backup e aprovação. Se a migration 026 instalada veio da PR #7, confira a [reconciliação dos dois históricos](docs/V30-SIMPLIFICATION.md#reconciliação-com-a-pr-7) antes de aplicar a ponte 027. Não recrie empresa, proprietário ou clientes existentes.
 
 ## O que está incluído
 
@@ -94,12 +106,12 @@ cp .env.production.example .env.production.local
 Para testar esta entrega antes do merge aprovado, selecione a branch de revisão e reinstale as dependências:
 
 ```bash
-git fetch origin feature/alys-v2-4-profitability
-git switch --track origin/feature/alys-v2-4-profitability
+git fetch origin feature/alys-v3-simplification
+git switch --track origin/feature/alys-v3-simplification
 npm ci
 ```
 
-Se a branch local já existir, use `git switch feature/alys-v2-4-profitability`. Para testar sem publicar, siga [desenvolvimento local](docs/LOCAL-DEVELOPMENT.md); o teste local usa `.env.example`, não credenciais de produção.
+Se a branch local já existir, use `git switch feature/alys-v3-simplification`. Para testar sem publicar, siga [desenvolvimento local](docs/LOCAL-DEVELOPMENT.md); o teste local usa `.env.example`, não credenciais de produção.
 
 Se já tiver o projeto, atualize seu checkout e execute `npm ci`. Preserve arquivos `.env.*.local` existentes: eles são privados e ignorados pelo Git. No Windows, use WSL2/Ubuntu para os comandos de terminal deste guia.
 
@@ -120,7 +132,7 @@ npx --yes supabase@2.121.0 migration list --linked
 
 `SEU_PROJECT_REF` é o identificador no painel/URL do projeto Supabase. Confira que o projeto vinculado é o correto antes de confirmar `db push`. Em banco já utilizado, faça backup antes da atualização e revise as migrations pendentes.
 
-A lista remota deve incluir **001 a 025**, terminando em `202610300025_route_skip_events.sql`. Elas criam tabelas, políticas RLS, bucket privado, fila de relatórios e provisionamento do proprietário. Não copie somente a última migration e não torne o bucket `visit-photos` público.
+A V3 usa migrations **001 a 027**, terminando em `202611010027_finance_v30_bridge.sql`. Elas criam tabelas, políticas RLS, bucket privado, fila de relatórios, provisionamento do proprietário e tarifas financeiras privadas. Instalações que já aplicaram a versão 026 da PR #7 precisam revisar o histórico conforme a reconciliação acima; não reaplique outra 026 por cima. Não copie somente a última migration e não torne o bucket `visit-photos` público.
 
 **Nunca execute `db reset`, `supabase/seed.dev.sql` ou `tests/integration/setup.mjs` na produção.** Não há seed automático de clientes reais ou fictícios no deploy.
 

@@ -1,9 +1,9 @@
 'use client';
 import {Children,type ReactNode,type LiHTMLAttributes} from 'react';
 import {T,useLanguage} from '@/components/i18n';
-export function MobileHeader({title,address,eyebrow,action}:{title:ReactNode;address?:ReactNode;eyebrow?:ReactNode;action?:ReactNode}){return <header className="mobile-field-header"><div>{eyebrow&&<p>{eyebrow}</p>}<h1>{title}</h1>{address&&<div className="mobile-field-address">{address}</div>}</div>{action&&<div className="mobile-field-header-action">{action}</div>}</header>;}
+export function MobileHeader({title,address,eyebrow,action,compact=false}:{compact?:boolean;title:ReactNode;address?:ReactNode;eyebrow?:ReactNode;action?:ReactNode}){return <header className={'mobile-field-header'+(compact?' mobile-field-header-compact':'')}><div>{eyebrow&&<p>{eyebrow}</p>}<h1>{title}</h1>{address&&<div className="mobile-field-address">{address}</div>}</div>{action&&<div className="mobile-field-header-action">{action}</div>}</header>;}
 export function ProgressDial({completed,total}:{completed:number;total:number}){const {t}=useLanguage();return <div className="mobile-progress-dial" role="progressbar" aria-label={t("Completed visits")} aria-valuemin={0} aria-valuemax={total||1} aria-valuenow={completed} style={{background:`conic-gradient(#1977b8 ${total?Math.min(1,completed/total)*360:0}deg,#dbe4eb 0)`}}><strong>{completed}/{total}</strong></div>;}
-export function ServiceCard({title,children,id,action}:{title:string;children:ReactNode;id?:string;action?:ReactNode}){return <section className="rebuild-service-card field-section service-anchor" id={id}><header><h2><T text={title}/></h2>{action}</header><div className="rebuild-service-card-body">{children}</div></section>;}
+export function ServiceCard({title,children,id,action,compact=false}:{compact?:boolean;title:string;children:ReactNode;id?:string;action?:ReactNode}){return <section className={'rebuild-service-card field-section service-anchor'+(compact?' service-card-compact':'')} id={id}><header><h2><T text={title}/></h2>{action}</header><div className="rebuild-service-card-body">{children}</div></section>;}
 export function RouteStopCard({number,customer,address,status,label,onSelect,meta,children,...props}:{number:number;customer:string;address:string;status:string;label:string;onSelect:()=>void;meta?:ReactNode;children:ReactNode}&LiHTMLAttributes<HTMLLIElement>){
  const actions=Children.toArray(children);
  return <li {...props} className={'field-stop route-stop-card '+(props.className??'')} data-status={status}>
@@ -14,3 +14,5 @@ export function RouteStopCard({number,customer,address,status,label,onSelect,met
   </article>
  </li>;
 }
+
+export function RouteSummary({completed,total,remaining,pending}:{completed:number;total:number;remaining:number;pending:number}){return <section className="route-service-summary business-route-summary"><ProgressDial completed={completed} total={total}/><div><strong>{completed} / {total} <T text="completed · synced"/></strong><p>{remaining} <T text="remaining"/>{pending>0&&<> · {pending} <T text="on this device"/></>}</p></div></section>;}

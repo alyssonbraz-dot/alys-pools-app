@@ -52,7 +52,7 @@ async function noOverflow(page: Page) {
 
 test("Owner persists costs/records, closes history immutably and uses all three mobile finance screens", async ({
   page,
-}) => {
+},testInfo) => {
   test.setTimeout(120000);
   await login(page);
   await page.goto("/finance/costs");
@@ -90,10 +90,16 @@ test("Owner persists costs/records, closes history immutably and uses all three 
     page.getByText("Financial data saved.", { exact: true }),
   ).toBeVisible();
   let data = await financial(page);
+  const [year, month] = fixture.month.split("-").map(Number);
+  const mondayCount = Array.from(
+    { length: new Date(Date.UTC(year, month, 0)).getUTCDate() },
+    (_, day) => new Date(Date.UTC(year, month - 1, day + 1)).getUTCDay(),
+  ).filter(day => day === 1).length;
+  const expectedTechnicianCost = mondayCount * fixture.customers.length * 2500;
   expect(data.report.forecast.revenue).toBe(54000);
-  expect(data.report.forecast.technician).toBe(30000);
+  expect(data.report.forecast.technician).toBe(expectedTechnicianCost);
   expect(data.report.forecast.overhead).toBe(9000);
-  expect(data.report.forecast.profit).toBe(15000);
+  expect(data.report.forecast.profit).toBe(54000 - expectedTechnicianCost - 9000);
   expect(data.report.recorded.technician).toBe(15000);
   const records = emptyRecords();
   records.company = cfg.costs.map((c) => ({ category: c.id, cents: c.cents }));
@@ -210,14 +216,14 @@ test("Owner persists costs/records, closes history immutably and uses all three 
   await page.setViewportSize({ width: 390, height: 844 });
   for (const [name, path] of [
     ["business-costs", "/finance/costs"],
-    ["pool-profitability", "/finance/pools/" + fixture.pools[0]],
-    ["profit-result", "/finance"],
+    ["pool-profitability", "/finance/advanced/pools/" + fixture.pools[0]],
+    ["profit-result", "/finance/advanced"],
   ] as const) {
     await page.goto(path);
     await expect(page.locator(".finance-context")).toBeVisible();
     await noOverflow(page);
     await page.screenshot({
-      path: "docs/screenshots/v24/" + name + ".png",
+      path: testInfo.outputPath(name+".png"),
       fullPage: true,
     });
   }
@@ -230,9 +236,9 @@ test("Owner persists costs/records, closes history immutably and uses all three 
     for (const width of [320, 390, 430]) {
       await page.setViewportSize({ width, height: 844 });
       for (const path of [
-        "/finance",
+        "/finance/advanced",
         "/finance/costs",
-        "/finance/pools/" + fixture.pools[0],
+        "/finance/advanced/pools/" + fixture.pools[0],
       ]) {
         await page.goto(path);
         await expect(page.locator(".finance-context")).toBeVisible();
