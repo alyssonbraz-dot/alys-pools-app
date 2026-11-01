@@ -1,3 +1,4 @@
+import {isLegacy} from '@/lib/business/contribution';
 import 'server-only';
 import {reportStatus,deliveryFailureExplanation} from '@/lib/email/status';
 import {allRows,forIds} from '@/lib/pagination';
@@ -22,6 +23,7 @@ export async function loadRoute(operator:Operator,date:string,timeZone?:string):
   profile.role==='technician'?Promise.resolve([]):allRows((from,to)=>db.from('properties').select('id,name,address').order('id').range(from,to))
  ]);
  const customers=scoped?scoped.customers:await forIds([...new Set(properties.map(p=>p.customer_id))],(ids,from,to)=>db.from('customers').select('id,name').in('id',ids).order('id').range(from,to));
+ const businessContracts=profile.role==='technician'?[]:await allRows((a,b)=>db.from('contracts').select('customer_id,source,status').order('id').range(a,b));
  // Chemical context is scoped to visible current properties; each RPC accepts at most300 IDs.
  const visibleIds=properties.map(p=>p.id);
  const window=chemistryPeriod(date);
@@ -46,7 +48,7 @@ export async function loadRoute(operator:Operator,date:string,timeZone?:string):
     const recent=poolHistory[pool.id].find(entry=>Object.keys(entry.readings).length>0);
     if(recent)last[pool.id]={recorded_at:recent.completed_at,readings:recent.readings};
    }
-   return {...s,skip_reason:skipEvents.find(event=>event.stop_id===s.id)?.reason,property:{id:property.id,name:property.name,address:property.address,gate_notes:property.gate_notes,latitude:property.latitude,longitude:property.longitude,service_timezone:property.service_timezone,unit_system:property.unit_system,location_confirmed:property.location_confirmed,country_code:property.country_code},customer,pools:stopPools,last_readings:last,chemistry_history:poolHistory};
+   return {...s,...(profile.role!=='technician'?{business_source:isLegacy(businessContracts.filter(c=>c.customer_id===customer.id))?'legacy' as const:'own' as const}:{}),skip_reason:skipEvents.find(event=>event.stop_id===s.id)?.reason,property:{id:property.id,name:property.name,address:property.address,gate_notes:property.gate_notes,latitude:property.latitude,longitude:property.longitude,service_timezone:property.service_timezone,unit_system:property.unit_system,location_confirmed:property.location_confirmed,country_code:property.country_code},customer,pools:stopPools,last_readings:last,chemistry_history:poolHistory};
  });
  const plans=await allRows((from,to)=>db.from('route_plans').select('technician_id,start_latitude,start_longitude,start_time,calculation,fingerprint').eq('service_date',date).order('id').range(from,to));
  return {...preferences,timeZone:timeZone??preferences.timeZone,route_plans:Object.fromEntries((plans??[]).map(p=>{const open=mapped.filter(s=>s.technician_id===p.technician_id&&['pending','in_progress'].includes(s.status));const geo=open.filter(s=>s.property.location_confirmed&&s.property.latitude!=null&&s.property.longitude!=null).map(s=>({id:s.id,latitude:s.property.latitude!,longitude:s.property.longitude!,service_minutes:s.estimated_service_minutes??20}));return [p.technician_id,{...p,calculation:geo.length===open.length&&p.fingerprint===routeFingerprint(geo)&&(p.calculation?.service_timezone??'America/New_York')===(timeZone??preferences.timeZone)?p.calculation:null}];})),userId:user.id,orgId:profile.organization_id,displayName:profile.display_name,role:profile.role,date,stops:mapped,
