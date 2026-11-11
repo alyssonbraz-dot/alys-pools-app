@@ -259,7 +259,7 @@ export function CustomerOnboarding({
             {customerField("last_name", "Last name")}
             {customerField("email", "Email", "email")}
             {customerField("phone", "Phone", "tel")}
-            <label className="form-field">
+          </div><details className="business-details"><summary><T text="Customer details (optional)"/></summary><div className="form-grid"><label className="form-field">
               <T text="Status" />
               <select
                 value={data.customer.status}
@@ -286,7 +286,7 @@ export function CustomerOnboarding({
                 })
               }
             />
-          </div><details><summary><T text="Billing address & internal notes"/></summary><div className="form-grid">
+          </div></details><details><summary><T text="Billing address & internal notes"/></summary><div className="form-grid">
             {customerField("billing_address", "Billing address (if different)")}
             {customerField("internal_notes", "Internal notes")}
           </div></details>
@@ -318,7 +318,7 @@ export function CustomerOnboarding({
                   })
                 }
               />
-              <Input
+            </div><details className="business-details"><summary><T text="Access, GPS & regional settings"/></summary><div className="form-grid"><Input
                 label="Gate / access instructions"
                 value={property.gate_notes}
                 maxLength={1000}
@@ -362,7 +362,7 @@ export function CustomerOnboarding({
                 })
               }
             />
-            <h2>
+            </details><h2>
               03 · <T text="Pools & spas" />
             </h2>
             {property.pools.map((pool, wi) => (
@@ -395,7 +395,7 @@ export function CustomerOnboarding({
                       })
                     }
                   />
-                  <label className="form-field">
+                </div><details className="business-details" open={!!initial}><summary><T text="Pool setup & checklist"/></summary><div className="form-grid"><label className="form-field">
                     <T text="Type" />
                     <select
                       value={pool.type}
@@ -544,7 +544,7 @@ export function CustomerOnboarding({
                     </div>
                   ))}
                 </details>
-              </fieldset>
+              </details></fieldset>
             ))}
             <button
               type="button"
@@ -693,7 +693,7 @@ export function CustomerOnboarding({
             <T text="Service agreement & reports" />
           </h2>
           <div className="form-grid">
-            <label className="form-field">
+            <details className="business-details"><summary><T text="Legacy agreement options"/></summary><label className="form-field">
               <T text="Service source" />
               <select
                 value={data.agreement.source}
@@ -725,7 +725,7 @@ export function CustomerOnboarding({
                 ))}
               </select>
             </label>
-            <Input
+            </details><Input
               label={
                 data.agreement.billing_model === "monthly"
                   ? "Monthly service price (USD)"
