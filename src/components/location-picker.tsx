@@ -1,4 +1,5 @@
 "use client";
+import {appPathInput} from '@/lib/app-path';
 import dynamic from "next/dynamic";
 import { useEffect, useRef,useState } from "react";
 import { T } from "./i18n";
@@ -37,7 +38,7 @@ export function LocationPicker({
     >([]);
   useEffect(() => {
     let active = true;
-    fetch("/api/geocode")
+    fetch(appPathInput("/api/geocode"))
       .then((r) => r.json())
       .then((d) => {
         if (active) setAutocomplete(d.autocomplete === true);
@@ -51,7 +52,7 @@ export function LocationPicker({
     if (!autocomplete || confirmed || address===initialAddress.current || address.length < 3) return;
     let active = true;
     const timer = setTimeout(() => {
-      fetch("/api/geocode", {
+      fetch(appPathInput("/api/geocode"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ address, country_code:countryCode,suggestions: true }),
@@ -74,7 +75,7 @@ export function LocationPicker({
     setBusy(true);
     setError("");
     try {
-      const response = await fetch("/api/geocode", {
+      const response = await fetch(appPathInput("/api/geocode"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ address, country_code:countryCode,suggestions: true }),

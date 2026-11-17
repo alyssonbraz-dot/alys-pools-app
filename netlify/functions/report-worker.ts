@@ -13,7 +13,7 @@ export default async function scheduledReports() {
   if (base.protocol !== 'https:' || base.username || base.password || base.search || base.hash || base.pathname !== '/') {
     throw new Error('Scheduled reports require an HTTPS site origin.');
   }
-  const response = await fetch(new URL('/api/email/worker', base), {
+  const response = await fetch(new URL((process.env.ALYS_APP_BASE_PATH === '/app' ? '/app' : '')+'/api/email/worker', base), {
     method: 'POST',
     headers: {'X-ALYS-Worker-Source':'schedule', Authorization: `Bearer ${secret}` },
     redirect: 'error',

@@ -1,4 +1,5 @@
 "use client";
+import {appPathInput} from '@/lib/app-path';
 import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
@@ -28,7 +29,7 @@ export function CustomerManager({
     [people, setPeople] = useState<{ id: string; display_name: string }[]>([]);
   useEffect(() => {
     const c = new AbortController();
-    fetch("/api/customers", { cache: "no-store", signal: c.signal })
+    fetch(appPathInput("/api/customers"), { cache: "no-store", signal: c.signal })
       .then(async (r) => {
         const d = await r.json();
         if (!r.ok) throw new Error(d.error);
@@ -90,7 +91,7 @@ export function CustomerManager({
     setBusy(true);
     setError("");
     try {
-      const r = await fetch("/api/customers/bulk", {
+      const r = await fetch(appPathInput("/api/customers/bulk"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

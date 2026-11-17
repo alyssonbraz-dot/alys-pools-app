@@ -1,36 +1,65 @@
-# ALYS under https://alyspools.com/app (staging architecture)
+# ALYS V3 em https://alyspools.com/app
 
-## Verified hosting facts
-- Marketing site remains on Hostinger at https://alyspools.com.
-- ALYS Next.js application remains on Netlify (server-rendered app).
-- The public `/app` path must preserve the origin in the browser, including login, cookies, service worker and offline visits.
-- A Hostinger URL redirect to Netlify is NOT the same as mounting the app at `alyspools.com/app`.
+Esta branch é revisão do PR #9. Nenhum deploy, alteração de DNS, envio real de email ou migration remota é feito pelos comandos de teste. O site comercial permanece na Hostinger; o aplicativo Next.js permanece no Netlify.
 
-## Recommended routing architecture
-`Browser -> Cloudflare path route /app* -> Netlify ALYS app`
-`Browser -> Hostinger marketing site for everything else`
+## Netlify
 
-Cloudflare must manage the DNS zone and be proxy for the website, with Hostinger origin DNS records preserved. Preserve all existing email MX/TXT records. Do not move DNS/name servers without account access and review of current records. Route a Worker only to `alyspools.com/app*`. Cloudflare Worker template: `deployment/cloudflare/alys-app-proxy.js`. Configure `ALYS_NETLIFY_ORIGIN` as a stable Netlify hostname, for example `https://<your-netlify-site>.netlify.app/` (replace with real site). Worker expects the Netlify build to serve `/app` already.
+Use um **site de staging separado** inicialmente, conectado à branch `feature/alys-hostinger-app-path`. Mantenha `netlify.toml` e o plugin Next.js existentes. Node >=22, `npm ci`, build `npm run build`, publish `.next`.
 
-## What is staged in this branch
-- `next.config.ts`: **opt-in only** `ALYS_APP_BASE_PATH=/app` to enable the production Next.js basePath. Default behavior remains unchanged.
-- Worker proxy template and this deployment plan. No DNS, Hostinger, Cloudflare, Netlify, Supabase or production database has been modified.
+Variáveis de **build e runtime**:
 
-## Remaining technical work BEFORE enabling /app
-1. Rewrite all hard-coded `/api/*`, `/login`, `/route`, `/offline`, `/sw.js`, `/manifest.webmanifest`, image/icon URLs, `window.location`/history replacements, and external report email links to use a tested application path helper. Next.js `Link` handles `basePath` automatically, but browser fetch, absolute asset strings, and service-worker cache keys do **not**.
-2. Restrict Service Worker registration, scope, offline navigation, cache cleanup and public asset caching to `/app/`; never let this new build delete existing offline drafts/photos, or assume changing the PWA origin preserves existing IndexedDB.
-3. Update Auth redirects, cookies and `APP_URL`/invitation links for same-origin `https://alyspools.com/app`. Note current `applicationOrigin()` expects origin without a path, so extend and test its contract before altering `APP_URL`.
-4. Add end-to-end tests with `ALYS_APP_BASE_PATH=/app` for login/logout, RSC/SSR, private API calls, Next static assets, navigation, GPS, report links, service worker, photos JPEG/HEIC, offline sync and resuming the app after lock/sleep.
-5. Check production Supabase schema migrations 026/027 and current ALYS V3 merge status separately; do not run migrations implicitly from this routing branch.
-6. Set up a staging Netlify site and Cloudflare route using a staging host before touching the main domain. In Cloudflare, DNS of Hostinger must remain proxied with Hostinger-provided origin address (do not guess). Keep all unrelated paths going to Hostinger. Confirm SSL, route path and WordPress/Builder behavior.
-7. Confirm Apple iOS installed PWA behavior: `scope=/app/`, start URL, permissions, push/auth cookies, no old pending device operations. No browser data reset as a workaround.
+```text
+ALYS_APP_BASE_PATH=/app
+APP_URL=https://alyspools.com/app
+```
 
-## Acceptance conditions
-- `https://alyspools.com/`, blog, form submission, and SEO content remain exactly served by Hostinger.
-- `https://alyspools.com/app` and every subpage load without changing the visible host.
-- Static assets, API requests, photo uploads and all cookie redirects stay under `/app` with no 404, CORS or CSP errors.
-- Owner/Technician role isolation and offline/online transitions work on physical iPhone.
-- No production DNS, schema or website change without validation/explicit approval.
+A configuração Next injeta automaticamente `NEXT_PUBLIC_ALYS_APP_BASE_PATH` no cliente; não configure esse valor separadamente. O prefixo é fixado no build: mudar a variável exige reconstruir. Sem ALYS_APP_BASE_PATH o deployment na raiz continua suportado.
 
-## Alternative if DNS/Cloudflare cannot be used
-`https://app.alyspools.com` is substantially simpler: map the subdomain to Netlify while keeping Hostinger on the apex. It is **not** the exact requested `/app` URL. A WordPress/Hostinger redirect from `/app` to that subdomain changes the browser URL and does not fulfill the strict requirement.
+Preserve as variáveis Supabase, Resend e REPORT_WORKER_SECRET já usadas em `.env.production.example`. Segredos continuam server-only. Não execute fixtures, seeds ou `db reset` no projeto hospedado. Confira migrations 026/027 separadamente antes de publicar V3; esta branch não adiciona migrations.
+
+O worker agendado Netlify usa o hostname estável `URL` do Netlify com `/app/api/email/worker`, sem depender de o proxy público estar disponível. Configure o webhook Resend em `https://alyspools.com/app/api/email/webhook`. Mantenha segredo e validação de assinatura existentes.
+
+## Cloudflare + Hostinger
+
+Use `deployment/cloudflare/alys-app-proxy.js` como Worker de revisão. Configure `ALYS_NETLIFY_ORIGIN=https://SEU-SITE.netlify.app` (sem caminho). Ele aceita apenas origem HTTPS Netlify, evitando loops de proxy.
+
+Após autorização de publicação, a zona Cloudflare deverá encaminhar os registros web **para os IPs atuais da Hostinger**, com proxy habilitado; não aponte o domínio inteiro para Netlify. Preserve MX, SPF, DKIM, DMARC e outros registros. Use TLS Full (strict), após conferir os certificados. Não altere DNS para testar esta branch.
+
+Rota do Worker: `alyspools.com/app*`; se utilizado, também `www.alyspools.com/app*`. O alias www redireciona somente os caminhos do aplicativo para alyspools.com, mantendo autenticação em um host canônico; o site comercial www não é alterado. O código filtra a fronteira: `/app` e `/app/...` pertencem ao aplicativo; `/`, `/application`, blog, formulários, SEO e assets do site comercial seguem o request original. `/app` recebe redirect 308 para `/app/` mantendo query, para entrar no escopo PWA. `skipTrailingSlashRedirect` evita o redirect inverso do Next.
+
+Não remova `/app` antes de encaminhar ao Netlify. Preserve método, corpo, cookies, Origin e headers das Server Actions. O Worker substitui X-Forwarded-Host/Proto pelos dados reais do domínio público. Next e a proteção CSRF aceitam somente o host canônico configurado em APP_URL; não é usado wildcard. Redirects do hostname Netlify voltam ao domínio público, preservando caminho; redirects externos não são reescritos.
+
+Não crie regra Cache Everything: o proxy encaminha com no-store e devolve private/no-store. Não armazene HTML autenticado, RSC, APIs, uploads ou respostas com cookies no cache Cloudflare. Os assets públicos do Next são mantidos no cache local do Service Worker.
+
+## Supabase / autenticação
+
+No projeto existente, configure Site URL `https://alyspools.com/app/` e allowlist de redirects `https://alyspools.com/app/join` e demais callbacks realmente usados. Para staging, inclua os endereços correspondentes explicitamente. Convites do aplicativo usam APP_URL com `/app`; CUSTOMER_PORTAL_URL, quando habilitado, é uma URL independente e deve ser configurada por inteiro.
+
+Cookies novos são limitados a `/app` (incluindo a página inicial sem barra), mantendo nomes e sessão Supabase existentes. Os redirects de `next/navigation` e os links/routers Next recebem o prefixo do próprio framework; URLs nativas, APIs, assets e history usam o helper idempotente `src/lib/app-path.ts`.
+
+## PWA, visitas e transição de origem
+
+Manifest: scope e id `/app/`, start_url `/app/stops`; ícones em `/app/icons/...`. Registro `/app/sw.js`, Service-Worker-Allowed `/app/`, escopo `/app/`. O Worker deriva o prefixo do próprio registro e não intercepta marketing ou API. Cache público `alys-field-shell-app-v30`, separado do cache da raiz. A instalação só substitui o shell após todos os assets terem sido obtidos. Ela não abre, apaga ou versiona IndexedDB.
+
+IndexedDB permanece **alys-field-device-v1**, versão 1, com os mesmos IDs e chaves de conta, drafts, fotos e outbox. Repetir upload/conclusão conserva o ID da visita; bytes enviados não equivalem a conclusão confirmada. Falhas de sessão, foto ou visita preservam a fila e a ação Retry.
+
+**Origem diferente significa armazenamento diferente.** Dados de `SEU-SITE.netlify.app` não aparecem automaticamente em `alyspools.com`, mesmo com o mesmo usuário. Mantenha o endereço antigo disponível para sincronizar todas as pendências antes de mudar de origem ou reinstalar o PWA. Não limpe armazenamento como solução. Se já existir um antigo SW ALYS com escopo `/` no mesmo domínio, sua retirada exige identificar esse registro específico e confirmar a fila sincronizada; não desregistre Workers do site comercial em massa.
+
+## Verificação local
+
+```bash
+npm ci --cache /tmp/alys-npm-cache
+npm run lint
+npm test
+ALYS_APP_BASE_PATH=/app npm run build
+npm run typecheck
+npx playwright test --config=playwright.app-path.config.ts
+```
+
+O teste mobile inicia o build de produção em localhost:3010. Verifica redirects protegidos, login sem configuração, manifest, ícones, escopo/header SW, APIs e isolamento da raiz; depois registra o PWA, reutiliza IndexedDB, abre uma rota fictícia offline, preenche FC/pH/checklist, captura JPEG pelo input de câmera e executa Finish & Next mantendo a visita pendente. Os testes de domínio exercitam fila antiga falhada, upload retomado, conclusão idempotente e caminhos `/app/api/*`, além de Worker/CSRF/relatórios existentes.
+
+Não há credenciais Supabase/Resend nem imagens Docker de backend neste ambiente. Login com sessão real, confirmação no PostgreSQL/Storage, entrega real Resend e proxy Cloudflare real precisam de homologação em staging. O teste browser de câmera usa arquivo JPEG sintético; câmera física, HEIC de iPhone, suspensão longa, safe areas e instalação iOS devem ser conferidos em dispositivo. Testes automatizados de conversão/HEIC e preservação de fotos continuam na suíte existente.
+
+## Resultado desta revisão
+
+Lint sem avisos, typecheck e build `ALYS_APP_BASE_PATH=/app` aprovados. Suíte de domínio: 201 testes em 32 arquivos aprovados. Browser mobile: 2/2 aprovados no build de produção em `/app`. Câmera real e autenticação/entrega com os serviços de staging permanecem pendentes conforme os limites acima.

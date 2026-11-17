@@ -1,4 +1,5 @@
 "use server";
+import {appPath} from '@/lib/app-path';
 import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import { supabase } from '@/lib/supabase/server';
@@ -24,7 +25,7 @@ export async function saveCustomer(form:FormData) {
   const row={...parsed.data,organization_id:profile.organization_id};
   const result=id ? await db.from('customers').update(row).eq('id',id).eq('organization_id',profile.organization_id).select('id') : await db.from('customers').insert(row).select('id');
   if(result.error || !result.data?.length) redirect('/customers?message=failed');
-  revalidatePath('/customers'); redirect('/customers?message=saved');
+  revalidatePath(appPath('/customers')); redirect('/customers?message=saved');
 }
 export async function saveProperty(form:FormData) {
   const {db,profile}=await requireManager();
@@ -35,7 +36,7 @@ export async function saveProperty(form:FormData) {
   const row={...parsed.data,organization_id:profile.organization_id};
   const {error}=id?await db.from('properties').update(row).eq('id',id).eq('organization_id',profile.organization_id):await db.from('properties').insert(row);
   if(error) redirect('/pools?message=failed');
-  revalidatePath('/pools');redirect('/pools?message=saved');
+  revalidatePath(appPath('/pools'));redirect('/pools?message=saved');
 }
 export async function savePool(form:FormData) {
   const {db,profile}=await requireManager();
@@ -45,7 +46,7 @@ export async function savePool(form:FormData) {
   const row={...parsed.data,organization_id:profile.organization_id};
   const result=id ? await db.from('pools').update(row).eq('id',id).eq('organization_id',profile.organization_id).select('id') : await db.from('pools').insert(row).select('id');
   if(result.error || !result.data?.length) redirect('/pools?message=failed');
-  revalidatePath('/pools');redirect('/pools?message=saved');
+  revalidatePath(appPath('/pools'));redirect('/pools?message=saved');
 }
 // Remoção lógica por status preserva histórico. Exclusão física exige confirmação e não é exposta.
 
@@ -58,5 +59,5 @@ export async function saveSchedule(form:FormData) {
  const result=id?await db.from('recurring_schedules').update(row).eq('id',id).select('id'):await db.from('recurring_schedules').insert(row).select('id');
  if(result.error?.code==='22023')redirect('/settings?message=inprogress');
  if(result.error||!result.data?.length)redirect('/settings?message=failed');
- revalidatePath('/');revalidatePath('/settings');redirect('/settings?message=saved');
+ revalidatePath(appPath('/'));revalidatePath(appPath('/settings'));redirect('/settings?message=saved');
 }

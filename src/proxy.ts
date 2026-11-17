@@ -1,3 +1,4 @@
+import {APP_BASE_PATH} from '@/lib/app-path';
 import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 import {contentPolicy} from './lib/security';
@@ -9,7 +10,7 @@ export async function proxy(request: NextRequest) {
   const config = supabaseConfig();
   let response = NextResponse.next({request:{headers:request.headers}});
   if (!config){response.headers.set('Content-Security-Policy',policy);return response;}
-  const client = createServerClient(config.url,config.key,{cookies:{
+  const client = createServerClient(config.url,config.key,{cookieOptions:{path:APP_BASE_PATH||'/'},cookies:{
     getAll: () => request.cookies.getAll(),
     setAll: (items) => {
       items.forEach(({name,value})=>request.cookies.set(name,value));

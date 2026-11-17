@@ -1,4 +1,5 @@
 "use client";
+import {appPathInput} from '@/lib/app-path';
 import { useRef, useState } from "react";
 import { Input, Button } from "./form-controls";
 import { T } from "./i18n";
@@ -12,7 +13,7 @@ export function AccountPassword() {
     try {
       if (data.get("password") !== data.get("confirmation"))
         throw new Error("New passwords do not match.");
-      const r = await fetch("/api/account", {
+      const r = await fetch(appPathInput("/api/account"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

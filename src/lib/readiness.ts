@@ -1,5 +1,5 @@
 import {z} from 'zod';
-export function applicationOrigin(env:Record<string,string|undefined>=process.env){try{const value=env.APP_URL||env.URL;if(!value)return null;const u=new URL(value);if(u.username||u.password||u.search||u.hash||u.pathname!=='/'||!(u.protocol==='https:'||(u.protocol==='http:'&&['localhost','127.0.0.1'].includes(u.hostname))))return null;return u.origin;}catch{return null;}}
+export function applicationOrigin(env:Record<string,string|undefined>=process.env){try{const value=env.APP_URL||env.URL;if(!value)return null;const u=new URL(value);if(u.username||u.password||u.search||u.hash||!['/',...(env.ALYS_APP_BASE_PATH==='/app'?['/app','/app/']:[])].includes(u.pathname)||!(u.protocol==='https:'||(u.protocol==='http:'&&['localhost','127.0.0.1'].includes(u.hostname))))return null;return u.origin+(env.ALYS_APP_BASE_PATH==='/app'?'/app':'');}catch{return null;}}
 /** Return variable names only. Never return credential values or provider errors. */
 export function invitationReadiness(env:Record<string,string|undefined>=process.env){
  const issues:string[]=[];

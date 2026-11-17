@@ -1,4 +1,5 @@
 "use client";
+import {appPathInput} from '@/lib/app-path';
 import { useEffect, useState } from "react";
 import { ChemicalTables } from "./chemical-tables";
 import { T } from "./i18n";
@@ -26,7 +27,7 @@ export function ChemicalLedger({
       offset: String(offset),
     });
     if (pool) q.set("pool_id", pool);
-    fetch("/api/chemistry?" + q, {
+    fetch(appPathInput("/api/chemistry?" + q), {
       signal: controller.signal,
       cache: "no-store",
     })

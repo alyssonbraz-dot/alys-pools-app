@@ -1,4 +1,5 @@
 "use client";
+import {appPathInput} from '@/lib/app-path';
 import { type ReactNode, useEffect, useState } from "react";
 import { T, CurrencyText } from "@/components/i18n";
 import { MobileHeader } from "@/components/mobile/field-layout";
@@ -110,7 +111,7 @@ export function useBusiness(month: string) {
   const key = month + ":" + revision;
   useEffect(() => {
     const controller = new AbortController();
-    fetch("/api/contribution?month=" + month, {
+    fetch(appPathInput("/api/contribution?month=" + month), {
       cache: "no-store",
       signal: controller.signal,
     })

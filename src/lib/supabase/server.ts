@@ -1,3 +1,4 @@
+import {APP_BASE_PATH} from '@/lib/app-path';
 import 'server-only';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
@@ -6,7 +7,7 @@ export async function supabase() {
   const config = supabaseConfig();
   if (!config) throw new Error('Configure Supabase before signing in.');
   const store = await cookies();
-  return createServerClient(config.url, config.key, { cookies: {
+  return createServerClient(config.url, config.key, { cookieOptions:{path:APP_BASE_PATH||'/'}, cookies: {
     getAll: () => store.getAll(),
     setAll: (items) => { try { items.forEach(({name,value,options}) => store.set(name,value,options)); } catch { /* Server Components: proxy refreshes cookies. */ } }
   }});
