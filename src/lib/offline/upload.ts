@@ -1,6 +1,7 @@
+import {appPathInput,appPath} from '@/lib/app-path';
 /** Byte progress is not an acknowledgement. Every XHR event must settle safely. */
 export async function uploadPhoto(form:FormData,headers:Record<string,string>,signal:AbortSignal,onPercent:(percent:number)=>void):Promise<Response>{
- if(typeof XMLHttpRequest==='undefined')return fetch('/api/photos',{method:'POST',body:form,credentials:'same-origin',headers,signal});
+ if(typeof XMLHttpRequest==='undefined')return fetch(appPathInput('/api/photos'),{method:'POST',body:form,credentials:'same-origin',headers,signal});
  return new Promise((resolve,reject)=>{
   const xhr=new XMLHttpRequest();
   let settled=false;
@@ -11,7 +12,7 @@ export async function uploadPhoto(form:FormData,headers:Record<string,string>,si
   function abort(){fail(new DOMException('Upload aborted','AbortError'));xhr.abort();}
   if(signal.aborted){fail(new DOMException('Upload aborted','AbortError'));return;}
   try{
-   xhr.open('POST','/api/photos');xhr.timeout=60000;xhr.withCredentials=true;
+   xhr.open('POST',appPath('/api/photos'));xhr.timeout=60000;xhr.withCredentials=true;
    Object.entries(headers).forEach(([key,value])=>xhr.setRequestHeader(key,value));
    xhr.upload.onprogress=event=>{if(!settled&&event.lengthComputable)onPercent(Math.min(99,Math.round(event.loaded/event.total*100)));};
    xhr.onload=()=>{

@@ -1,4 +1,5 @@
 "use client";
+import {appPathInput} from '@/lib/app-path';
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { T, useLanguage } from "./i18n";
@@ -50,7 +51,7 @@ type TeamData = {
   invitesEnabled: boolean;
 };
 async function call(body?: unknown) {
-  const r = await fetch("/api/team", {
+  const r = await fetch(appPathInput("/api/team"), {
     cache: "no-store",
     ...(body
       ? {
@@ -473,7 +474,7 @@ function TechnicianCredentials({
     }
     setBusy(true);
     try {
-      const response = await fetch("/api/team/credentials", {
+      const response = await fetch(appPathInput("/api/team/credentials"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

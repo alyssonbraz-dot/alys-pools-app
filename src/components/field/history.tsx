@@ -1,5 +1,6 @@
 'use client';
 
+import {appPathInput,appPath} from '@/lib/app-path';
 import {PageHeader} from '@/components/design/primitives';
 import {chemistryCsv} from '@/lib/chemistry-table';
 import {ChemicalTables} from '@/components/chemical-tables';
@@ -15,7 +16,7 @@ const messageOf=(cause:unknown)=>cause instanceof Error?cause.message:'The histo
 
 async function loadHistory(customerId?:string,query='',status='all',offset=0,period='all'){
  const params=new URLSearchParams({q:query,status,offset:String(offset)});if(typeof window!=='undefined'){const selected=new URLSearchParams(window.location.search);for(const k of ['visit_id','technician_id']){const v=selected.get(k);if(v)params.set(k,v);}}if(period!=='all'){const day=new Date();day.setDate(day.getDate()-Number(period)+1);params.set('from',new Intl.DateTimeFormat('en-CA',{timeZone:'America/New_York',year:'numeric',month:'2-digit',day:'2-digit'}).format(day));}if(customerId)params.set('customer_id',customerId);
-  const response=await fetch('/api/history?'+params.toString(),{cache:'no-store'});
+  const response=await fetch(appPathInput('/api/history?'+params.toString()),{cache:'no-store'});
   const data=await response.json();
   if(!response.ok)throw new Error(response.status===401?'Sign in again to view visit history.':data.error||'The history could not be loaded.');
   return data as {visits:VisitHistory[];hasMore:boolean;role?:'owner'|'admin'|'technician'};
@@ -46,10 +47,10 @@ function SignedPhoto({path,index,poolName}:{path:string;index:number;poolName?:s
   const [error,setError]=useState('');
   useEffect(()=>{
     let cancelled=false;
-    fetch('/api/photos?path='+encodeURIComponent(path),{cache:'no-store'}).then(async response=>{const data=await response.json();if(!response.ok)throw new Error('Photo access could not be confirmed.');if(!cancelled)setUrl(data.url);}).catch(cause=>{if(!cancelled)setError(messageOf(cause));});
+    fetch(appPathInput('/api/photos?path='+encodeURIComponent(path)),{cache:'no-store'}).then(async response=>{const data=await response.json();if(!response.ok)throw new Error('Photo access could not be confirmed.');if(!cancelled)setUrl(data.url);}).catch(cause=>{if(!cancelled)setError(messageOf(cause));});
     return()=>{cancelled=true;};
   },[path]);
-  return <figure className="field-photo">{poolName&&<figcaption>{poolName}</figcaption>}{url?<a href={url} target="_blank" rel="noopener noreferrer"><Image src={url} width={480} height={360} alt={t(`Service photo ${index+1}`)} unoptimized/></a>:<p className="field-tiny"><T text={error||'Loading private photo…'}/></p>}</figure>;
+  return <figure className="field-photo">{poolName&&<figcaption>{poolName}</figcaption>}{url?<a href={appPath(url)} target="_blank" rel="noopener noreferrer"><Image src={url} width={480} height={360} alt={t(`Service photo ${index+1}`)} unoptimized/></a>:<p className="field-tiny"><T text={error||'Loading private photo…'}/></p>}</figure>;
 }
 
 export function HistoryCard({visit,manager,onRefresh}:{visit:VisitHistory;manager:boolean;onRefresh:()=>Promise<void>}){
@@ -62,7 +63,7 @@ export function HistoryCard({visit,manager,onRefresh}:{visit:VisitHistory;manage
   async function correct(form:FormData){
     setBusy(true);setError('');setNotice('');
     try{
-      const response=await fetch('/api/history',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({visit_id:visit.id,note:form.get('note')})});
+      const response=await fetch(appPathInput('/api/history'),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({visit_id:visit.id,note:form.get('note')})});
       const data=await response.json();
       if(!response.ok)throw new Error(data.error||'The correction could not be saved.');
       setNotice('Correction appended to the history. The original record is preserved.');
@@ -73,7 +74,7 @@ export function HistoryCard({visit,manager,onRefresh}:{visit:VisitHistory;manage
   async function retry(){
     setBusy(true);setError('');setNotice('');
     try{
-      const response=await fetch('/api/email/retry',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({visit_id:visit.id})});
+      const response=await fetch(appPathInput('/api/email/retry'),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({visit_id:visit.id})});
       const data=await response.json();
       if(!response.ok)throw new Error(data.error||'The report could not be queued again.');
       setNotice('Delivery retry requested. It is not marked sent until the provider confirms acceptance.');

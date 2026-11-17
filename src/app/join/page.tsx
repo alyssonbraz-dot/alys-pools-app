@@ -1,4 +1,5 @@
 "use client";
+import {appPath,appPathInput} from '@/lib/app-path';
 import { useEffect, useState } from "react";
 import { T,LanguageSwitcher } from "@/components/i18n";
 export default function Join() {
@@ -13,20 +14,20 @@ export default function Join() {
         token_hash: p.get("token_hash") ?? "",
       }),
     );
-    window.history.replaceState(null, "", "/join");
+    window.history.replaceState(null, "", appPath("/join"));
   }, []);
   async function accept(form: FormData) {
     setBusy(true);
     setError("");
     try {
-      const response = await fetch("/api/team/accept", {
+      const response = await fetch(appPathInput("/api/team/accept"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ...link, password: form.get("password") }),
       });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error);
-      window.location.replace("/");
+      window.location.replace(appPath("/"));
     } catch (e) {
       setError(e instanceof Error ? e.message : "Unable to accept invitation.");
       setBusy(false);

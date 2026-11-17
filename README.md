@@ -304,3 +304,7 @@ TEST_BASE_URL=http://127.0.0.1:3002 npx --no-install playwright test
 ```
 
 Instale o browser de teste se necessário (`npx --no-install playwright install chromium`). Não execute fixtures contra produção. A demonstração estática continua disponível; ela não substitui Auth/RLS/Storage do aplicativo real.
+
+## Publicação em /app com Hostinger
+
+Para manter o site comercial na Hostinger e servir o aplicativo Netlify em `https://alyspools.com/app`, use [configuração Netlify/Cloudflare, autenticação, PWA e transição segura das filas](docs/DEPLOY-HOSTINGER-APP-PATH.md). Ative `ALYS_APP_BASE_PATH=/app` no build e runtime; a raiz continua suportada quando a variável está ausente. Esta branch não executa deploy nem migrations remotas.

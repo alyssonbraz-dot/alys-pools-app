@@ -1,4 +1,5 @@
 "use client";
+import {appPathInput} from '@/lib/app-path';
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { T, DateText, useLanguage } from "@/components/i18n";
@@ -35,7 +36,7 @@ export function MobileDashboard({
   useEffect(() => {
     const controller = new AbortController();
     let active = true;
-    fetch("/api/route?" + new URLSearchParams({ date, timezone: timeZone }), {
+    fetch(appPathInput("/api/route?" + new URLSearchParams({ date, timezone: timeZone })), {
       cache: "no-store",
       signal: controller.signal,
     })

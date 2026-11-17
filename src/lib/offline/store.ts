@@ -1,3 +1,4 @@
+import {appPathInput} from '@/lib/app-path';
 import {compressPhoto,snapshotPhoto,isPreparedPhoto} from '@/lib/field/photos';
 import {deviceStorageError} from './errors';
 import {publishSyncProgress,clearSyncProgress} from './progress';
@@ -347,7 +348,7 @@ async function networkJson<T>(input: RequestInfo | URL, init: RequestInit, signa
   if(signal.aborted)controller.abort();
   else signal.addEventListener('abort',abort,{once:true});
   const timeout = setTimeout(abort,20_000);
-  try { return await responseJson<T>(await fetch(input,{...init,signal:controller.signal})); }
+  try { return await responseJson<T>(await fetch(appPathInput(input),{...init,signal:controller.signal})); }
   finally { clearTimeout(timeout);signal.removeEventListener('abort',abort); }
 }
 async function performSync(scope: OfflineScope, signal: AbortSignal,automatic=false,resuming=false): Promise<SyncResult> {

@@ -1,0 +1,13 @@
+import 'fake-indexeddb/auto';
+import {afterEach,expect,it,vi} from 'vitest';
+vi.mock('../src/lib/field/photos',async(original)=>({...await original<typeof import('../src/lib/field/photos')>(),compressPhoto:vi.fn(async(b:Blob)=>new File([b],'prepared.jpg',{type:'image/jpeg'}))}));
+afterEach(()=>{vi.unstubAllGlobals();vi.unstubAllEnvs();vi.resetModules();});
+it('recovers an existing failed root-path queue at /app without losing photos or duplicating completion',async()=>{
+ vi.stubGlobal('navigator',{onLine:true});vi.stubEnv('NEXT_PUBLIC_ALYS_APP_BASE_PATH','');vi.resetModules();const old=await import('../src/lib/offline/store');await old.clearDeviceData();const scope={userId:'app-user',organizationId:'app-org'};
+ await old.cacheRoute(scope,{userId:scope.userId,orgId:scope.organizationId,role:'technician',displayName:'Fictional',date:'2026-11-17',stops:[]});
+ const payload={id:'stable-visit',stop_id:'stable-stop',notes:'Saved before upgrade',completed_at:'2026-11-17T12:00:00Z',pools:[{pool_id:'pool',tasks:['Test Water'],readings:{fc:3,ph:7.4},dosages:[]}],photo_paths:[]};
+ const photo=await old.savePhoto(scope,payload.stop_id,new Blob(['jpeg'],{type:'image/jpeg'}));await old.enqueueCompletion(scope,payload);vi.stubGlobal('fetch',vi.fn().mockRejectedValue(new TypeError('Offline')));await old.syncQueue(scope);expect((await old.getQueue(scope))[0].status).toBe('failed');
+ vi.stubEnv('NEXT_PUBLIC_ALYS_APP_BASE_PATH','/app');vi.resetModules();const upgraded=await import('../src/lib/offline/store');const bodies:unknown[]=[];let fail=true;const json=(v:unknown)=>new Response(JSON.stringify(v),{headers:{'Content-Type':'application/json'}});
+ const network=vi.fn(async(input:RequestInfo|URL,init?:RequestInit)=>{const p=String(input);if(p==='/app/api/session')return json({userId:scope.userId,orgId:scope.organizationId});if(p==='/app/api/photos')return json({path:scope.organizationId+'/'+payload.stop_id+'/'+photo.id+'.jpg'});expect(p).toBe('/app/api/visits');bodies.push(JSON.parse(String(init?.body)));if(fail)throw new TypeError('Lost acknowledgement');return json({visit_id:payload.id,next_stop_id:'next'});});vi.stubGlobal('fetch',network);
+ expect((await upgraded.syncQueue(scope)).pending).toBe(1);expect((await upgraded.listPhotos(scope,payload.stop_id))[0].path).toBe(scope.organizationId+'/'+payload.stop_id+'/'+photo.id+'.jpg');fail=false;expect((await upgraded.syncQueue(scope)).synced).toBe(1);expect(bodies[0]).toEqual(bodies[1]);expect(network.mock.calls.filter(c=>String(c[0])==='/app/api/photos')).toHaveLength(1);expect(await upgraded.getQueue(scope)).toHaveLength(0);
+});

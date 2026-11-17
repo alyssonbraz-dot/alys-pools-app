@@ -1,4 +1,5 @@
 "use client";
+import {appPathInput} from '@/lib/app-path';
 import { useState,useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -183,7 +184,7 @@ export function CustomerOnboarding({
       const body=JSON.stringify({...edit,request_id:undefined});
       submission.current=nextCustomerSubmission(body,submission.current,()=>crypto.randomUUID());
       submission.current.rejected=false;
-      const response = await fetch("/api/customers/onboard", {
+      const response = await fetch(appPathInput("/api/customers/onboard"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({...edit,request_id:submission.current!.id}),

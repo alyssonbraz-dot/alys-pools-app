@@ -1,4 +1,5 @@
 "use client";
+import {appPathInput} from '@/lib/app-path';
 import Link from "next/link";
 import { useEffect, useState, type ReactNode } from "react";
 import { useSearchParams } from "next/navigation";
@@ -204,7 +205,7 @@ export function FinanceApp({
   const data = loaded?.key === requestKey ? loaded.value : null;
   useEffect(() => {
     const controller = new AbortController();
-    fetch("/api/finance?month=" + month, {
+    fetch(appPathInput("/api/finance?month=" + month), {
       signal: controller.signal,
       cache: "no-store",
     })
@@ -247,7 +248,7 @@ export function FinanceApp({
     setError("");
     setMessage("");
     try {
-      const r = await fetch("/api/finance", {
+      const r = await fetch(appPathInput("/api/finance"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

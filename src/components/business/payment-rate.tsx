@@ -1,4 +1,5 @@
 "use client";
+import {appPathInput} from '@/lib/app-path';
 import { useState } from "react";
 import { useLanguage, T } from "@/components/i18n";
 import { parseMoney } from "@/lib/finance/schema";
@@ -49,7 +50,7 @@ export function PaymentRate({
     setBusy(true);
     setError("");
     try {
-      const r = await fetch("/api/contribution", {
+      const r = await fetch(appPathInput("/api/contribution"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

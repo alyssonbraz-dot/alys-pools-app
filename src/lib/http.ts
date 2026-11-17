@@ -7,7 +7,7 @@ export function sameOrigin(request:Request) {
   // Next may build request.url with its bind hostname (0.0.0.0). Host is the
   // incoming browser authority; compare it as Server Actions do, never wildcard it.
   const host=request.headers.get('host')??new URL(request.url).host;
-  return ['http:','https:'].includes(originUrl.protocol)&&originUrl.host===host&&originUrl.origin===origin;
+  return ['http:','https:'].includes(originUrl.protocol)&&(originUrl.host===host||trustedApplicationHost(request,originUrl))&&originUrl.origin===origin;
  }catch{return false;}
 }
 export function json(data:unknown,status=200) {
@@ -40,3 +40,5 @@ export async function boundedJson(request:Request,maxBytes:number):Promise<unkno
  for(const chunk of chunks){joined.set(chunk,offset);offset+=chunk.byteLength;}
  return JSON.parse(new TextDecoder().decode(joined));
 }
+
+function trustedApplicationHost(request:Request,origin:URL){try{const app=new URL(process.env.APP_URL??'');return origin.origin===app.origin&&request.headers.get('x-forwarded-host')===app.host;}catch{return false;}}

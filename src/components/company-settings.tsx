@@ -1,4 +1,5 @@
 "use client";
+import {appPathInput} from '@/lib/app-path';
 import { useState } from "react";
 import { T } from "./i18n";
 import { Input } from "./form-controls";
@@ -20,7 +21,7 @@ export function CompanySettings({
     setBusy(true);
     setMessage("");
     try {
-      const r = await fetch("/api/settings", {
+      const r = await fetch(appPathInput("/api/settings"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name: company, defaults: data }),
