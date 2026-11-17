@@ -1,5 +1,7 @@
 import type { NextConfig } from 'next';
+const appBasePath = process.env.ALYS_APP_BASE_PATH === '/app' ? '/app' : undefined;
 const config: NextConfig = {
+  ...(appBasePath ? {basePath:appBasePath} : {}),
   poweredByHeader: false,
   async headers() { return [{source:'/sw.js',headers:[{key:'Cache-Control',value:'no-cache, no-store, must-revalidate'},{key:'Service-Worker-Allowed',value:'/'}]}, { source: '/:path*', headers: [
     {key:'X-Content-Type-Options',value:'nosniff'},
