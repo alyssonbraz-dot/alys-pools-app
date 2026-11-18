@@ -3,6 +3,7 @@ import {appPathInput} from '@/lib/app-path';
 import { useState,useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import {PageHeading} from "@/components/v4/primitives";
 import { T } from "./i18n";
 import {
   DEFAULT_CHECKLIST,
@@ -83,6 +84,9 @@ export function CustomerOnboarding({
   initial?: CustomerBundle;
 }) {
   const router = useRouter();
+  const [step,setStep]=useState(focus?1:0);
+  const formRef=useRef<HTMLFormElement>(null);
+  function nextStep(){const section=formRef.current?.querySelector(`[data-onboarding-step="${step}"]`);const invalid=Array.from(section?.querySelectorAll<HTMLInputElement>("input,select,textarea")??[]).find(input=>!input.checkValidity());if(invalid){let parent=invalid.parentElement;while(parent&&parent!==section){if(parent instanceof HTMLDetailsElement)parent.open=true;parent=parent.parentElement;}invalid.reportValidity();return;}setStep(v=>Math.min(2,v+1));window.scrollTo({top:0,behavior:"smooth"});}
   const [data, setData] = useState<CustomerBundle>(
     () =>
       initial ? focusedBundle(initial,focus,()=>applyDefaults(newProperty(ownerId))) : {
@@ -136,6 +140,7 @@ export function CustomerOnboarding({
   const [busy, setBusy] = useState(false),
     [error, setError] = useState("");
   const [fieldErrors,setFieldErrors]=useState<{path:string;message:string}[]>([]);
+
   const submission=useRef<CustomerSubmission|null>(null);
   function applyDefaults(p: ReturnType<typeof newProperty>) {
     if(defaults)p.service_timezone=defaults.timeZone;
@@ -190,7 +195,7 @@ export function CustomerOnboarding({
         body: JSON.stringify({...edit,request_id:submission.current!.id}),
       });
       const result = await response.json();
-      if (!response.ok){setFieldErrors(result.fieldErrors??[]);if(response.status===422&&!submission.current!.uncertain&&result.code!=='ALYS_REQUEST_REUSED')submission.current!.rejected=true;else submission.current!.uncertain=true;throw new Error(result.error);}
+      if (!response.ok){setFieldErrors(result.fieldErrors??[]);if(result.fieldErrors?.length){const path=result.fieldErrors[0].path;setStep(path.startsWith("customer")?0:path.startsWith("agreement")?2:1);}if(response.status===422&&!submission.current!.uncertain&&result.code!=='ALYS_REQUEST_REUSED')submission.current!.rejected=true;else submission.current!.uncertain=true;throw new Error(result.error);}
       router.push("/customers/" + result.id + "?saved=1"+(returnTab?"&tab="+returnTab:""));
       router.refresh();
     } catch (e) {
@@ -228,30 +233,16 @@ export function CustomerOnboarding({
     );
   }
   return (
-    <form onSubmit={save} className="onboarding">
-      <div className="page-header">
-        <div>
-          <h1>
-            <T text={initial ? "Edit customer & service" : "Add Customer"} />
-          </h1>
-          <p>
-            <T text="Contact, pools and recurring service in one place." />
-          </p>
-        </div>
-        <Link
-          href={initial ? "/customers/" + initial.customer.id : "/customers"}
-          className="btn btn-secondary"
-        >
-          <T text="Cancel" />
-        </Link>
-      </div>
+    <form noValidate ref={formRef} onSubmit={save} className="onboarding v4-onboarding">
+      <PageHeading title={<T text={initial?"Edit customer & service":"Add Customer"}/>} subtitle={<T text="One customer. All their service details."/>} action={<Link className="btn btn-secondary" href={initial?"/customers/"+initial.customer.id:"/customers"}><T text="Cancel"/></Link>}/>
+      <nav className="v4-wizard-steps" aria-label="Customer setup">{['Customer','Pool & schedule','Agreement'].map((label,index)=><button key={label} type="button" aria-current={step===index?'step':undefined} onClick={()=>setStep(index)}><span>{index+1}</span><T text={label}/></button>)}</nav>
       {error && (
         <div role="alert" className="notice">
           <T text={error}/>{fieldErrors.length>0&&<ul>{fieldErrors.map(e=><li key={e.path}>{validationFieldLabel(e.path).split(" → ").map((part,i)=><span key={i}>{i>0?" → ":""}<T text={part}/></span>)} — <T text={e.message}/></li>)}</ul>}
         </div>
       )}
       <fieldset disabled={busy} className="onboarding-body">
-        <section className="panel form-section">
+        <section data-onboarding-step="0" hidden={step!==0} className="panel form-section">
           <h2>
             01 · <T text="Customer information" />
           </h2>
@@ -294,7 +285,7 @@ export function CustomerOnboarding({
 
         </section>
         {data.properties.map((property, pi) => (
-          <section className="panel form-section customer-edit-property" id={"customer-property-"+pi} key={pi}>
+          <section data-onboarding-step="1" hidden={step!==1} className="panel form-section customer-edit-property" id={"customer-property-"+pi} key={pi}>
             <h2>
               02 · <T text="Property" /> {pi + 1}
             </h2>
@@ -680,16 +671,16 @@ export function CustomerOnboarding({
         ))}
         <button
           type="button"
-          className="btn btn-secondary"
+          hidden={step!==1} className="btn btn-secondary"
           onClick={() =>
             change((c) => {
               c.properties.push(applyDefaults(newProperty(ownerId)));
             })
           }
         >
-          <T text="Add Another Property" />
+          <span hidden={step!==1}><T text="Add Another Property" /></span>
         </button>
-        <section className="panel form-section" id="service-agreement">
+        <section data-onboarding-step="2" hidden={step!==2} className="panel form-section" id="service-agreement">
           <h2>
             <T text="Service agreement & reports" />
           </h2>
@@ -773,7 +764,7 @@ export function CustomerOnboarding({
             <T text="One agreement per customer, not per pool. Subcontracts are excluded from own-customer MRR. No end date means recurring service continues until paused or changed." />
           </p>
         </section>
-        <button className="btn btn-primary save-service" disabled={busy}>
+        <div className="v4-wizard-actions">{step>0&&<button type="button" className="btn btn-secondary" onClick={()=>setStep(v=>v-1)}><T text="Back"/></button>}{step<2&&<button type="button" className="btn btn-primary" onClick={nextStep}><T text="Continue"/> →</button>}<button hidden={step!==2} className="btn btn-primary save-service" disabled={busy}>
           {busy ? (
             <T text="Saving…" />
           ) : (
@@ -786,7 +777,7 @@ export function CustomerOnboarding({
             />
           )}
         </button>
-      </fieldset>
+      </div></fieldset>
     </form>
   );
 }
