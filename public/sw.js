@@ -1,7 +1,7 @@
 /* Public assets only. Device drafts/photos remain in their existing IndexedDB. */
 const BASE = new URL(self.registration?.scope || '/', self.location.origin).pathname.replace(/\/$/, '');
 const CACHE_PREFIX = BASE ? 'alys-field-shell-app-' : 'alys-field-shell-';
-const VERSION = CACHE_PREFIX+'v30';
+const VERSION = CACHE_PREFIX+'v4';
 const META = BASE+'/__alys_offline_resources__';
 const ICONS = ['/icons/icon-192.png', '/icons/icon-512.png', '/icons/maskable-512.png'].map(path=>BASE+path);
 let warming;

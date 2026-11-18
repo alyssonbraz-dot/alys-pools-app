@@ -1564,7 +1564,8 @@
     "Original findings, photos and maintenance records are preserved. Resolution is an audited manager correction, not deletion.": "Problemas, fotos e registros originais são preservados. A resolução é uma correção auditada do gestor, sem exclusão.",
     "The change could not be confirmed. Refresh before retrying.": "Não foi possível confirmar a alteração. Atualize antes de tentar novamente.",
     "Back": "Voltar",
-    "Continue": "Continuar"
+    "Continue": "Continuar",
+    "Pool care, simplified.": "Cuidado de piscinas, simplificado."
   },
   "es": {
     "Language": "Idioma",
@@ -3131,7 +3132,8 @@
     "Original findings, photos and maintenance records are preserved. Resolution is an audited manager correction, not deletion.": "Los hallazgos, fotos y registros originales se conservan. La resolución es una corrección auditada del gerente, sin eliminación.",
     "The change could not be confirmed. Refresh before retrying.": "No se pudo confirmar el cambio. Actualiza antes de reintentar.",
     "Back": "Volver",
-    "Continue": "Continuar"
+    "Continue": "Continuar",
+    "Pool care, simplified.": "Cuidado de piscinas, simplificado."
   },
   "en": {
     "(my route)": "(my route)",
@@ -4698,6 +4700,7 @@
     "Original findings, photos and maintenance records are preserved. Resolution is an audited manager correction, not deletion.": "Original findings, photos and maintenance records are preserved. Resolution is an audited manager correction, not deletion.",
     "The change could not be confirmed. Refresh before retrying.": "The change could not be confirmed. Refresh before retrying.",
     "Back": "Back",
-    "Continue": "Continue"
+    "Continue": "Continue",
+    "Pool care, simplified.": "Pool care, simplified."
   }
 }
