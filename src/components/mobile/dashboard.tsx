@@ -5,8 +5,11 @@ import Link from "next/link";
 import { T, DateText, useLanguage } from "@/components/i18n";
 import { WeekCalendar } from "@/components/route-calendar";
 import { DeviceSyncSummary } from "@/components/device-sync-summary";
+import {Metric,SectionHeading} from "@/components/v4/primitives";
+import {ProgressDial} from "./field-layout";
+import {Icon} from "@/components/design/icon";
 import { MobileHeader } from "./field-layout";
-import { BusinessCard, BusinessMetric, Money } from "@/components/business/ui";
+import { BusinessCard, Money } from "@/components/business/ui";
 import type { BusinessReport } from "@/lib/business/contribution";
 import type { RouteData } from "@/lib/field/types";
 type Result = { key: string; route?: RouteData; error?: string };
@@ -81,174 +84,16 @@ export function MobileDashboard({
       timezone: timeZone,
       ...(!ownWork ? { technician: "all" } : {}),
     });
-  return (
-    <section className="mobile-dashboard business-page">
-      <MobileHeader
-        title={<T text="Home" />}
-        eyebrow={name}
-        address={
-          <DateText
-            value={date}
-            options={{
-              weekday: "long",
-              month: "long",
-              day: "numeric",
-              timeZone,
-            }}
-          />
-        }
-      />
-      <div className="business-home-metrics">
-        <BusinessMetric
-          label="Active owned customers"
-          value={business?.ownedCustomers ?? "—"}
-        />
-        <BusinessMetric
-          label="Monthly recurring revenue"
-          value={<Money cents={business?.ownedMrr ?? null} />}
-        />
-      </div>
-      <BusinessCard>
-        <div className="business-home-contribution">
-          <span>
-            <T
-              text={
-                business?.estimatedContribution === null
-                  ? "Before your labor"
-                  : "Estimated monthly contribution"
-              }
-            />
-          </span>
-          <strong>
-            <Money
-              cents={
-                business?.estimatedContribution ??
-                business?.beforeOwnerLabor ??
-                null
-              }
-            />
-          </strong>
-          <small>
-            <T
-              text={
-                business?.estimatedContribution === null
-                  ? "Owner labor is unpriced."
-                  : "Before business expenses and taxes."
-              }
-            />
-          </small>
-        </div>
-      </BusinessCard>
-      {businessError && (
-        <p className="note">
-          <T text="Contribution is unavailable. Your route is still accessible." />
-        </p>
-      )}
-      <div className="business-today">
-        <div>
-          <span>
-            <T text="Pools scheduled today" />
-          </span>
-          <strong>
-            {current
-              ? new Set(
-                  current.stops.flatMap((s) =>
-                    (s.pools ?? []).map((p) => p.id),
-                  ),
-                ).size
-              : "—"}
-          </strong>
-        </div>
-        <div>
-          <strong>
-            {current ? completed : "—"} <T text="completed" /> ·{" "}
-            {current ? remaining : "—"} <T text="remaining" />
-          </strong>
-          <div className="business-progress">
-            <i
-              style={{
-                width: current?.stops.length
-                  ? `${(completed / current.stops.length) * 100}%`
-                  : "0%",
-              }}
-            />
-          </div>
-        </div>
-      </div>
-      {(!current || error) && (
-        <div className="technician-summary-list">
-          {error && (
-            <div role="alert">
-              <p>
-                <T text={error} />
-              </p>
-              <button
-                className="btn btn-secondary"
-                onClick={() => setRetry((v) => v + 1)}
-              >
-                <T text="Try again" />
-              </button>
-            </div>
-          )}
-          {!current && !error && (
-            <p role="status">
-              <T text="Loading your route…" />
-            </p>
-          )}
-        </div>
-      )}
-      <Link className="btn btn-primary business-primary" href={routeHref}>
-        <T text={ownWork ? "Start Today’s Route" : "View Today’s Route"} /> →
-      </Link>
-      <div className="dashboard-sync-lane">
-        <DeviceSyncSummary compact scope={scope} />
-        {pendingReports > 0 && (
-          <Link className="business-report-notice" href="/reports">
-            {pendingReports} <T text="reports pending or needing attention" /> →
-          </Link>
-        )}
-      </div>
-      <details className="business-details business-card home-advanced">
-        <summary>
-          <T text="Business & route details" />
-        </summary>
-        <WeekCalendar date={date} timeZone={timeZone} onChange={setDate} />
-        <div className="business-inline">
-          <T text="Delegated customers" />
-          <strong>{business?.delegatedCustomers ?? "—"}</strong>
-        </div>
-        <div className="business-inline">
-          <T text="Average contribution per customer" />
-          <Money cents={business?.averageContribution ?? null} />
-        </div>
-        <Link href="/finance">
-          <T text="Profitability" /> →
-        </Link>
-        {current &&
-          [...new Set(current.stops.map((s) => s.technician_id))].map((id) => (
-            <Link
-              className="business-inline technician-summary-card-v3"
-              href={
-                "/route?" +
-                new URLSearchParams({
-                  date,
-                  timezone: timeZone,
-                  technician: id,
-                })
-              }
-              key={id}
-            >
-              <strong>
-                {current.technicians?.find((t) => t.id === id)?.display_name ??
-                  t("Assigned technician")}
-              </strong>
-              <span>
-                {current.stops.filter((s) => s.technician_id === id).length}{" "}
-                <T text="stops" /> →
-              </span>
-            </Link>
-          ))}
-      </details>
-    </section>
-  );
+  const next=current?.stops.find(s=>!["completed","skipped"].includes(s.status));
+  const visitHref=next?"/visit/"+next.id+"?"+new URLSearchParams({date,timezone:timeZone}):routeHref;
+  return <section className="mobile-dashboard business-page v4-home">
+    <MobileHeader title={<T text="Your day, simplified"/>} eyebrow={name} address={<DateText value={date} options={{weekday:"long",month:"short",day:"numeric",timeZone}}/>}/>
+    <section className="v4-day-card" aria-label={t("Today’s progress")}><div className="v4-day-progress"><ProgressDial completed={completed} total={current?.stops.length??0}/><div><h2><T text="Today’s visits"/></h2><p>{current?remaining:"—"} <T text="remaining"/> · {current?completed:"—"} <T text="completed"/></p></div></div><Link className="btn btn-primary v4-main-action" href={visitHref}><Icon name="service"/><T text={next?"Start next visit":"View Today’s Route"}/><Icon name="arrow"/></Link></section>
+    <div className="v4-home-metrics"><Metric label="Monthly Revenue" value={<Money cents={business?.ownedMrr??null}/>} icon="finance"/><Metric label="Owned customers" value={business?.ownedCustomers??"—"} icon="customers"/></div>
+    <div className="dashboard-sync-lane"><DeviceSyncSummary compact scope={scope}/>{pendingReports>0&&<Link className="v4-attention-card" href="/reports"><Icon name="shield"/><span>{pendingReports} <T text="reports pending or needing attention"/></span><Icon name="chevron"/></Link>}</div>
+    <SectionHeading title="Up next" action={<Link href={routeHref}><T text="View Today’s Route"/> →</Link>}/>
+    {next?<Link className="v4-next-customer" href={visitHref}><span className="v4-next-number">{next.position}</span><span><strong>{next.customer.name}</strong><small>{next.property.address}</small></span><Icon name="chevron"/></Link>:current?<BusinessCard><Icon name="check"/><T text="No remaining visits"/></BusinessCard>:null}
+    {(!current||error)&&<div className="technician-summary-list">{error?<div role="alert"><p><T text={error}/></p><button className="btn btn-secondary" onClick={()=>setRetry(v=>v+1)}><T text="Try again"/></button></div>:<p role="status"><T text="Loading your route…"/></p>}</div>}
+    <details className="business-details business-card home-advanced"><summary><T text="Business & route details"/></summary><WeekCalendar date={date} timeZone={timeZone} onChange={setDate}/><div className="business-inline"><T text={business?.estimatedContribution===null?"Before your labor":"Estimated Contribution"}/><Money cents={business?.estimatedContribution??business?.beforeOwnerLabor??null}/></div><p className="note"><T text={business?.estimatedContribution===null?"Owner labor is unpriced.":"Before business expenses and taxes."}/></p><div className="business-inline"><T text="Delegated customers"/><strong>{business?.delegatedCustomers??"—"}</strong></div><Link href="/finance"><T text="Profitability"/> →</Link>{current&&[...new Set(current.stops.map(s=>s.technician_id))].map(id=><Link className="business-inline technician-summary-card-v3" key={id} href={"/route?"+new URLSearchParams({date,timezone:timeZone,technician:id})}><strong>{current.technicians?.find(t=>t.id===id)?.display_name??t("Assigned technician")}</strong><span>{current.stops.filter(s=>s.technician_id===id).length} <T text="stops"/> →</span></Link>)}{businessError&&<p className="note"><T text="Contribution is unavailable. Your route is still accessible."/></p>}</details>
+  </section>;
 }

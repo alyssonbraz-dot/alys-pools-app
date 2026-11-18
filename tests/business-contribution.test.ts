@@ -203,12 +203,11 @@ describe("V3 simple contribution", () => {
     expect(contribution(i).customers[0].completedVisits).toBe(0);
     expect(contribution(i).customers[0].completed.technicianPayments).toBe(0);
   });
-  it("owns five destinations; technician owns only Today/History/More", () => {
+  it("owns four destinations; technician owns only Today/History/More", () => {
     expect(navigationFor("owner").map((t) => t.label)).toEqual([
       "Home",
-      "Customers",
       "Route",
-      "Team",
+      "Customers",
       "More",
     ]);
     expect(navigationFor("technician").map((t) => t.label)).toEqual([
@@ -218,7 +217,7 @@ describe("V3 simple contribution", () => {
     ]);
     expect(navigationActive("/visit/id", "/stops", true)).toBe(true);
     expect(navigationActive("/maps", "/more", true)).toBe(true);
-    expect(navigationActive("/team", "/more", false)).toBe(false);
+    expect(navigationActive("/team", "/more", false)).toBe(true);
   });
 });
 

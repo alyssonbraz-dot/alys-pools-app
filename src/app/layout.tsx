@@ -4,6 +4,7 @@ import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import '@/components/mobile/rebuild.css';
 import '@/components/business/business.css';
+import '@/components/v4/v4.css';
 import {LanguageRuntime} from '@/components/i18n';
 import { Pwa } from '@/components/pwa';
 export const metadata: Metadata={title:'ALYS Pool Manager',description:'Fast pool service routes · ALYS Pool Services',manifest:appPath('/manifest.webmanifest'),appleWebApp:{capable:true,statusBarStyle:'default',title:'ALYS Pools'},icons:{apple:appPath('/icons/icon-192.png')}};
