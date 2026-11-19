@@ -18,7 +18,7 @@ export async function loadRoute(operator:Operator,date:string,timeZone?:string):
  const scoped=context as {properties:(RouteStop['property']&{customer_id:string})[];pools:(PoolConfig&{property_id:string})[];customers:{id:string;name:string}[]}|null;
  const [properties,pools,profiles,options]=await Promise.all([
   scoped?Promise.resolve(scoped.properties):forIds(propertyIds,(ids,from,to)=>db.from('properties').select('id,customer_id,name,address,gate_notes,latitude,longitude,service_timezone,unit_system,location_confirmed,country_code').in('id',ids).order('id').range(from,to)),
-  scoped?Promise.resolve(scoped.pools):forIds(propertyIds,(ids,from,to)=>db.from('pools').select('id,property_id,name,gallons,checklist,required_readings,photo_required,photo_scope_required,reference_ranges').eq('status','active').in('property_id',ids).order('id').range(from,to)),
+  scoped?(async()=>{const notes=await forIds(scoped.pools.map(p=>p.id),(ids,a,b)=>db.from('pools').select('id,equipment_notes').in('id',ids).order('id').range(a,b));return scoped.pools.map(p=>({...p,equipment_notes:notes.find(n=>n.id===p.id)?.equipment_notes}));})():forIds(propertyIds,(ids,from,to)=>db.from('pools').select('id,property_id,name,gallons,checklist,required_readings,photo_required,photo_scope_required,reference_ranges,equipment_notes').eq('status','active').in('property_id',ids).order('id').range(from,to)),
   allRows((from,to)=>db.from('profiles').select('id,display_name,role').order('id').range(from,to)),
   profile.role==='technician'?Promise.resolve([]):allRows((from,to)=>db.from('properties').select('id,name,address').order('id').range(from,to))
  ]);

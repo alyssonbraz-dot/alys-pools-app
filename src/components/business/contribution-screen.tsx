@@ -40,16 +40,13 @@ export function ContributionScreen({ poolId }: { poolId?: string }) {
   const scopedRevenue = focused
     ? rows.reduce((n, c) => n + (c.monthlyRevenue ?? 0), 0)
     : (data?.report.ownedMrr ?? 0);
-  const scopedContribution = focused
-    ? rows.some((c) => c.forecast.contribution === null)
-      ? null
-      : rows.reduce((n, c) => n + c.forecast.contribution!, 0)
-    : (data?.report.estimatedContribution ?? null);
-  const beforeLabor = focused
-    ? rows.some((c) => c.forecast.beforeOwnerLabor === null)
-      ? null
-      : rows.reduce((n, c) => n + c.forecast.beforeOwnerLabor!, 0)
-    : (data?.report.beforeOwnerLabor ?? null);
+  const scopedContribution = basis==='forecast'&&!focused
+    ? (data?.report.estimatedContribution??null)
+    : rows.some(c=>c[basis].contribution===null)?null:rows.reduce((n,c)=>n+c[basis].contribution!,0);
+  const beforeLabor = basis==='forecast'&&!focused
+    ? (data?.report.beforeOwnerLabor??null)
+    : rows.some(c=>c[basis].beforeOwnerLabor===null)?null:rows.reduce((n,c)=>n+c[basis].beforeOwnerLabor!,0);
+  const ownerLabor=rows.some(c=>c[basis].ownerLabor===null)?null:rows.reduce((sum,c)=>sum+c[basis].ownerLabor!,0);
   return (
     <div className="business-page contribution-page">
       <BusinessHeader
@@ -95,11 +92,12 @@ export function ContributionScreen({ poolId }: { poolId?: string }) {
       )}
       {data && (
         <div className="contribution-results">
-          <div className="business-metrics">
+          <div className="business-metrics v4-finance-summary">
             <BusinessMetric
-              label={focused ? "Monthly revenue" : "Owned MRR"}
+              label="Monthly Revenue"
               value={<Money cents={scopedRevenue} />}
             />
+            <BusinessMetric label="Technician Payments" value={<Money cents={rows.some(c=>c[basis].technicianPayments===null)?null:rows.reduce((sum,c)=>sum+(c[basis].technicianPayments??0),0)}/>}/>
             <BusinessMetric
               label={
                 scopedContribution === null
@@ -114,17 +112,19 @@ export function ContributionScreen({ poolId }: { poolId?: string }) {
               }
             />
           </div>
+          {(ownerLabor===null||ownerLabor>0)&&<div className="v4-owner-labor business-inline"><span><T text="Owner labor"/></span><Money cents={ownerLabor}/></div>}
+          {basis==='completed'&&<p className="note"><T text="Contracted monthly revenue less confirmed service costs. This is not collected cash or paid payroll."/></p>}
           <p className="note">
             <T text="Contribution is not accounting net profit. Completed-visit payments are due estimates, not bank-confirmed payments." />
           </p>
-          <label className="business-sort">
+          <details className="v4-disclosure"><summary><T text="Sort customers"/></summary><label className="business-sort">
             <T text="Sort customers" />
             <select value={sort} onChange={(e) => setSort(e.target.value)}>
               <option value="name">{t("Name")}</option>
               <option value="contribution">{t("Highest contribution")}</option>
             </select>
           </label>
-          {rows.map((c) => (
+          </details><h2 className="v4-customer-contract-heading"><T text="Customers and Contracts"/></h2>{rows.map((c) => (
             <BusinessCard
               key={c.id}
               title={<>{c.name}</>}
@@ -276,7 +276,7 @@ export function ContributionScreen({ poolId }: { poolId?: string }) {
             <summary>
               <T text="Growth & workload" />
             </summary>
-            <div className="business-metrics">
+            <div className="business-metrics v4-finance-summary">
               <BusinessMetric
                 label="Owned customers"
                 value={data.report.ownedCustomers}

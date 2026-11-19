@@ -1,7 +1,8 @@
+import {PageHeading} from '@/components/v4/primitives';
 import type {ReactNode} from 'react';
 import {T} from '@/components/i18n';
 import {Icon,type IconName} from './icon';
-export function PageHeader({title,description,eyebrow,actions}:{title:string;description?:string;eyebrow?:string;actions?:ReactNode}){return <header className="page-header"><div>{eyebrow&&<p className="page-kicker"><T text={eyebrow}/></p>}<h1><T text={title}/></h1>{description&&<p><T text={description}/></p>}</div>{actions&&<div className="header-actions">{actions}</div>}</header>;}
+export function PageHeader({title,description,eyebrow,actions}:{title:string;description?:string;eyebrow?:string;actions?:ReactNode}){return <PageHeading title={<T text={title}/>} subtitle={description&&<T text={description}/>} eyebrow={eyebrow&&<T text={eyebrow}/>} action={actions}/>;}
 export function SectionHeader({title,action}:{title:string;action?:ReactNode}){return <div className="section-header"><h2><T text={title}/></h2>{action}</div>;}
 export function Card({children,className=''}:{children:ReactNode;className?:string}){return <section className={`surface ${className}`}>{children}</section>;}
 export function StatCard({label,value,icon='service',detail}:{label:string;value:ReactNode;icon?:IconName;detail?:string}){return <section className="stat-card"><span className="stat-icon"><Icon name={icon}/></span><div><span className="stat-top"><T text={label}/></span><strong className="stat-value">{value}</strong>{detail&&<small><T text={detail}/></small>}</div></section>;}

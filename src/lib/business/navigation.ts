@@ -1,8 +1,7 @@
 export const ownerNavigation = [
   { href: "/", label: "Home", icon: "home" },
-  { href: "/customers", label: "Customers", icon: "customers" },
   { href: "/route", label: "Route", icon: "route" },
-  { href: "/team", label: "Team", icon: "team" },
+  { href: "/customers", label: "Customers", icon: "customers" },
   { href: "/more", label: "More", icon: "more" },
 ] as const;
 export const technicianNavigation = [
@@ -13,7 +12,7 @@ export const technicianNavigation = [
 export function navigationFor(role: string) {
   return role === "technician"
     ? technicianNavigation
-    : ownerNavigation.filter((v) => v.href !== "/team" || role === "owner");
+    : ownerNavigation;
 }
 export function navigationActive(path: string, href: string, tech: boolean) {
   if (href === "/") return path === "/";
@@ -27,8 +26,10 @@ export function navigationActive(path: string, href: string, tech: boolean) {
   if (href === "/more")
     return [
       "/more",
+      ...(!tech ? ["/team"] : []),
       "/maps",
       "/reports",
+      "/issues",
       "/settings",
       "/finance",
       "/legacy",

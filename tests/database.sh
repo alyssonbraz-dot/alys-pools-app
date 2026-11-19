@@ -47,7 +47,9 @@ V3SEED
   fi
 done
 for suite in supabase/tests/*.sql; do
-  if [[ "$suite" != *rls.sql ]]; then
+  if [[ "$suite" == *staging_owner_recovery.sql ]]; then
+    node tests/owner-recovery-sql.mjs | docker exec -i "$name" psql -v ON_ERROR_STOP=1 -U postgres
+  elif [[ "$suite" != *rls.sql ]]; then
     docker exec -i "$name" psql -v ON_ERROR_STOP=1 -U postgres < "$suite"
   fi
 done

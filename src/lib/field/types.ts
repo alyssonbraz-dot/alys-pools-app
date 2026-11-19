@@ -1,7 +1,7 @@
 export type ReadingKey = 'fc' | 'ph' | 'ta' | 'cya' | 'ch' | 'salt' | 'cc' | 'tc' | 'temperature_f';
 export type ReadingValues = Partial<Record<ReadingKey, number>>;
 export type Dosage = { product: string; quantity: number; unit: string };
-export type PoolConfig = { id:string; name:string; gallons:number; checklist:string[]; required_readings:ReadingKey[]; photo_required:boolean;photo_scope_required?:boolean;reference_ranges?:Partial<Record<ReadingKey,{min:number;max:number}>> };
+export type PoolConfig = { equipment_notes?:string; id:string; name:string; gallons:number; checklist:string[]; required_readings:ReadingKey[]; photo_required:boolean;photo_scope_required?:boolean;reference_ranges?:Partial<Record<ReadingKey,{min:number;max:number}>> };
 export type StopStatus = 'pending' | 'in_progress' | 'completed' | 'skipped';
 export type RouteStop = {
  business_source?:'own'|'legacy';

@@ -11,6 +11,12 @@ const db=createClient(url,key,{auth:{persistSession:false,autoRefreshToken:false
 let user;
 for(let page=1;;page++){const {data,error}=await db.auth.admin.listUsers({page,perPage:1000});if(error)throw new Error('Cannot read Auth users. Check the server-only project key.');user=data.users.find(u=>u.email?.toLowerCase()===email.toLowerCase());if(user||data.users.length<1000)break;}
 const existing=!!user;
+// Initial provisioning must never guess which existing organization an account belongs to.
+// Recovery uses an exact existing organization UUID via the audited staging SQL instead.
+const {data:profile,error:profileError}=user?await db.from('profiles').select('organization_id,role,access_state').eq('id',user.id).maybeSingle():{data:null,error:null};
+if(profileError)throw new Error('Cannot verify owner profile. Check schema migrations and project configuration; no setup was attempted.');
+if(profile&&(profile.role!=='owner'||profile.access_state!=='active'))throw new Error('Existing membership is not an active Owner. Use the documented authorized recovery or invitation flow; no membership was changed.');
+if(!profile){const {data:organizations,error}=await db.from('organizations').select('id').eq('name',company.trim()).limit(1);if(error)throw new Error('Cannot inspect organizations. No setup was attempted.');if(organizations.length)throw new Error('A matching organization already exists. Use docs/v4/OWNER-ACCESS.md with its exact UUID; initial setup will not create a duplicate organization or grant access to it.');}
 if(!user){const {data,error}=await db.auth.admin.createUser({email,password,email_confirm:true});if(error||!data.user)throw new Error('Owner Auth creation failed. No email was sent.');user=data.user;}
 const {error}=await db.rpc('bootstrap_owner',{p_owner:user.id,p_company:company,p_display_name:displayName});
 if(error)throw new Error('Organization setup failed. Apply migrations through013 and verify that the account has no conflicting membership. The Auth account is retained so setup can resume.');

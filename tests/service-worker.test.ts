@@ -95,7 +95,7 @@ describe("offline shell installation and recovery", () => {
     expect(h.notifications.at(-1)?.ready).toBe(true);
     expect(
       h.stores
-        .get("alys-field-shell-v30")
+        .get("alys-field-shell-v4")
         ?.has("https://app.example.test/offline"),
     ).toBe(true);
   });
@@ -120,7 +120,7 @@ describe("offline shell installation and recovery", () => {
 });
 
 it("app worker caches only app resources and leaves marketing/API requests alone",async()=>{
- const h=harness(true);h.stores.set('marketing-cache',new Map());h.stores.set('alys-field-shell-v30',new Map());await h.emit('install');expect(h.notifications.at(-1)?.ready).toBe(true);expect(h.stores.has('alys-field-shell-app-v30')).toBe(true);expect(h.stores.has('marketing-cache')).toBe(true);expect(h.stores.has('alys-field-shell-v30')).toBe(true);
+ const h=harness(true);h.stores.set('marketing-cache',new Map());h.stores.set('alys-field-shell-v4',new Map());await h.emit('install');expect(h.notifications.at(-1)?.ready).toBe(true);expect(h.stores.has('alys-field-shell-app-v4')).toBe(true);expect(h.stores.has('marketing-cache')).toBe(true);expect(h.stores.has('alys-field-shell-v4')).toBe(true);
  for(const path of ['/','/blog','/application','/app/api/photos']){const respondWith=vi.fn();h.events.fetch({request:{url:'https://app.example.test'+path,method:'GET',mode:'navigate',headers:new Headers()},respondWith});expect(respondWith).not.toHaveBeenCalled();}
  expect(h.fetcher.mock.calls.map(c=>c[0]).every(p=>p.startsWith('/app/'))).toBe(true);
 });

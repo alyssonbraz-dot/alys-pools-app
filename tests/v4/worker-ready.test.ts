@@ -1,0 +1,4 @@
+import {expect,it,vi} from 'vitest';
+import {scopedWorkerReady} from '../../src/lib/offline/worker-ready';
+it('waits for the exact scoped registration and removes its activation listener',async()=>{const worker=new EventTarget() as ServiceWorker;Object.defineProperty(worker,'state',{value:'installing',writable:true});const remove=vi.spyOn(worker,'removeEventListener');const ready=scopedWorkerReady({installing:worker} as ServiceWorkerRegistration);Object.defineProperty(worker,'state',{value:'activated'});worker.dispatchEvent(new Event('statechange'));expect(await ready).toBe(worker);expect(remove).toHaveBeenCalled();});
+it('rejects failed installation without deleting cached visits',async()=>{await expect(scopedWorkerReady({} as ServiceWorkerRegistration)).rejects.toThrow('Offline resources');});

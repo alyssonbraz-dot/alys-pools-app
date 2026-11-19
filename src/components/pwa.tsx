@@ -1,5 +1,6 @@
 'use client';
 import {appPath} from '@/lib/app-path';
+import {scopedWorkerReady} from '@/lib/offline/worker-ready';
 import {T} from '@/components/i18n';
 import {useEffect,useState} from 'react';
 export function Pwa(){const [state,setState]=useState<'checking'|'ready'|'failed'|'unsupported'>('checking'),[detail,setDetail]=useState(''),[lowStorage,setLowStorage]=useState(false);useEffect(()=>{
@@ -11,7 +12,7 @@ export function Pwa(){const [state,setState]=useState<'checking'|'ready'|'failed
  function check(event?:Event){if(event&&!(event.target as HTMLElement)?.closest?.('[data-offline-retry]'))return;setState('checking');registration?.active?.postMessage({type:'WARM_OFFLINE_SHELL'});}
  document.addEventListener('click',check);
  const timeout=setTimeout(()=>{if(!disposed)setState(current=>current==='checking'?'failed':current);},30000);
- navigator.serviceWorker.register(appPath('/sw.js'),{scope:appPath('/'),updateViaCache:'none'}).then(async r=>{registration=r;const ready=r;if(disposed)return;registration=ready;ready.active?.postMessage({type:'CHECK_OFFLINE_STATUS'});ready.active?.postMessage({type:'WARM_OFFLINE_SHELL'});}).catch(()=>{if(!disposed)setState('failed');});
+ navigator.serviceWorker.register(appPath('/sw.js'),{scope:appPath('/'),updateViaCache:'none'}).then(async r=>{registration=r;const worker=await scopedWorkerReady(r);if(disposed)return;registration=r;worker.postMessage({type:'CHECK_OFFLINE_STATUS'});worker.postMessage({type:'WARM_OFFLINE_SHELL'});}).catch(()=>{if(!disposed)setState('failed');});
  navigator.storage?.persist?.().catch(()=>false);
  navigator.storage?.estimate?.().then(({quota,usage})=>{if(!disposed&&quota&&usage)setLowStorage(usage/quota>0.9);}).catch(()=>{});
  return()=>{disposed=true;clearTimeout(timeout);channel?.close();navigator.serviceWorker.removeEventListener('message',message);document.removeEventListener('click',check);};
