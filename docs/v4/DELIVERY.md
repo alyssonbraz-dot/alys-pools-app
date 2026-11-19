@@ -2,6 +2,10 @@
 
 Branch: `feature/alys-v4-mobile-staging`, baseada em `6302db4` da `feature/alys-hostinger-app-path` (PR #9). Destino do novo PR: essa branch de staging, sem merge na main. Nenhuma publicação de produção, DNS, alteração Hostinger, migration remota ou envio de e-mail real foi executado.
 
+**Push concluído:** [branch V4](https://github.com/alyssonbraz-dot/alys-pools-app/tree/feature/alys-v4-mobile-staging). Commits por fase: `c87dad5` auditoria, `5e59d06` navegação/telas, `62451ed` visita/cadastro/comercial, `9fda051` PWA/staging, `e4c169d` testes/correções/capturas. O SHA final inclui a documentação do resultado de publicação da branch.
+
+**PR: BLOCKED.** A tentativa explícita de `gh pr create` contra a branch de staging retornou `POST https://api.github.com/graphql: Forbidden`. Nenhum PR novo foi criado. [Abrir comparação para criar o PR](https://github.com/alyssonbraz-dot/alys-pools-app/compare/feature/alys-hostinger-app-path...feature/alys-v4-mobile-staging?expand=1). Não selecionar main como destino. Deploy Preview não foi consultado nem confirmado.
+
 ## Experiência implementada
 
 - Owner: Home / Route / Customers / More. Technician: Today / History / More. Team saiu da navegação principal e permanece em More. Administração/finanças continuam protegidas no servidor e por RLS.
@@ -86,6 +90,6 @@ npx playwright test --config playwright.v4-real.config.ts
 
 **Staging Netlify e Deploy Preview: BLOCKED.** O endereço informado é `https://alys-v3-staging.netlify.app/app`, mas a rede retorna CONNECT HTTP 403. Credenciais/configurações remotas de Netlify, Supabase e Resend não estão disponíveis. Não há link de staging validado nesta entrega. Detalhes e ações necessárias: [STAGING.md](STAGING.md).
 
-É necessário conectar os serviços de staging, confirmar variáveis/branch/logs e executar login/Storage/RLS/worker/webhook no projeto de teste. O teste local confirma enfileiramento de relatório único, não entrega por Resend. GitHub API também negou leitura do PR #9; a criação do PR será reportada separadamente do push Git.
+É necessário conectar os serviços de staging, confirmar variáveis/branch/logs e executar login/Storage/RLS/worker/webhook no projeto de teste. O teste local confirma enfileiramento de relatório único, não entrega por Resend. GitHub API negou tanto leitura do PR #9 quanto criação do novo PR, apesar do push Git bem-sucedido.
 
 iPhone físico/Safari: homologar câmera nativa, HEIC de diferentes aparelhos, teclado, safe areas reais, instalação PWA, bloqueio e retomada. Chromium em viewport móvel não comprova comportamento físico. Desempenho de rede 4G não foi medido; não há promessa de tempo de visita em produção.

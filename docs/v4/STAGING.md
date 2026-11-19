@@ -8,7 +8,7 @@
 | Configurações Netlify | **BLOCKED**: nenhum token/site vinculado disponível | Acesso seguro ao site de staging, sem modificar o site de produção |
 | Supabase remoto | **BLOCKED**: projeto conectado e credenciais não disponíveis | Identificar o projeto de teste e fornecer acesso seguro; conferir Auth, RLS, Storage e histórico 026/027 |
 | Resend remoto | **BLOCKED**: sem chave/domínio/logs acessíveis | Configurar remetente e webhook de staging; enviar somente ao destinatário autorizado |
-| API GitHub / PR | **BLOCKED**: GET do PR #9 retornou Forbidden | Permissão de API para abrir o PR V4 e consultar checks/Deploy Preview; Git fetch/push funciona |
+| API GitHub / PR | **BLOCKED**: GET do PR #9 e POST GraphQL de criação do PR retornaram Forbidden; push V4 concluído | Permissão de API para abrir o PR V4 e consultar checks/Deploy Preview; Git fetch/push funciona |
 | DNS / Hostinger | Preservados | Nenhuma ação nesta entrega |
 | iPhone físico | Não executado | Homologar câmera, HEIC, teclado, GPS, bloqueio e instalação PWA em aparelho |
 
