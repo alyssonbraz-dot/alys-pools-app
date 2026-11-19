@@ -40,16 +40,13 @@ export function ContributionScreen({ poolId }: { poolId?: string }) {
   const scopedRevenue = focused
     ? rows.reduce((n, c) => n + (c.monthlyRevenue ?? 0), 0)
     : (data?.report.ownedMrr ?? 0);
-  const scopedContribution = focused
-    ? rows.some((c) => c.forecast.contribution === null)
-      ? null
-      : rows.reduce((n, c) => n + c.forecast.contribution!, 0)
-    : (data?.report.estimatedContribution ?? null);
-  const beforeLabor = focused
-    ? rows.some((c) => c.forecast.beforeOwnerLabor === null)
-      ? null
-      : rows.reduce((n, c) => n + c.forecast.beforeOwnerLabor!, 0)
-    : (data?.report.beforeOwnerLabor ?? null);
+  const scopedContribution = basis==='forecast'&&!focused
+    ? (data?.report.estimatedContribution??null)
+    : rows.some(c=>c[basis].contribution===null)?null:rows.reduce((n,c)=>n+c[basis].contribution!,0);
+  const beforeLabor = basis==='forecast'&&!focused
+    ? (data?.report.beforeOwnerLabor??null)
+    : rows.some(c=>c[basis].beforeOwnerLabor===null)?null:rows.reduce((n,c)=>n+c[basis].beforeOwnerLabor!,0);
+  const ownerLabor=rows.some(c=>c[basis].ownerLabor===null)?null:rows.reduce((sum,c)=>sum+c[basis].ownerLabor!,0);
   return (
     <div className="business-page contribution-page">
       <BusinessHeader
@@ -115,6 +112,8 @@ export function ContributionScreen({ poolId }: { poolId?: string }) {
               }
             />
           </div>
+          {(ownerLabor===null||ownerLabor>0)&&<div className="v4-owner-labor business-inline"><span><T text="Owner labor"/></span><Money cents={ownerLabor}/></div>}
+          {basis==='completed'&&<p className="note"><T text="Contracted monthly revenue less confirmed service costs. This is not collected cash or paid payroll."/></p>}
           <p className="note">
             <T text="Contribution is not accounting net profit. Completed-visit payments are due estimates, not bank-confirmed payments." />
           </p>

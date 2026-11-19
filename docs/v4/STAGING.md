@@ -36,4 +36,8 @@ O worker agendado continua chamando `/app/api/email/worker` na origem Netlify. W
 
 `playwright.v4.config.ts` usa **uma aplicação Next somente de testes** em `tests/visual-app`, com os componentes de produção reais e respostas API fictícias em `tests/v4/fixtures.ts`. Nenhuma rota de demonstração foi adicionada ao aplicativo de produção. As capturas desse ambiente são evidência de layout/interação, não de credenciais, banco ou entrega de email remotos. O Dev Indicator do Next é desativado somente no harness visual.
 
-O relatório final registra separadamente o resultado de qualquer backend Supabase local completo. Credenciais locais ficam em arquivos ignorados e nunca no Git. Fixtures não devem ser executadas contra Supabase hospedado.
+`playwright.v4-real.config.ts` executa o build de produção `/app` contra Supabase **local completo**, com usuários e clientes fictícios: login real, cookies, Owner/Technician, isolamento entre organizações, cadastro/edição de múltiplos imóveis, JPEG/HEIC, Storage privado, interrupção após aceite do upload, perda de sessão, reabertura offline e nova tentativa após commit incerto. Confere uma única visita, leitura, dosagem e registro de relatório, preservando os dois IDs de foto. Não usa mocks de Auth/Postgres/Storage; a rede é interrompida deliberadamente em cenários de falha. Resend fica desabilitado: registro de relatório não comprova envio externo.
+
+O Supabase CLI local inicialmente expirou nos health checks. O segundo início usou `--ignore-health-check` e excluiu serviços opcionais; Auth/Storage continuaram com indicação Docker unhealthy, embora HTTP Auth retornasse 200 e os testes reais de sessão/Storage fossem executados. Não se considera esse aviso resolvido nem se replica essa configuração em staging.
+
+Credenciais locais ficam em arquivos ignorados e nunca no Git. Fixtures não devem ser executadas contra Supabase hospedado. Os resultados finais constam em [DELIVERY.md](DELIVERY.md).

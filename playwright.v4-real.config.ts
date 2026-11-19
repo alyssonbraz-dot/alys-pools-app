@@ -1,0 +1,3 @@
+import {defineConfig,devices} from '@playwright/test';
+process.env.TEST_APP_BASE_PATH='/app';
+export default defineConfig({outputDir:'test-results/v4-real',testDir:'./tests/integration',testMatch:['v221-recovery.spec.ts','v4-live-roles.spec.ts'],workers:1,timeout:180000,expect:{timeout:20000},reporter:'list',use:{actionTimeout:20000,baseURL:'http://127.0.0.1:3010',...devices['iPhone 13'],defaultBrowserType:'chromium',launchOptions:{executablePath:'/usr/bin/chromium'},trace:'retain-on-failure'},webServer:{command:'EMAIL_DELIVERY_ENABLED=false TEAM_INVITES_ENABLED=false CUSTOMER_INVITES_ENABLED=false ALYS_APP_BASE_PATH=/app npm start -- --port 3010',url:'http://127.0.0.1:3010/app/login',timeout:60000,reuseExistingServer:false}});

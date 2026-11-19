@@ -9,6 +9,27 @@ Aplicativo da ALYS Pool Services LLC para registrar manutenção de piscinas pel
 Este README é o roteiro de entrega e publicação com **Netlify Free + Supabase Free + Resend Free**, usando o domínio **alyspools.com**, registrado na Hostinger. Não é necessário contratar hospedagem na Hostinger. A renovação do domínio já comprado continua sendo responsabilidade do titular; planos gratuitos têm cotas e não garantem operação ilimitada sem custo.
 
 
+## V4 — reconstrução mobile e revisão de staging
+
+Branch de revisão `feature/alys-v4-mobile-staging`, baseada na branch `/app` do PR #9. Owner usa **Home · Route · Customers · More**; Technician mantém **Today · History · More**. A Home prioriza operação e próxima visita; a visita reúne controles FC/pH, favoritos, checklist, câmera e Finish & Next. O cadastro integrado agora tem três etapas. Team, financeiro, relatórios e Issues / Repairs ficam em More; capacidades antigas continuam em Advanced.
+
+Leia [a entrega V4 e screenshots](docs/v4/DELIVERY.md), [a auditoria](docs/v4/AUDIT.md) e [os limites da homologação de staging](docs/v4/STAGING.md). Não houve migration nova nem alteração dos IDs/chaves da IndexedDB. O staging remoto e Resend permanecem **BLOCKED** neste ambiente; validação local não confirma publicação.
+
+Validação visual reproduzível, com componentes reais e APIs fictícias, sem Supabase nem dados reais:
+
+```bash
+npm ci
+npm run lint
+npm run typecheck
+npm test
+npx playwright install chromium
+npx playwright test --config playwright.v4.config.ts
+ALYS_APP_BASE_PATH=/app npm run build
+npx playwright test --config playwright.app-path.config.ts
+```
+
+As configs Playwright desta entrega usam `/usr/bin/chromium`; ajuste `launchOptions.executablePath` para o Chromium instalado na sua máquina. A suite `playwright.v4-real.config.ts` exige **Supabase local descartável**, migrations locais 001–027, `.env.local` exclusivamente local e `node tests/integration/setup.mjs` (procedimento abaixo). Depois, faça o build `/app` e rode essa config. Não execute o setup contra um projeto hospedado. Os envios externos permanecem desabilitados nos testes.
+
 ## V3.0 — operação simples, pronta para crescer
 
 **From Pool Technician to Pool Business Owner.** Branch de revisão `feature/alys-v3-simplification`.

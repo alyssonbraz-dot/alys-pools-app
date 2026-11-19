@@ -1455,7 +1455,7 @@
     "Outside subcontract work stays in the optional legacy area.": "Subcontratos externos ficam na área opcional de legado.",
     "Owned MRR": "MRR da carteira própria",
     "Owned customers": "Clientes próprios",
-    "Owner labor": "Mão de obra do Owner",
+    "Owner labor": "Mão de obra própria",
     "Owner labor is unpriced until explicitly configured. It is never assumed free.": "A mão de obra do Owner fica sem preço até ser configurada. Nunca é considerada gratuita.",
     "Owner labor is unpriced.": "A mão de obra do Owner não foi precificada.",
     "Payment details": "Detalhes do pagamento",
@@ -1565,7 +1565,8 @@
     "The change could not be confirmed. Refresh before retrying.": "Não foi possível confirmar a alteração. Atualize antes de tentar novamente.",
     "Back": "Voltar",
     "Continue": "Continuar",
-    "Pool care, simplified.": "Cuidado de piscinas, simplificado."
+    "Pool care, simplified.": "Cuidado de piscinas, simplificado.",
+    "Contracted monthly revenue less confirmed service costs. This is not collected cash or paid payroll.": "Receita mensal contratada menos custos de serviço confirmados. Não representa dinheiro recebido nem folha de pagamento quitada."
   },
   "es": {
     "Language": "Idioma",
@@ -3133,7 +3134,8 @@
     "The change could not be confirmed. Refresh before retrying.": "No se pudo confirmar el cambio. Actualiza antes de reintentar.",
     "Back": "Volver",
     "Continue": "Continuar",
-    "Pool care, simplified.": "Cuidado de piscinas, simplificado."
+    "Pool care, simplified.": "Cuidado de piscinas, simplificado.",
+    "Contracted monthly revenue less confirmed service costs. This is not collected cash or paid payroll.": "Ingresos mensuales contratados menos costos de servicio confirmados. No representa efectivo cobrado ni nómina pagada."
   },
   "en": {
     "(my route)": "(my route)",
@@ -4701,6 +4703,7 @@
     "The change could not be confirmed. Refresh before retrying.": "The change could not be confirmed. Refresh before retrying.",
     "Back": "Back",
     "Continue": "Continue",
-    "Pool care, simplified.": "Pool care, simplified."
+    "Pool care, simplified.": "Pool care, simplified.",
+    "Contracted monthly revenue less confirmed service costs. This is not collected cash or paid payroll.": "Contracted monthly revenue less confirmed service costs. This is not collected cash or paid payroll."
   }
 }

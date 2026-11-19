@@ -15,3 +15,4 @@ playwright-report/
 test-results/
 
 .netlify/
+tests/visual-app/next-env.d.ts
