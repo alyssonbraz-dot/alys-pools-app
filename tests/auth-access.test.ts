@@ -1,0 +1,17 @@
+import {beforeEach,expect,it,vi} from 'vitest';
+const state=vi.hoisted(()=>({configured:true,user:{id:'auth-user'} as {id:string}|null,authError:null as unknown,profile:{organization_id:'existing-org',role:'owner',access_state:'active',display_name:'Fictional Owner'} as Record<string,string>|null,profileError:null as unknown}));
+const db={auth:{getUser:vi.fn(async()=>({data:{user:state.user},error:state.authError}))},from:vi.fn(()=>({select:()=>({eq:()=>({maybeSingle:async()=>({data:state.profile,error:state.profileError})})})}))};
+vi.mock('server-only',()=>({}));
+vi.mock('@/lib/supabase/config',()=>({supabaseConfig:()=>state.configured?{}:null}));
+vi.mock('@/lib/supabase/server',()=>({supabase:async()=>db}));
+vi.mock('next/navigation',()=>({redirect:(path:string)=>{throw new Error('redirect:'+path);}}));
+import {getOperator,getOperatorAccess,requireManager,requireOperator} from '../src/lib/auth';
+beforeEach(()=>{state.configured=true;state.user={id:'auth-user'};state.authError=null;state.profile={organization_id:'existing-org',role:'owner',access_state:'active',display_name:'Fictional Owner'};state.profileError=null;vi.clearAllMocks();});
+it.each(['owner','admin','technician'])('accepts only the active database %s membership, without provisioning',async role=>{state.profile!.role=role;expect((await getOperator())?.profile.role).toBe(role);expect((await getOperatorAccess()).status).toBe('authorized');expect(db.from).toHaveBeenCalledWith('profiles');});
+it('keeps Auth-only accounts denied and reports missing membership',async()=>{state.profile=null;expect(await getOperator()).toBeNull();await expect(requireOperator()).rejects.toThrow('redirect:/login?message=membership');});
+it.each(['42703','42P01','42501','PGRST205'])('does not misreport a profile schema/RLS error (%s) as missing membership',async code=>{state.profile=null;state.profileError={code,message:'Private internal diagnostics'};expect(await getOperator()).toBeNull();await expect(requireOperator()).rejects.toThrow('redirect:/login?message=accesscheck');});
+it.each(['inactive','suspended','invited'])('does not activate an %s Owner during login',async access=>{state.profile!.access_state=access;expect(await getOperator()).toBeNull();await expect(requireOperator()).rejects.toThrow('redirect:/login?message=inactive');});
+it('rejects customer role even with active access',async()=>{state.profile!.role='customer';expect(await getOperator()).toBeNull();});
+it('does not accept a role without organization or authenticated user',async()=>{state.profile!.organization_id='';expect(await getOperator()).toBeNull();state.user=null;await expect(requireOperator()).rejects.toThrow('redirect:/login?message=signin');});
+it('redirects missing setup distinctly and never queries a profile without Auth',async()=>{state.configured=false;await expect(requireOperator()).rejects.toThrow('redirect:/login?message=setup');expect(db.from).not.toHaveBeenCalled();});
+it('keeps Technician access away from manager pages',async()=>{state.profile!.role='technician';await expect(requireManager()).rejects.toThrow('redirect:/?message=manager');});

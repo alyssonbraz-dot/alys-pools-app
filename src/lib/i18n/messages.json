@@ -1566,7 +1566,9 @@
     "Back": "Voltar",
     "Continue": "Continuar",
     "Pool care, simplified.": "Cuidado de piscinas, simplificado.",
-    "Contracted monthly revenue less confirmed service costs. This is not collected cash or paid payroll.": "Receita mensal contratada menos custos de serviço confirmados. Não representa dinheiro recebido nem folha de pagamento quitada."
+    "Contracted monthly revenue less confirmed service costs. This is not collected cash or paid payroll.": "Receita mensal contratada menos custos de serviço confirmados. Não representa dinheiro recebido nem folha de pagamento quitada.",
+    "Your organization access is not active. Contact your administrator or accept your invitation.": "Seu acesso à empresa não está ativo. Contate o administrador ou aceite seu convite.",
+    "Organization access could not be verified. Your administrator should check the connected project, database migrations and access policies.": "Não foi possível verificar o acesso à empresa. O administrador deve conferir o projeto conectado, as migrations e as políticas de acesso."
   },
   "es": {
     "Language": "Idioma",
@@ -3135,7 +3137,9 @@
     "Back": "Volver",
     "Continue": "Continuar",
     "Pool care, simplified.": "Cuidado de piscinas, simplificado.",
-    "Contracted monthly revenue less confirmed service costs. This is not collected cash or paid payroll.": "Ingresos mensuales contratados menos costos de servicio confirmados. No representa efectivo cobrado ni nómina pagada."
+    "Contracted monthly revenue less confirmed service costs. This is not collected cash or paid payroll.": "Ingresos mensuales contratados menos costos de servicio confirmados. No representa efectivo cobrado ni nómina pagada.",
+    "Your organization access is not active. Contact your administrator or accept your invitation.": "Tu acceso a la organización no está activo. Contacta al administrador o acepta tu invitación.",
+    "Organization access could not be verified. Your administrator should check the connected project, database migrations and access policies.": "No se pudo verificar el acceso a la organización. El administrador debe revisar el proyecto conectado, las migraciones y las políticas de acceso."
   },
   "en": {
     "(my route)": "(my route)",
@@ -4704,6 +4708,8 @@
     "Back": "Back",
     "Continue": "Continue",
     "Pool care, simplified.": "Pool care, simplified.",
-    "Contracted monthly revenue less confirmed service costs. This is not collected cash or paid payroll.": "Contracted monthly revenue less confirmed service costs. This is not collected cash or paid payroll."
+    "Contracted monthly revenue less confirmed service costs. This is not collected cash or paid payroll.": "Contracted monthly revenue less confirmed service costs. This is not collected cash or paid payroll.",
+    "Your organization access is not active. Contact your administrator or accept your invitation.": "Your organization access is not active. Contact your administrator or accept your invitation.",
+    "Organization access could not be verified. Your administrator should check the connected project, database migrations and access policies.": "Organization access could not be verified. Your administrator should check the connected project, database migrations and access policies."
   }
 }

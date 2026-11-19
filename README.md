@@ -11,6 +11,8 @@ Este README é o roteiro de entrega e publicação com **Netlify Free + Supabase
 
 ## V4 — reconstrução mobile e revisão de staging
 
+**Acesso Owner no Preview #10:** consulte [diagnóstico e recuperação segura](docs/v4/OWNER-ACCESS.md). Auth e vínculo organizacional são registros distintos. O runbook reutiliza UUIDs existentes, exige administrador de banco e staging separado, ensaia com rollback e não cria usuários/empresas nem desativa RLS. Não use o provisionamento inicial para corrigir um perfil ausente de uma empresa existente.
+
 Branch de revisão `feature/alys-v4-mobile-staging`, baseada na branch `/app` do PR #9. Owner usa **Home · Route · Customers · More**; Technician mantém **Today · History · More**. A Home prioriza operação e próxima visita; a visita reúne controles FC/pH, favoritos, checklist, câmera e Finish & Next. O cadastro integrado agora tem três etapas. Team, financeiro, relatórios e Issues / Repairs ficam em More; capacidades antigas continuam em Advanced.
 
 Leia [a entrega V4 e screenshots](docs/v4/DELIVERY.md), [a auditoria](docs/v4/AUDIT.md) e [os limites da homologação de staging](docs/v4/STAGING.md). Não houve migration nova nem alteração dos IDs/chaves da IndexedDB. O staging remoto e Resend permanecem **BLOCKED** neste ambiente; validação local não confirma publicação.
