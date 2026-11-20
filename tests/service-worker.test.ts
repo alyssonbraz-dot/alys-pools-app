@@ -70,6 +70,12 @@ function harness() {
   }
   return {
     emit,
+    navigate(path: string): Promise<Response> {
+      return new Promise(resolve => {
+        events.fetch({ request: { url: key(path), method: 'GET', mode: 'navigate', headers: new Headers() },
+          respondWith: resolve });
+      });
+    },
     stores,
     fetcher,
     notifications,
@@ -82,6 +88,20 @@ function harness() {
   };
 }
 describe("offline shell installation and recovery", () => {
+  it("keeps offline V4 navigation out of the legacy offline workspace", async () => {
+    const h = harness();
+    h.stores.set("alys-field-shell-v30", new Map([
+      ["https://app.example.test/offline", new Response("legacy field workspace")],
+    ]));
+    for (const path of ["/v4", "/v4/login"]) {
+      h.fetcher.mockRejectedValueOnce(new TypeError("Offline"));
+      const response = await h.navigate(path);
+      expect(response.status).toBe(503);
+      expect(await response.text()).toContain("Reconnect to reopen ALYS Field V4");
+    }
+    h.fetcher.mockRejectedValueOnce(new TypeError("Offline"));
+    expect(await (await h.navigate("/stops")).text()).toBe("legacy field workspace");
+  });
   it("preserves deployment queries and announces ready only after resources are cached", async () => {
     const h = harness();
     await h.emit("install");

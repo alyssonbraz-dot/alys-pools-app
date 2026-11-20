@@ -1,0 +1,10 @@
+.page {min-height:100dvh;background:#f2f6f8;color:#122e43}
+.header {display:flex;align-items:center;gap:.65rem;padding:calc(16px + env(safe-area-inset-top)) max(20px,calc((100vw - 440px) / 2)) 16px;background:#1377c5;color:white;font-size:20px;font-weight:750;white-space:nowrap}
+.mark {display:grid;place-items:center;width:35px;height:35px;background:white;color:#1069ad;border-radius:12px;font-size:29px;line-height:1}
+.panel {max-width:440px;margin:clamp(28px,8dvh,88px) auto;padding:0 22px}
+.panel h1 {font-size:32px;color:#102f46}.panel p {margin-top:6px;color:#536878}
+.panel form {display:grid;gap:17px;margin-top:28px}
+.panel label {display:grid;gap:6px;font-size:15px;font-weight:600}
+.panel input,.panel button {width:100%;min-height:50px;border-radius:12px;font-size:16px}
+.panel button {margin-top:6px;background:#126db4;color:white;font-weight:700;border:0}
+.panel .error {margin-top:18px;padding:12px;background:#fff2d4;border-radius:8px;color:#713d06}

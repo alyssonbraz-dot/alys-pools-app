@@ -1,0 +1,10 @@
+.v4-add-stop { display: grid; gap: 15px; padding: 18px; background: #fff; border: 1px solid #d3e0e6; border-radius: 16px; }
+.v4-add-stop header { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.v4-add-stop header h2 { color: #143548; font-size: 23px; }
+.v4-add-stop header p { margin: 2px 0 0; color: #4b6574; font-size: 14px; }
+.v4-add-stop label { display: grid; gap: 5px; min-width: 0; font-weight: 650; color: #274856; }
+.v4-add-stop input, .v4-add-stop select { width: 100%; min-height: 46px; font-weight: 450; }
+.v4-add-close { display: grid; place-items: center; width: 44px; height: 44px; background: #eef5f8; border: 0; border-radius: 50%; color: #294f66; }
+.v4-add-body { display: grid; gap: 10px; grid-template-columns: 1fr 1fr; }
+.v4-add-submit { display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 48px; border: 0; border-radius: 10px; background: #096eb1; color: #fff; font-weight: 700; }
+.v4-add-error { color: #942d22; }

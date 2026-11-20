@@ -45,6 +45,13 @@ self.addEventListener('fetch',event=>{
  if(request.method!=='GET'||url.origin!==self.location.origin||url.pathname.startsWith('/api/')||request.headers.has('RSC'))return;
  if(request.mode==='navigate'){
   event.respondWith(fetch(request).catch(async()=>{
+   // V4 authenticates against a separate database. Its offline navigation must
+   // never mount the legacy workspace or consult that workspace's device cache.
+   if(url.pathname==='/v4'||url.pathname.startsWith('/v4/')){
+     return new Response('Reconnect to reopen ALYS Field V4. Saved visits will resume syncing when you return to your account.',{
+       status:503,headers:{'Content-Type':'text/plain; charset=utf-8','Cache-Control':'no-store'}
+     });
+   }
    const keys=[VERSION,...(await caches.keys()).filter(k=>k.startsWith('alys-field-shell-')&&k!==VERSION)];
    for(const key of keys){const fallback=await (await caches.open(key)).match('/offline');if(fallback)return fallback;}
    return new Response('Offline shell unavailable. Reconnect and use Check offline installation in Settings.',{status:503,headers:{'Content-Type':'text/plain'}});
