@@ -1,7 +1,13 @@
 'use client';
+import {usePathname} from 'next/navigation';
 import {T} from '@/components/i18n';
 import {useEffect,useState} from 'react';
-export function Pwa(){const [state,setState]=useState<'checking'|'ready'|'failed'|'unsupported'>('checking'),[detail,setDetail]=useState(''),[lowStorage,setLowStorage]=useState(false);useEffect(()=>{
+export function Pwa(){
+ const path=usePathname();
+ if(path==='/v4'||path.startsWith('/v4/'))return null;
+ return <LegacyPwa/>;
+}
+function LegacyPwa(){const [state,setState]=useState<'checking'|'ready'|'failed'|'unsupported'>('checking'),[detail,setDetail]=useState(''),[lowStorage,setLowStorage]=useState(false);useEffect(()=>{
  let disposed=false;let registration:ServiceWorkerRegistration|undefined;
  const channel=typeof BroadcastChannel!=='undefined'?new BroadcastChannel('alys-device-events'):null;if(channel)channel.onmessage=e=>{if(e.data?.type==='clear-device')window.location.replace('/login');};
  if(!('serviceWorker' in navigator)){queueMicrotask(()=>{if(!disposed)setState('unsupported');});return()=>channel?.close();}

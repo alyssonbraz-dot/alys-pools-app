@@ -9,6 +9,10 @@ Aplicativo da ALYS Pool Services LLC para registrar manutenção de piscinas pel
 Este README é o roteiro de entrega e publicação com **Netlify Free + Supabase Free + Resend Free**, usando o domínio **alyspools.com**, registrado na Hostinger. Não é necessário contratar hospedagem na Hostinger. A renovação do domínio já comprado continua sendo responsabilidade do titular; planos gratuitos têm cotas e não garantem operação ilimitada sem custo.
 
 
+## V4 — visitas no iPhone
+
+A V4 reúne rota diária, mapa e registro de visitas em `/v4`. Ela usa um projeto Supabase próprio, com conta e dados de demonstração locais. [Executar e testar a V4](v4/README.md).
+
 ## V3.0 — operação simples, pronta para crescer
 
 **From Pool Technician to Pool Business Owner.** Branch de revisão `feature/alys-v3-simplification`.

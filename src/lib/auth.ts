@@ -1,6 +1,7 @@
 import 'server-only';
 import { redirect } from 'next/navigation';
 import { supabase } from './supabase/server';
+import { v4Config } from './v4/server-config';
 import { supabaseConfig } from './supabase/config';
 export async function getOperator() {
   if (!supabaseConfig()) return null;
@@ -12,7 +13,7 @@ export async function getOperator() {
   return {db,user,profile};
 }
 export async function requireOperator() {
- if(!supabaseConfig())redirect('/login?message=setup');
+ if(!supabaseConfig())redirect(v4Config()?'/v4':'/login?message=setup');
  const operator=await getOperator();
  if(!operator)redirect('/login?message=membership');
  return operator;

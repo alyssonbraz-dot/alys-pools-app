@@ -1,0 +1,6 @@
+.v4-photo { display: grid; gap: 10px; }
+.v4-photo-preview { width: 100%; height: auto; max-height: 260px; object-fit: contain; border-radius: 8px; background: #eef3f7; }
+.v4-photo-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.v4-photo-picker { position: relative; display: inline-flex; flex: 1; align-items: center; justify-content: center; gap: 7px; min-height: 44px; padding: 7px 12px; border: 1px solid #b6cbdc; border-radius: 9px; font-weight: 650; color: #125a90; background: #f5faff; cursor: pointer; }
+.v4-photo-picker:focus-within { outline: 3px solid #238ed2; }
+.v4-photo-picker input { position: absolute; inset: 0; padding: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
